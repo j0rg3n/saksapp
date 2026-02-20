@@ -20,17 +20,20 @@ public class CasesController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAuditService _audit;
     private readonly ICaseNumberAllocator _caseNumberAllocator;
+    private readonly ILogger<CasesController> _logger;
 
     public CasesController(
         ApplicationDbContext db,
         UserManager<ApplicationUser> userManager,
         IAuditService audit,
-        ICaseNumberAllocator caseNumberAllocator)
+        ICaseNumberAllocator caseNumberAllocator,
+        ILogger<CasesController> logger)
     {
         _db = db;
         _userManager = userManager;
         _audit = audit;
         _caseNumberAllocator = caseNumberAllocator;
+        _logger = logger;
     }
 
     public async Task<IActionResult> Index(CaseStatus? status, string? assigneeUserId, CancellationToken ct)
@@ -146,9 +149,42 @@ var minutesAttByEntryId = minutesAtts
     .GroupBy(x => x.Item1)
     .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
 
-// comment attachments - keep your existing code
+// comment attachments
+var commentIds = comments.Select(x => x.Id).ToList();
+var commentAtts = commentIds.Count == 0
+    ? new List<(int CommentId, SaksAppWeb.Models.ViewModels.CaseAttachmentVm Att)>()
+    : await _db.CaseCommentAttachments.AsNoTracking()
+        .Where(x => commentIds.Contains(x.CaseCommentId))
+        .Join(_db.Attachments.AsNoTracking(),
+            link => link.AttachmentId,
+            att => att.Id,
+            (link, att) => new
+            {
+                link.CaseCommentId,
+                LinkId = link.Id,
+                AttachmentId = att.Id,
+                att.OriginalFileName,
+                att.ContentType,
+                att.SizeBytes
+            })
+        .Select(x => new ValueTuple<int, SaksAppWeb.Models.ViewModels.CaseAttachmentVm>(
+            x.CaseCommentId,
+            new SaksAppWeb.Models.ViewModels.CaseAttachmentVm
+            {
+                LinkKind = SaksAppWeb.Models.ViewModels.CaseAttachmentLinkKind.CommentAttachment,
+                LinkId = x.LinkId,
+                AttachmentId = x.AttachmentId,
+                OriginalFileName = x.OriginalFileName,
+                ContentType = x.ContentType,
+                SizeBytes = x.SizeBytes
+            }))
+        .ToListAsync(ct);
 
-    // Collect user IDs to show friendly display names
+var commentAttByCommentId = commentAtts
+    .GroupBy(x => x.Item1)
+    .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
+
+// Collect user IDs to show friendly display names
     var userIds = comments
         .Select(x => x.CreatedByUserId)
         .Append(c.AssigneeUserId)
@@ -216,7 +252,11 @@ foreach (var item in timeline)
             item.Attachments.AddRange(minutesList);
     }
 
-    // comments: keep as before
+    if (item.Kind == SaksAppWeb.Models.ViewModels.CaseTimelineItemKind.Comment)
+    {
+        if (item.CommentId is int comId && commentAttByCommentId.TryGetValue(comId, out var commentList))
+            item.Attachments.AddRange(commentList);
+    }
 }
 
     // Reverse chronological:

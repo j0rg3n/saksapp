@@ -7,7 +7,9 @@ using SaksAppWeb.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Data protection keys persistence
+// Add logging
+builder.Services.AddLogging();
+
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/dp_keys"));
 
