@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SaksAppWeb.Data;
@@ -5,6 +6,10 @@ using SaksAppWeb.Models;
 using SaksAppWeb.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Data protection keys persistence
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/dp_keys"));
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??

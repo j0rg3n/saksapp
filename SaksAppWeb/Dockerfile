@@ -24,6 +24,6 @@ COPY --from=publish /app/publish .
 # On Linux hosts, the directory must be writable by the non-root user (1654).
 # We create it and set permissions in the image, but volume mounts can override this.
 USER root
-RUN mkdir -p /app/db && chown -R $APP_UID:$APP_UID /app/db
+RUN mkdir -p /app/db /app/dp_keys && chown -R $APP_UID:$APP_UID /app/db /app/dp_keys
 USER $APP_UID
 ENTRYPOINT ["dotnet", "SaksAppWeb.dll"]

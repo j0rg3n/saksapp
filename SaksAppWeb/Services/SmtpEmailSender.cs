@@ -1,22 +1,33 @@
+using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using MimeKit;
 using SaksAppWeb.Models;
-using System.Net;
-using System.Net.Mail;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 public class SmtpEmailSender : IEmailSender<ApplicationUser>
 {
     private readonly string _host;
     private readonly int _port;
+    private readonly string _username;
+    private readonly string _password;
     private readonly string _fromEmail;
+    private readonly ILogger<SmtpEmailSender> _logger;
 
-    public SmtpEmailSender(IConfiguration configuration)
+    public SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEmailSender> logger)
     {
         _host = configuration["Smtp:Host"] ?? "localhost";
-        _port = configuration.GetValue<int>("Smtp:Port", 1025);
+        _port = configuration.GetValue<int>("Smtp:Port", 465);
+        _username = configuration["Smtp:Username"] ?? "";
+        _password = configuration["Smtp:Password"] ?? "";
         _fromEmail = configuration["Smtp:FromEmail"] ?? "noreply@localhost";
+        _logger = logger;
+        
+        _logger.LogInformation("SMTP configured: Host={Host}, Port={Port}, FromEmail={FromEmail}, Username={Username}", 
+            _host, _port, _fromEmail, _username);
     }
 
     public async Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink)
@@ -36,17 +47,44 @@ public class SmtpEmailSender : IEmailSender<ApplicationUser>
 
     public async Task SendEmailAsync(string email, string subject, string htmlMessage)
     {
-        using var client = new SmtpClient(_host, _port)
+        _logger.LogInformation("Sending email to {Email}, subject: {Subject}", email, subject);
+        
+        try
         {
-            EnableSsl = false,
-            DeliveryMethod = SmtpDeliveryMethod.Network
-        };
+            var message = new MimeMessage();
+            message.From.Add(MailboxAddress.Parse(_fromEmail));
+            message.To.Add(MailboxAddress.Parse(email));
+            message.Subject = subject;
+            message.Body = new TextPart("html")
+            {
+                Text = htmlMessage
+            };
 
-        var message = new MailMessage(_fromEmail, email, subject, htmlMessage)
+            using var client = new SmtpClient();
+            
+            _logger.LogDebug("Connecting to {Host}:{Port}...", _host, _port);
+            await client.ConnectAsync(_host, _port, MailKit.Security.SecureSocketOptions.SslOnConnect);
+            
+            if (!string.IsNullOrEmpty(_username))
+            {
+                _logger.LogDebug("Authenticating...");
+                await client.AuthenticateAsync(_username, _password);
+            }
+            
+            _logger.LogDebug("Sending...");
+            var stopwatch = Stopwatch.StartNew();
+            await client.SendAsync(message);
+            stopwatch.Stop();
+            
+            _logger.LogDebug("Disconnecting...");
+            await client.DisconnectAsync(true);
+            
+            _logger.LogInformation("Email sent successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
         {
-            IsBodyHtml = true
-        };
-
-        await client.SendMailAsync(message);
+            _logger.LogError(ex, "Failed to send email to {Email}", email);
+            throw;
+        }
     }
 }

@@ -1,6 +1,8 @@
 bin/
 obj/
 db/
+dp_keys/
+auth/
 .idea/
 *.user
 *.suo

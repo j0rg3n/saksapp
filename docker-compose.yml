@@ -4,17 +4,16 @@ services:
     build:
       context: .
       dockerfile: SaksAppWeb/Dockerfile
-
     ports:
       - "0.0.0.0:8081:8080"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     volumes:
       - ./SaksAppWeb/db:/app/db:rw
+      - ./SaksAppWeb/dp_keys:/app/dp_keys:rw
+    env_file:
+      - auth/secret.env
     environment:
-      - SMTP_HOST=mailhog
-      - SMTP_PORT=1025
-
-  mailhog:
-    image: mailhog/mailhog
-    ports:
-      - "0.0.0.0:8025:8025"
-      - "0.0.0.0:1025:1025"
+      - SMTP__HOST=send.one.com
+      - SMTP__PORT=465
