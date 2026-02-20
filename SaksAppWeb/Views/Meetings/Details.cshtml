@@ -1,0 +1,91 @@
+@model SaksAppWeb.Models.ViewModels.MeetingDetailsVm
+
+@{
+    ViewData["Title"] = $"Meeting {Model.Meeting.Year}/{Model.Meeting.YearSequenceNumber}";
+}
+
+<div class="d-flex justify-content-between align-items-start">
+    <div>
+        <h1>Meeting @Model.Meeting.Year/@Model.Meeting.YearSequenceNumber — @Model.Meeting.MeetingDate</h1>
+        <div class="text-muted">@Model.Meeting.Location</div>
+    </div>
+    <div class="text-end">
+        <a class="btn btn-outline-secondary" asp-action="Minutes" asp-route-id="@Model.Meeting.Id">Minutes</a>
+        <a class="btn btn-outline-primary" asp-action="DownloadAgendaPdf" asp-route-id="@Model.Meeting.Id">Download agenda PDF</a>
+        <a class="btn btn-outline-primary" asp-action="DownloadAssigneeReminderPdf" asp-route-id="@Model.Meeting.Id">Download reminder PDF</a>
+    </div>
+</div>
+
+<hr />
+
+<h2>Agenda</h2>
+
+<form asp-action="AddCase" method="post" class="mb-4">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+
+    <div class="row g-2 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label">Add open case</label>
+            <select class="form-select" name="caseId" asp-items="Model.OpenCasesToAdd">
+                <option value="">-- select --</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-primary" type="submit">Add to agenda</button>
+        </div>
+    </div>
+</form>
+
+<table class="table table-sm table-striped">
+    <thead>
+    <tr>
+        <th style="width: 90px;">Order</th>
+        <th>Case</th>
+        <th>Assignee</th>
+        <th>Agenda text</th>
+        <th>Tidsfrist override</th>
+        <th style="width: 260px;"></th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var a in Model.Agenda)
+    {
+        <tr>
+            <td>@a.AgendaOrder</td>
+            <td>#@a.CaseNumber — @a.Title</td>
+            <td>@a.AssigneeDisplay</td>
+            <td style="white-space: pre-wrap">@a.AgendaTextSnapshot</td>
+            <td>
+                @if (a.TidsfristOverrideDate is not null) { <span>@a.TidsfristOverrideDate</span> }
+                @if (!string.IsNullOrWhiteSpace(a.TidsfristOverrideText)) { <span> @a.TidsfristOverrideText</span> }
+            </td>
+            <td class="text-end">
+                <div class="btn-group" role="group">
+                    <form asp-action="MoveAgendaItem" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@a.MeetingCaseId" />
+                        <input type="hidden" name="up" value="true" />
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Up</button>
+                    </form>
+                    <form asp-action="MoveAgendaItem" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@a.MeetingCaseId" />
+                        <input type="hidden" name="up" value="false" />
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Down</button>
+                    </form>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="EditAgendaItem" asp-route-id="@a.MeetingCaseId">Edit</a>
+                    <form asp-action="RemoveAgendaItem" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@a.MeetingCaseId" />
+                        <button class="btn btn-sm btn-outline-danger" type="submit"
+                                onclick="return confirm('Remove this agenda item?')">
+                            Remove
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

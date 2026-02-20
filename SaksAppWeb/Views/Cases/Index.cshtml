@@ -1,0 +1,50 @@
+@model IReadOnlyList<SaksAppWeb.Models.ViewModels.CaseIndexRowVm>
+@using SaksAppWeb.Models
+
+@{
+    ViewData["Title"] = "Cases";
+}
+
+<div class="d-flex justify-content-between align-items-center">
+    <h1>Cases</h1>
+    <a class="btn btn-primary" asp-action="Create">New case</a>
+</div>
+
+<table class="table table-sm table-striped">
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Assignee</th>
+        <th>Tidsfrist</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var c in Model)
+    {
+        <tr>
+            <td>@c.CaseNumber</td>
+            <td>@c.Title</td>
+            <td>@((int)c.Priority)</td>
+            <td>@c.Status</td>
+            <td>@c.AssigneeDisplay</td>
+            <td>
+                @if (c.CustomTidsfristDate is not null)
+                {
+                    <span>@c.CustomTidsfristDate</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(c.CustomTidsfristText))
+                {
+                    <span>@(c.CustomTidsfristDate is not null ? " — " : "")@c.CustomTidsfristText</span>
+                }
+            </td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@c.Id">Open</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

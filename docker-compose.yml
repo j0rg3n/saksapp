@@ -1,0 +1,20 @@
+services:
+  saksappweb:
+    image: saksappweb
+    build:
+      context: .
+      dockerfile: SaksAppWeb/Dockerfile
+
+    ports:
+      - "0.0.0.0:8081:8080"
+    volumes:
+      - ./SaksAppWeb/db:/app/db:rw
+    environment:
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "0.0.0.0:8025:8025"
+      - "0.0.0.0:1025:1025"

@@ -1,0 +1,184 @@
+@model SaksAppWeb.Models.ViewModels.CaseDetailsVm
+@using SaksAppWeb.Models.ViewModels
+
+@{
+    ViewData["Title"] = $"Case #{Model.Case.CaseNumber}";
+}
+
+<div class="d-flex justify-content-between align-items-start">
+    <div>
+        <h1>Case #@Model.Case.CaseNumber — @Model.Case.Title</h1>
+        <div class="text-muted">
+            Status: @Model.Case.Status | Priority: @Model.Case.Priority | Assignee: @(Model.AssigneeDisplay ?? "-")
+        </div>
+    </div>
+    <div class="text-end">
+        <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@Model.Case.Id">Edit</a>
+        <form asp-action="SoftDelete" asp-route-id="@Model.Case.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Soft delete this case?')">Delete</button>
+        </form>
+    </div>
+</div>
+
+<hr />
+
+<h2>Timeline</h2>
+
+<form asp-action="AddComment" method="post" class="mb-4">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="caseId" value="@Model.Case.Id" />
+    <div class="mb-2">
+        <textarea class="form-control" name="text" rows="3" placeholder="Add an unofficial comment..."></textarea>
+    </div>
+    <button class="btn btn-primary" type="submit">Add comment</button>
+</form>
+
+@if (!Model.Timeline.Any())
+{
+    <div class="text-muted">No entries yet.</div>
+}
+else
+{
+    @foreach (var item in Model.Timeline)
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <div>
+                    <strong>@item.OccurredAt</strong>
+                    @if (item.Kind == CaseTimelineItemKind.Comment)
+                    {
+                        var author = item.CommentAuthorUserId is not null
+                            && Model.UserDisplayById.TryGetValue(item.CommentAuthorUserId, out var name)
+                            ? name
+                            : item.CommentAuthorUserId ?? "-";
+
+                        <span class="badge bg-secondary ms-2">Comment</span>
+                        <span class="text-muted ms-2">by @author</span>
+                    }
+                    else if (item.Kind == CaseTimelineItemKind.Minutes)
+                    {
+                        <span class="badge bg-primary ms-2">Minutes</span>
+                        <span class="text-muted ms-2">
+                            Meeting @item.MeetingYear/@item.MeetingYearSequenceNumber — @item.MeetingDate
+                        </span>
+                    }
+                </div>
+
+                <div class="d-flex gap-2">
+                    @if (item.Kind == CaseTimelineItemKind.Comment && item.CommentId is not null)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="EditComment" asp-route-commentId="@item.CommentId">Edit</a>
+                        <form asp-action="SoftDeleteComment" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="commentId" value="@item.CommentId" />
+                            <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Delete this comment?')">Delete</button>
+                        </form>
+                    }
+                    @if (item.Kind == CaseTimelineItemKind.Minutes && item.MeetingId is not null)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-controller="Meetings" asp-action="Minutes" asp-route-id="@item.MeetingId">Open minutes</a>
+                    }
+                </div>
+            </div>
+
+            <div class="card-body">
+                @if (item.Kind == CaseTimelineItemKind.Comment)
+                {
+                    <p style="white-space: pre-wrap">@item.CommentText</p>
+
+                    <h6>Attachments</h6>
+                    @if (!item.Attachments.Any())
+                    {
+                        <div class="text-muted">No attachments</div>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled">
+                            @foreach (var a in item.Attachments)
+                            {
+                                <li class="mb-2">
+                                    <span class="badge bg-light text-dark me-2">@a.LinkKind</span>
+                                    <a asp-controller="Cases" asp-action="DownloadAttachment" asp-route-id="@a.AttachmentId">
+                                        @a.OriginalFileName
+                                    </a>
+                                    <span class="text-muted">(@a.ContentType, @a.SizeBytes bytes)</span>
+
+                                    @if (a.LinkKind == CaseAttachmentLinkKind.CommentAttachment && a.LinkId is not null)
+                                    {
+                                        <form asp-action="RemoveCommentAttachment" method="post" class="d-inline ms-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="linkId" value="@a.LinkId" />
+                                            <button class="btn btn-sm btn-outline-danger" type="submit"
+                                                    onclick="return confirm('Remove this attachment from the comment?')">
+                                                Remove
+                                            </button>
+                                        </form>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (item.CommentId is not null)
+                    {
+                        <form asp-action="UploadCommentAttachment" method="post" enctype="multipart/form-data" class="mt-3">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="commentId" value="@item.CommentId" />
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-8">
+                                    <label class="form-label">Attach PDF/image</label>
+                                    <input class="form-control" type="file" name="file" />
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-outline-primary" type="submit">Upload</button>
+                                </div>
+                            </div>
+                        </form>
+                    }
+                }
+                else if (item.Kind == CaseTimelineItemKind.Minutes)
+                {
+                    <div class="mb-2"><strong>Outcome:</strong> @item.Outcome</div>
+
+                    @if (!string.IsNullOrWhiteSpace(item.OfficialNotes))
+                    {
+                        <div class="mb-2"><strong>Notes:</strong></div>
+                        <div style="white-space: pre-wrap">@item.OfficialNotes</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(item.DecisionText))
+                    {
+                        <div class="mt-3 mb-2"><strong>Decision:</strong></div>
+                        <div style="white-space: pre-wrap">@item.DecisionText</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(item.FollowUpText))
+                    {
+                        <div class="mt-3 mb-2"><strong>Follow-up:</strong></div>
+                        <div style="white-space: pre-wrap">@item.FollowUpText</div>
+                    }
+
+                    <h6 class="mt-3">Attachments</h6>
+                    @if (!item.Attachments.Any())
+                    {
+                        <div class="text-muted">No attachments</div>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled">
+                            @foreach (var a in item.Attachments)
+                            {
+                                <li class="mb-2">
+                                    <span class="badge bg-light text-dark me-2">@a.LinkKind</span>
+                                    <a asp-controller="Cases" asp-action="DownloadAttachment" asp-route-id="@a.AttachmentId">
+                                        @a.OriginalFileName
+                                    </a>
+                                    <span class="text-muted">(@a.ContentType, @a.SizeBytes bytes)</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                }
+            </div>
+        </div>
+    }
+}

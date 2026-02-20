@@ -1,0 +1,17 @@
+@model SaksAppWeb.Models.ViewModels.CaseEditVm
+
+@{
+    ViewData["Title"] = "New case";
+}
+
+<h1>New case</h1>
+
+<form method="post">
+    <partial name="_CaseForm" model="Model" />
+    <button class="btn btn-primary" type="submit">Create</button>
+    <a class="btn btn-secondary" asp-action="Index">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

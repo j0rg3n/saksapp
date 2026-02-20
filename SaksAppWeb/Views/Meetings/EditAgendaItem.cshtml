@@ -1,0 +1,46 @@
+@model SaksAppWeb.Models.ViewModels.MeetingCaseEditVm
+
+@{
+    ViewData["Title"] = "Edit agenda item";
+}
+
+<h1>Edit agenda item</h1>
+<div class="text-muted">Case #@Model.CaseNumber — @Model.CaseTitle</div>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="MeetingId" />
+    <input type="hidden" asp-for="CaseNumber" />
+    <input type="hidden" asp-for="CaseTitle" />
+
+    <div class="mb-3">
+        <label class="form-label">Agenda text (snapshot)</label>
+        <textarea class="form-control" asp-for="AgendaTextSnapshot" rows="6"></textarea>
+        <span class="text-danger" asp-validation-for="AgendaTextSnapshot"></span>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Tidsfrist override date</label>
+            <input class="form-control" asp-for="TidsfristOverrideDate" type="date" />
+        </div>
+        <div class="col-md-8 mb-3">
+            <label class="form-label">Tidsfrist override text</label>
+            <input class="form-control" asp-for="TidsfristOverrideText" />
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Follow-up draft (optional)</label>
+        <textarea class="form-control" asp-for="FollowUpTextDraft" rows="4"></textarea>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.MeetingId">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

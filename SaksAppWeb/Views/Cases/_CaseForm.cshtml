@@ -1,0 +1,55 @@
+@model SaksAppWeb.Models.ViewModels.CaseEditVm
+@using SaksAppWeb.Models
+
+<div class="mb-3">
+    <label class="form-label">Title</label>
+    <input class="form-control" asp-for="Title" />
+    <span class="text-danger" asp-validation-for="Title"></span>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Description</label>
+    <textarea class="form-control" asp-for="Description" rows="5"></textarea>
+</div>
+
+<div class="row">
+    <div class="col-md-3 mb-3">
+        <label class="form-label">Priority</label>
+        <select class="form-select" asp-for="Priority" asp-items="Html.GetEnumSelectList<CasePriority>()"></select>
+    </div>
+    <div class="col-md-3 mb-3">
+        <label class="form-label">Status</label>
+        <select class="form-select" asp-for="Status" asp-items="Html.GetEnumSelectList<CaseStatus>()"></select>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Assignee</label>
+        <select class="form-select" asp-for="AssigneeUserId" asp-items="Model.Assignees"></select>
+        <span class="text-danger" asp-validation-for="AssigneeUserId"></span>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Start date</label>
+        <input class="form-control" asp-for="StartDate" type="date" />
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Closed date</label>
+        <input class="form-control" asp-for="ClosedDate" type="date" />
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Theme</label>
+        <input class="form-control" asp-for="Theme" />
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Custom tidsfrist date</label>
+        <input class="form-control" asp-for="CustomTidsfristDate" type="date" />
+    </div>
+    <div class="col-md-8 mb-3">
+        <label class="form-label">Custom tidsfrist text</label>
+        <input class="form-control" asp-for="CustomTidsfristText" />
+    </div>
+</div>

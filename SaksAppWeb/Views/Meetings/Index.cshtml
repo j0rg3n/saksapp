@@ -1,0 +1,36 @@
+@model IReadOnlyList<SaksAppWeb.Models.Meeting>
+
+@{
+    ViewData["Title"] = "Meetings";
+}
+
+<div class="d-flex justify-content-between align-items-center">
+    <h1>Meetings</h1>
+    <a class="btn btn-primary" asp-action="Create">New meeting</a>
+</div>
+
+<table class="table table-sm table-striped">
+    <thead>
+    <tr>
+        <th>Date</th>
+        <th>Id</th>
+        <th>Year/#</th>
+        <th>Location</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var m in Model)
+    {
+        <tr>
+            <td>@m.MeetingDate</td>
+            <td>@m.Id</td>
+            <td>@m.Year/@m.YearSequenceNumber</td>
+            <td>@m.Location</td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@m.Id">Open</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

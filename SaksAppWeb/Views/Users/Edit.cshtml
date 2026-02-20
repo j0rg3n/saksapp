@@ -1,0 +1,22 @@
+@model SaksAppWeb.Models.ApplicationUser
+
+@{
+    ViewData["Title"] = "Edit User Name";
+}
+
+<h1>Edit Real Name for @Model.Email</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="mb-3">
+                <label class="form-label">Full Name / Real Name</label>
+                <input name="fullName" class="form-control" value="@Model.FullName" />
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>

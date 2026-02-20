@@ -1,0 +1,56 @@
+@model SaksAppWeb.Services.ImportResult?
+
+@{
+    ViewData["Title"] = "Import cases";
+}
+
+<h1>Import cases</h1>
+
+<div class="alert alert-info">
+    <div><strong>One-time bootstrap import</strong></div>
+    <div>Recommended: delete <code>app.db</code> first, then run migrations, then import.</div>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label class="form-label">Saker.html</label>
+        <input class="form-control" type="file" name="file" />
+    </div>
+
+    <button class="btn btn-primary" type="submit">Import</button>
+</form>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger mt-3">
+        @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@e.ErrorMessage</div>
+        }
+    </div>
+}
+
+@if (Model is not null)
+{
+    <div class="alert alert-success mt-3">
+        Imported successfully.
+        Created: <strong>@Model.Created</strong>,
+        Updated: <strong>@Model.Updated</strong>,
+        Skipped: <strong>@Model.Skipped</strong>.
+    </div>
+
+    @if (Model.Warnings.Any())
+    {
+        <div class="alert alert-warning">
+            <strong>Warnings</strong>
+            <ul>
+                @foreach (var w in Model.Warnings)
+                {
+                    <li>@w</li>
+                }
+            </ul>
+        </div>
+    }
+}

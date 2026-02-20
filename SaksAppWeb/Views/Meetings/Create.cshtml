@@ -1,0 +1,33 @@
+@model SaksAppWeb.Models.ViewModels.MeetingEditVm
+
+@{
+    ViewData["Title"] = "New meeting";
+}
+
+<h1>New meeting</h1>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Meeting date</label>
+            <input class="form-control" asp-for="MeetingDate" type="date" />
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Year sequence number</label>
+            <input class="form-control" asp-for="YearSequenceNumber" type="number" min="1" />
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Location</label>
+            <input class="form-control" asp-for="Location" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Create</button>
+    <a class="btn btn-secondary" asp-action="Index">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
