@@ -496,25 +496,34 @@ foreach (var item in timeline)
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadCommentAttachment(int commentId, IFormFile file, CancellationToken ct)
     {
+        _logger.LogInformation("UploadCommentAttachment called: commentId={CommentId}, file={File}", commentId, file?.FileName);
+        
         var comment = await _db.CaseComments.FirstOrDefaultAsync(x => x.Id == commentId, ct);
         if (comment is null) return NotFound();
 
         if (file is null || file.Length <= 0)
+        {
+            _logger.LogWarning("UploadCommentAttachment: file is null or empty");
             return RedirectToAction(nameof(Details), new { id = comment.BoardCaseId });
+        }
 
         if (file.Length > MaxUploadBytes)
             return BadRequest($"File too large. Max is {MaxUploadBytes} bytes.");
 
         var contentType = file.ContentType ?? "application/octet-stream";
+        _logger.LogInformation("ContentType: {ContentType}, Length: {Length}", contentType, file.Length);
+        
         if (!IsAllowedContentType(contentType))
             return BadRequest("Only PDF and common image types are allowed.");
 
+        _logger.LogInformation("Reading file content...");
         byte[] bytes;
         await using (var ms = new MemoryStream())
         {
             await file.CopyToAsync(ms, ct);
             bytes = ms.ToArray();
         }
+        _logger.LogInformation("File content read, size: {Size}", bytes.Length);
 
         var attachment = new Attachment
         {
@@ -527,7 +536,9 @@ foreach (var item in timeline)
         };
 
         _db.Attachments.Add(attachment);
+        _logger.LogInformation("Saving attachment to DB...");
         await _db.SaveChangesAsync(ct);
+        _logger.LogInformation("Attachment saved with ID: {Id}", attachment.Id);
 
         var link = new CaseCommentAttachment
         {
@@ -536,7 +547,9 @@ foreach (var item in timeline)
         };
 
         _db.CaseCommentAttachments.Add(link);
+        _logger.LogInformation("Saving link to DB...");
         await _db.SaveChangesAsync(ct);
+        _logger.LogInformation("Link saved with ID: {Id}", link.Id);
 
         await _audit.LogAsync(
             AuditAction.Create,

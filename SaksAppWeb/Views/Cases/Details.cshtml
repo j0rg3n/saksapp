@@ -122,7 +122,7 @@ else
 
                     @if (item.CommentId is not null)
                     {
-                        <form asp-action="UploadCommentAttachment" method="post" enctype="multipart/form-data" class="mt-3">
+                        <form asp-action="UploadCommentAttachment" method="post" enctype="multipart/form-data" class="mt-3" onsubmit="console.log('Uploading...');">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="commentId" value="@item.CommentId" />
                             <div class="row g-2 align-items-end">

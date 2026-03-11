@@ -5,6 +5,8 @@ using SaksAppWeb.Data;
 using SaksAppWeb.Models;
 using SaksAppWeb.Services;
 
+FontResolverBootstrap.Initialize();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add logging

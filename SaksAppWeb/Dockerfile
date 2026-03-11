@@ -20,10 +20,12 @@ RUN dotnet publish "./SaksAppWeb.csproj" -c $BUILD_CONFIGURATION -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-# The /app/db directory is intended to be a volume mount.
-# On Linux hosts, the directory must be writable by the non-root user (1654).
-# We create it and set permissions in the image, but volume mounts can override this.
+# Install fonts for PdfSharpCore
 USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /app/db /app/dp_keys && chown -R $APP_UID:$APP_UID /app/db /app/dp_keys
 USER $APP_UID
 ENTRYPOINT ["dotnet", "SaksAppWeb.dll"]

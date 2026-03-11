@@ -1,6 +1,7 @@
 using System.Text;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 
 namespace SaksAppWeb.Services;
 
@@ -11,9 +12,13 @@ public sealed class SimplePdfWriter
     private XGraphics _gfx;
     private double _y;
 
-    private readonly XFont _titleFont = new("Verdana", 16, XFontStyle.Bold);
-    private readonly XFont _hFont = new("Verdana", 12, XFontStyle.Bold);
-    private readonly XFont _pFont = new("Verdana", 10, XFontStyle.Regular);
+    private readonly XFont _titleFont = new("LiberationSans", 16, XFontStyle.Bold);
+    private readonly XFont _hFont = new("LiberationSans", 12, XFontStyle.Bold);
+    private readonly XFont _h2Font = new("LiberationSans", 11, XFontStyle.Bold);
+    private readonly XFont _h3Font = new("LiberationSans", 10, XFontStyle.Bold);
+    private readonly XFont _pFont = new("LiberationSans", 10, XFontStyle.Regular);
+    private readonly XFont _pItalicFont = new("LiberationSans", 10, XFontStyle.Italic);
+    private readonly XFont _attachmentTitleFont = new("LiberationSans", 14, XFontStyle.Bold);
 
     private const double Margin = 40;
     private const double LineGap = 4;
@@ -27,9 +32,63 @@ public sealed class SimplePdfWriter
 
     public void Title(string text) => WriteWrapped(text, _titleFont, extraBottom: 12);
     public void Heading(string text) => WriteWrapped(text, _hFont, extraBottom: 8);
+    public void Heading2(string text) => WriteWrapped(text, _h2Font, extraBottom: 6);
+    public void Heading3(string text) => WriteWrapped(text, _h3Font, extraBottom: 4);
     public void Paragraph(string text) => WriteWrapped(text, _pFont, extraBottom: 6);
+    public void ParagraphItalic(string text) => WriteWrapped(text, _pItalicFont, extraBottom: 6);
 
     public void Blank(double points = 8) => _y += points;
+
+    public void AddPdfAttachment(byte[] pdfContent, string fileName)
+    {
+        AddPdfCoverPage(fileName);
+
+        using var inputStream = new MemoryStream(pdfContent);
+        var inputDoc = PdfReader.Open(inputStream, PdfDocumentOpenMode.Import);
+
+        for (int i = 0; i < inputDoc.PageCount; i++)
+        {
+            var page = inputDoc.Pages[i];
+            var newPage = _doc.AddPage(page);
+        }
+    }
+
+    private void AddPdfCoverPage(string fileName)
+    {
+        _page = _doc.AddPage();
+        _gfx = XGraphics.FromPdfPage(_page);
+        _y = Margin;
+
+        _gfx.DrawString("Vedlegg:", _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+        _y += _hFont.GetHeight() + LineGap;
+
+        _gfx.DrawString(fileName, _attachmentTitleFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+    }
+
+    public void AddImageAttachment(byte[] imageContent, string fileName)
+    {
+        _page = _doc.AddPage();
+        _gfx = XGraphics.FromPdfPage(_page);
+        _y = Margin;
+
+        _gfx.DrawString("Vedlegg: " + fileName, _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+        _y += _hFont.GetHeight() + LineGap;
+
+        using var imageStream = new MemoryStream(imageContent);
+        var image = XImage.FromStream(() => new MemoryStream(imageContent));
+
+        var availableWidth = _page.Width - 2 * Margin;
+        var availableHeight = _page.Height - _y - Margin;
+
+        var ratio = Math.Min(availableWidth / image.PixelWidth, availableHeight / image.PixelHeight);
+        var drawWidth = image.PixelWidth * ratio;
+        var drawHeight = image.PixelHeight * ratio;
+
+        var x = Margin;
+        var y = _y;
+
+        _gfx.DrawImage(image, x, y, drawWidth, drawHeight);
+    }
 
     public byte[] ToBytes()
     {

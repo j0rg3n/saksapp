@@ -388,20 +388,20 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
     // --- Preload attachments for those previous minutes entries ---
     var prevEntryIds = previousByCaseId.Values.Select(x => x.Id).Distinct().ToList();
 
-    var prevMinutesAttachmentRows = prevEntryIds.Count == 0
-        ? new List<(int EntryId, string FileName)>()
+    var prevMinutesAttachmentsFull = prevEntryIds.Count == 0
+        ? new List<(int EntryId, string FileName, string ContentType, byte[] Content)>()
         : await _db.MeetingMinutesCaseEntryAttachments.AsNoTracking()
             .Where(x => prevEntryIds.Contains(x.MeetingMinutesCaseEntryId))
             .Join(_db.Attachments.AsNoTracking(),
                 link => link.AttachmentId,
                 att => att.Id,
-                (link, att) => new { link.MeetingMinutesCaseEntryId, att.OriginalFileName })
-            .Select(x => new ValueTuple<int, string>(x.MeetingMinutesCaseEntryId, x.OriginalFileName))
+                (link, att) => new { link.MeetingMinutesCaseEntryId, att.OriginalFileName, att.ContentType, att.Content })
+            .Select(x => new ValueTuple<int, string, string, byte[]>(x.MeetingMinutesCaseEntryId, x.OriginalFileName, x.ContentType, x.Content))
             .ToListAsync(ct);
 
-    var prevMinutesAttachmentsByEntryId = prevMinutesAttachmentRows
+    var prevMinutesAttachmentsByEntryId = prevMinutesAttachmentsFull
         .GroupBy(x => x.Item1)
-        .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).Distinct().OrderBy(x => x).ToList());
+        .ToDictionary(g => g.Key, g => g.Select(x => (x.Item2, x.Item3, x.Item4)).Distinct().ToList());
     
     // --- Preload all comments for these cases (filter in memory by time window) ---
     // (SQLite + DateTimeOffset ORDER BY is annoying; we avoid ordering in SQL and sort in memory)
@@ -409,52 +409,56 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         .Where(x => caseIds.Contains(x.BoardCaseId))
         .ToListAsync(ct);
 
-    // Preload comment attachments (names)
+    // Preload comment attachments (with content)
     var commentIds = allComments.Select(x => x.Id).Distinct().ToList();
 
-    var commentAttachmentRows = commentIds.Count == 0
-        ? new List<(int CommentId, int AttachmentId, string FileName)>()
+    var commentAttachmentsFull = commentIds.Count == 0
+        ? new List<(int CommentId, string FileName, string ContentType, byte[] Content)>()
         : await _db.CaseCommentAttachments.AsNoTracking()
             .Where(x => commentIds.Contains(x.CaseCommentId))
             .Join(_db.Attachments.AsNoTracking(),
                 link => link.AttachmentId,
                 att => att.Id,
-                (link, att) => new { link.CaseCommentId, att.Id, att.OriginalFileName })
-            .Select(x => new ValueTuple<int, int, string>(x.CaseCommentId, x.Id, x.OriginalFileName))
+                (link, att) => new { link.CaseCommentId, att.OriginalFileName, att.ContentType, att.Content })
+            .Select(x => new ValueTuple<int, string, string, byte[]>(x.CaseCommentId, x.OriginalFileName, x.ContentType, x.Content))
             .ToListAsync(ct);
 
-    var commentAttachmentsByCommentId = commentAttachmentRows
+    var commentAttachmentsByCommentId = commentAttachmentsFull
         .GroupBy(x => x.Item1)
         .ToDictionary(
             g => g.Key,
-            g => g.Select(x => x.Item3).Distinct().OrderBy(x => x).ToList());
+            g => g.Select(x => (x.Item2, x.Item3, x.Item4)).ToList());
 
     // --- Build PDF ---
     var pdf = new SimplePdfWriter();
-    pdf.Title($"Agenda — {meeting.MeetingDate} — {meeting.Year}/{meeting.YearSequenceNumber} — PDF v{seq}");
+    pdf.Title($"Innkalling styremøte #{meeting.YearSequenceNumber} {meeting.Year} — {meeting.MeetingDate}");
+    pdf.Paragraph($"(v{seq})");
     if (!string.IsNullOrWhiteSpace(meeting.Location))
         pdf.Paragraph($"Sted: {meeting.Location}");
 
     pdf.Blank();
+    // TODO: Higher level heading
     pdf.Heading("Agenda");
 
     // If you want fixed items at top like "Godkjenne forrige referat", you can hardcode them here:
-    pdf.Paragraph("1. Godkjenne forrige referat.");
+    pdf.Heading2("1. Godkjenne forrige referat.");
 
     var agendaNumber = 2;
 
-    // We’ll also collect a de-duplicated attachment list for the whole agenda
-    var referencedAttachments = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+    // We'll also collect a de-duplicated attachment list for the whole agenda
+    var referencedAttachments = new Dictionary<string, (string ContentType, byte[] Content)>(StringComparer.OrdinalIgnoreCase);
 
     foreach (var row in agenda)
     {
         var assignee = userDisplay.TryGetValue(row.c.AssigneeUserId, out var d) ? d : row.c.AssigneeUserId;
 
         // Title line similar to your example
-        pdf.Heading($"{agendaNumber}. {row.c.Title} ({assignee}; #{row.c.CaseNumber})");
+        pdf.Heading2($"{agendaNumber}. {row.c.Title} ({assignee}; #{row.c.CaseNumber})");
 
         if (!string.IsNullOrWhiteSpace(row.c.Description))
-            pdf.Paragraph($"— {row.c.Description}");
+        {
+            pdf.ParagraphItalic($"{row.c.Description}");
+        }
 
         // Tidsfrist display (same logic as before)
         var tidsfrist = (row.mc.TidsfristOverrideDate is not null || !string.IsNullOrWhiteSpace(row.mc.TidsfristOverrideText))
@@ -468,21 +472,37 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         // Previous meeting follow-up (official)
         if (previousByCaseId.TryGetValue(row.c.Id, out var prev))
         {
-            pdf.Paragraph($"Forrige møte ({prev.MeetingDate}):");
-
-            if (!string.IsNullOrWhiteSpace(prev.FollowUpText))
-                pdf.Paragraph($"- Oppfølging: {prev.FollowUpText}");
-
-            if (!string.IsNullOrWhiteSpace(prev.DecisionText))
-                pdf.Paragraph($"- Vedtak: {prev.DecisionText}");
+            pdf.Heading3($"Forrige møte ({prev.MeetingDate}):");
 
             if (!string.IsNullOrWhiteSpace(prev.OfficialNotes))
-                pdf.Paragraph($"- Status/notater: {prev.OfficialNotes}");
-
-            if (prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var prevAttNames) && prevAttNames.Count() > 0)
             {
-                foreach (var fn in prevAttNames) referencedAttachments.Add(fn);
-                pdf.Paragraph($"- Vedlegg (fra forrige referat): {string.Join(", ", prevAttNames)}");
+                pdf.Paragraph($"Status/notater:");
+                pdf.Paragraph($"{prev.OfficialNotes}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(prev.DecisionText))
+            {
+                pdf.Paragraph($"Vedtak:");
+                pdf.Paragraph($"{prev.DecisionText}");
+            }
+
+            /*
+            if (!string.IsNullOrWhiteSpace(prev.FollowUpText))
+            {
+                pdf.Paragraph($"Oppfølging:");
+                pdf.Paragraph($"{prev.FollowUpText}");
+            }
+            */
+
+            if (prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var prevAtts) && prevAtts.Count > 0)
+            {
+                foreach (var att in prevAtts)
+                {
+                    if (!referencedAttachments.ContainsKey(att.Item1))
+                        referencedAttachments[att.Item1] = (att.Item2, att.Item3);
+                }
+                pdf.Paragraph($"Vedlegg (fra forrige referat)");
+                pdf.Paragraph($"{string.Join(", ", prevAtts.Select(x => x.Item1))}");
             }
         }
 
@@ -503,16 +523,21 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
         if (between.Count > 0)
         {
-            pdf.Paragraph("Kommentarer siden forrige møte:");
+            pdf.Heading3("Kommentarer siden forrige møte:");
 
             foreach (var com in between)
             {
                 pdf.Paragraph($"- {com.CreatedAt:yyyy-MM-dd}: {com.Text}");
 
-                if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var names) && names.Count > 0)
+                if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var atts) && atts.Count > 0)
                 {
-                    foreach (var fn in names) referencedAttachments.Add(fn);
-                    pdf.Paragraph($"  Vedlegg: {string.Join(", ", names)}");
+                    foreach (var att in atts)
+                    {
+                        if (!referencedAttachments.ContainsKey(att.Item1))
+                            referencedAttachments[att.Item1] = (att.Item2, att.Item3);
+                    }
+                    pdf.Paragraph($"Vedlegg:");
+                    pdf.Paragraph($"{string.Join(", ", atts.Select(x => x.Item1))}");
                 }
             }
         }
@@ -524,19 +549,39 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             : row.mc.AgendaTextSnapshot;
 
         if (!string.IsNullOrWhiteSpace(tilMotet))
-            pdf.Paragraph($"Til møtet: {tilMotet}");
+        {
+            pdf.Heading3($"Til møtet:");
+            pdf.Paragraph($"{tilMotet}");
+        }
 
         pdf.Blank(10);
         agendaNumber++;
     }
 
-    // Optional: append a “Vedlegg” summary at the end
+    // Optional: append a "Vedlegg" summary at the end
     if (referencedAttachments.Count > 0)
     {
         pdf.Blank(6);
-        pdf.Heading("Vedlegg (filnavn som refereres i agendaen)");
-        foreach (var fn in referencedAttachments)
-            pdf.Paragraph($"- {fn}");
+        pdf.Heading2("Vedlegg (filnavn som refereres i agendaen)");
+        foreach (var kvp in referencedAttachments)
+            pdf.Paragraph($"- {kvp.Key}");
+
+        pdf.Blank(6);
+        pdf.Heading2("Vedlegg (innhold)");
+
+        foreach (var kvp in referencedAttachments)
+        {
+            var (attachmentFileName, contentType, content) = (kvp.Key, kvp.Value.ContentType, kvp.Value.Content);
+
+            if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                pdf.AddPdfAttachment(content, attachmentFileName);
+            }
+            else if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                pdf.AddImageAttachment(content, attachmentFileName);
+            }
+        }
     }
 
     var bytes = pdf.ToBytes();
@@ -550,8 +595,8 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         reason: "Generated enriched agenda PDF (prev follow-up + between-meeting comments + attachment refs)",
         ct: ct);
 
-    var fileName = $"agenda-{meeting.Year}-{meeting.YearSequenceNumber:00}-{meeting.MeetingDate}-v{seq}.pdf";
-    return File(bytes, "application/pdf", fileName);
+    var pdfFileName = $"{meeting.Year}-#{meeting.YearSequenceNumber}-innkalling-{meeting.MeetingDate}-v{seq}.pdf";
+    return File(bytes, "application/pdf", pdfFileName);
 }
 
     [HttpGet]
@@ -905,6 +950,23 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
             .ToDictionaryAsync(x => x.Id, x => x.FullName ?? x.Email ?? x.UserName ?? x.Id, ct);
 
+        // Load attachments for entries
+        var entryIds = entries.Select(x => x.e.Id).Distinct().ToList();
+        var entryAttachments = entryIds.Count == 0
+            ? new List<(int EntryId, string FileName, string ContentType, byte[] Content)>()
+            : await _db.MeetingMinutesCaseEntryAttachments.AsNoTracking()
+                .Where(x => entryIds.Contains(x.MeetingMinutesCaseEntryId))
+                .Join(_db.Attachments.AsNoTracking(),
+                    link => link.AttachmentId,
+                    att => att.Id,
+                    (link, att) => new { link.MeetingMinutesCaseEntryId, att.OriginalFileName, att.ContentType, att.Content })
+                .Select(x => new ValueTuple<int, string, string, byte[]>(x.MeetingMinutesCaseEntryId, x.OriginalFileName, x.ContentType, x.Content))
+                .ToListAsync(ct);
+
+        var attachmentsByEntryId = entryAttachments
+            .GroupBy(x => x.Item1)
+            .ToDictionary(g => g.Key, g => g.Select(x => (x.Item2, x.Item3, x.Item4)).ToList());
+
         var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.Minutes, ct);
 
         var pdf = new SimplePdfWriter();
@@ -966,6 +1028,28 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             pdf.Blank(10);
             pdf.Heading("Eventuelt");
             pdf.Paragraph(minutes.EventueltText);
+        }
+
+        // Collect and embed all attachments
+        var allAttachments = entryAttachments.Distinct().ToList();
+        if (allAttachments.Count > 0)
+        {
+            pdf.Blank(12);
+            pdf.Heading("Vedlegg");
+
+            foreach (var att in allAttachments)
+            {
+                var (attachmentFileName, contentType, content) = (att.Item2, att.Item3, att.Item4);
+
+                if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
+                {
+                    pdf.AddPdfAttachment(content, attachmentFileName);
+                }
+                else if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                {
+                    pdf.AddImageAttachment(content, attachmentFileName);
+                }
+            }
         }
 
         var bytes = pdf.ToBytes();
