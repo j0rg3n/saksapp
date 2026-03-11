@@ -353,8 +353,8 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
     var assigneeIds = agenda.Select(x => x.c.AssigneeUserId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
     var userDisplay = await _userManager.Users
         .Where(u => assigneeIds.Contains(u.Id))
-        .Select(u => new { u.Id, u.Email, u.UserName })
-        .ToDictionaryAsync(x => x.Id, x => x.Email ?? x.UserName ?? x.Id, ct);
+        .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
+        .ToDictionaryAsync(x => x.Id, x => x.FullName ?? x.Email ?? x.UserName ?? x.Id, ct);
 
     var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.Agenda, ct);
 
