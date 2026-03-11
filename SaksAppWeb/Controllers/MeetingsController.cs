@@ -548,7 +548,8 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             ? row.mc.FollowUpTextDraft
             : row.mc.AgendaTextSnapshot;
 
-        if (!string.IsNullOrWhiteSpace(tilMotet))
+        if (!string.IsNullOrWhiteSpace(tilMotet) &&
+            !tilMotet.Equals(row.c.Description, StringComparison.OrdinalIgnoreCase))
         {
             pdf.Heading3($"Til møtet:");
             pdf.Paragraph($"{tilMotet}");
