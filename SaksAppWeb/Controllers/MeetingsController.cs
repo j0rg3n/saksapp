@@ -467,7 +467,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                 ? $"{row.c.CustomTidsfristDate?.ToString() ?? ""} {row.c.CustomTidsfristText ?? ""}".Trim()
                 : "Innen neste møte";
 
-        pdf.Paragraph($"Tidsfrist: {tidsfrist}");
+        // Tidsfrist will be shown in Forrige møte section if there's a previous meeting
 
         // Previous meeting follow-up (official)
         if (previousByCaseId.TryGetValue(row.c.Id, out var prev))
@@ -476,23 +476,23 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
             if (!string.IsNullOrWhiteSpace(prev.OfficialNotes))
             {
-                pdf.Paragraph($"Status/notater:");
-                pdf.Paragraph($"{prev.OfficialNotes}");
+                pdf.HeadingInline("Status: ", prev.OfficialNotes);
             }
 
             if (!string.IsNullOrWhiteSpace(prev.DecisionText))
             {
-                pdf.Paragraph($"Vedtak:");
-                pdf.Paragraph($"{prev.DecisionText}");
+                pdf.HeadingInline("Vedtak: ", prev.DecisionText);
             }
 
-            /*
             if (!string.IsNullOrWhiteSpace(prev.FollowUpText))
             {
-                pdf.Paragraph($"Oppfølging:");
-                pdf.Paragraph($"{prev.FollowUpText}");
+                pdf.HeadingInline("Oppfølging: ", prev.FollowUpText);
             }
-            */
+
+            if (!string.IsNullOrWhiteSpace(tidsfrist))
+            {
+                pdf.HeadingInline("Tidsfrist: ", tidsfrist);
+            }
 
             if (prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var prevAtts) && prevAtts.Count > 0)
             {
@@ -501,9 +501,27 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                     if (!referencedAttachments.ContainsKey(att.Item1))
                         referencedAttachments[att.Item1] = (att.Item2, att.Item3);
                 }
-                pdf.Paragraph($"Vedlegg (fra forrige referat)");
-                pdf.Paragraph($"{string.Join(", ", prevAtts.Select(x => x.Item1))}");
             }
+        }
+        else
+        {
+            // No previous meeting - show Tidsfrist here
+            if (!string.IsNullOrWhiteSpace(tidsfrist))
+            {
+                pdf.HeadingInline("Tidsfrist: ", tidsfrist);
+            }
+        }
+
+        // Til møtet section - before history
+        var tilMotet = !string.IsNullOrWhiteSpace(row.mc.FollowUpTextDraft)
+            ? row.mc.FollowUpTextDraft
+            : row.mc.AgendaTextSnapshot;
+
+        if (!string.IsNullOrWhiteSpace(tilMotet) &&
+            !tilMotet.Equals(row.c.Description, StringComparison.OrdinalIgnoreCase))
+        {
+            pdf.Heading3("Til møtet:");
+            pdf.ParagraphIndented(tilMotet);
         }
 
         // Comments between meetings
@@ -523,11 +541,11 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
         if (between.Count > 0)
         {
-            pdf.Heading3("Kommentarer siden forrige møte:");
+            pdf.Heading3("Historikk siden forrige møte:");
 
             foreach (var com in between)
             {
-                pdf.Paragraph($"- {com.CreatedAt:yyyy-MM-dd}: {com.Text}");
+                pdf.ParagraphItalic($"{com.CreatedAt:yyyy-MM-dd}: {com.Text}");
 
                 if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var atts) && atts.Count > 0)
                 {
@@ -536,52 +554,35 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                         if (!referencedAttachments.ContainsKey(att.Item1))
                             referencedAttachments[att.Item1] = (att.Item2, att.Item3);
                     }
-                    pdf.Paragraph($"Vedlegg:");
-                    pdf.Paragraph($"{string.Join(", ", atts.Select(x => x.Item1))}");
                 }
             }
-        }
-
-        // "Til møtet" section:
-        // Prefer the agenda item's FollowUpTextDraft if you’re using it as “Til møtet”.
-        var tilMotet = !string.IsNullOrWhiteSpace(row.mc.FollowUpTextDraft)
-            ? row.mc.FollowUpTextDraft
-            : row.mc.AgendaTextSnapshot;
-
-        if (!string.IsNullOrWhiteSpace(tilMotet) &&
-            !tilMotet.Equals(row.c.Description, StringComparison.OrdinalIgnoreCase))
-        {
-            pdf.Heading3($"Til møtet:");
-            pdf.Paragraph($"{tilMotet}");
         }
 
         pdf.Blank(10);
         agendaNumber++;
     }
 
-    // Optional: append a "Vedlegg" summary at the end
+    // Append attachments at the end
     if (referencedAttachments.Count > 0)
     {
         pdf.Blank(6);
-        pdf.Heading2("Vedlegg (filnavn som refereres i agendaen)");
-        foreach (var kvp in referencedAttachments)
-            pdf.Paragraph($"- {kvp.Key}");
+        pdf.Heading2("Vedlegg");
 
-        pdf.Blank(6);
-        pdf.Heading2("Vedlegg (innhold)");
-
+        var attachmentNumber = 1;
         foreach (var kvp in referencedAttachments)
         {
             var (attachmentFileName, contentType, content) = (kvp.Key, kvp.Value.ContentType, kvp.Value.Content);
+            pdf.Paragraph($"Vedlegg {attachmentNumber}: {attachmentFileName}");
 
             if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
             {
-                pdf.AddPdfAttachment(content, attachmentFileName);
+                pdf.AddPdfAttachment(content, attachmentFileName, attachmentNumber);
             }
             else if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             {
-                pdf.AddImageAttachment(content, attachmentFileName);
+                pdf.AddImageAttachment(content, attachmentFileName, attachmentNumber);
             }
+            attachmentNumber++;
         }
     }
 
@@ -1038,18 +1039,20 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             pdf.Blank(12);
             pdf.Heading("Vedlegg");
 
+            var attachmentNumber = 1;
             foreach (var att in allAttachments)
             {
                 var (attachmentFileName, contentType, content) = (att.Item2, att.Item3, att.Item4);
 
                 if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
                 {
-                    pdf.AddPdfAttachment(content, attachmentFileName);
+                    pdf.AddPdfAttachment(content, attachmentFileName, attachmentNumber);
                 }
                 else if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
                 {
-                    pdf.AddImageAttachment(content, attachmentFileName);
+                    pdf.AddImageAttachment(content, attachmentFileName, attachmentNumber);
                 }
+                attachmentNumber++;
             }
         }
 

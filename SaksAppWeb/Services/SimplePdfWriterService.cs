@@ -37,11 +37,19 @@ public sealed class SimplePdfWriter
     public void Paragraph(string text) => WriteWrapped(text, _pFont, extraBottom: 6);
     public void ParagraphItalic(string text) => WriteWrapped(text, _pItalicFont, extraBottom: 6);
 
+    public void ParagraphIndented(string text) => WriteWrapped(text, _pFont, extraBottom: 6, indent: true);
+    public void ParagraphItalicIndented(string text) => WriteWrapped(text, _pItalicFont, extraBottom: 6, indent: true);
+
+    public void HeadingInline(string heading, string text)
+    {
+        WriteWrapped(heading + text, _h3Font, extraBottom: 4);
+    }
+
     public void Blank(double points = 8) => _y += points;
 
-    public void AddPdfAttachment(byte[] pdfContent, string fileName)
+    public void AddPdfAttachment(byte[] pdfContent, string fileName, int number)
     {
-        AddPdfCoverPage(fileName);
+        AddPdfCoverPage(fileName, number);
 
         using var inputStream = new MemoryStream(pdfContent);
         var inputDoc = PdfReader.Open(inputStream, PdfDocumentOpenMode.Import);
@@ -53,25 +61,25 @@ public sealed class SimplePdfWriter
         }
     }
 
-    private void AddPdfCoverPage(string fileName)
+    private void AddPdfCoverPage(string fileName, int number)
     {
         _page = _doc.AddPage();
         _gfx = XGraphics.FromPdfPage(_page);
         _y = Margin;
 
-        _gfx.DrawString("Vedlegg:", _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+        _gfx.DrawString($"Vedlegg {number}:", _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
         _y += _hFont.GetHeight() + LineGap;
 
         _gfx.DrawString(fileName, _attachmentTitleFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
     }
 
-    public void AddImageAttachment(byte[] imageContent, string fileName)
+    public void AddImageAttachment(byte[] imageContent, string fileName, int number)
     {
         _page = _doc.AddPage();
         _gfx = XGraphics.FromPdfPage(_page);
         _y = Margin;
 
-        _gfx.DrawString("Vedlegg: " + fileName, _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+        _gfx.DrawString($"Vedlegg {number}: {fileName}", _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
         _y += _hFont.GetHeight() + LineGap;
 
         using var imageStream = new MemoryStream(imageContent);
@@ -97,12 +105,17 @@ public sealed class SimplePdfWriter
         return ms.ToArray();
     }
 
-    private void WriteWrapped(string text, XFont font, double extraBottom)
+    private const double IndentWidth = 20;
+
+    private void WriteWrapped(string text, XFont font, double extraBottom, bool indent = false)
     {
-        foreach (var line in Wrap(text, font, _page.Width - 2 * Margin))
+        var xOffset = indent ? Margin + IndentWidth : Margin;
+        var maxWidth = _page.Width - xOffset - Margin;
+
+        foreach (var line in Wrap(text, font, maxWidth))
         {
             EnsureSpace(font.GetHeight() + LineGap);
-            _gfx.DrawString(line, font, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+            _gfx.DrawString(line, font, XBrushes.Black, new XRect(xOffset, _y, maxWidth, _page.Height), XStringFormats.TopLeft);
             _y += font.GetHeight() + LineGap;
         }
 
