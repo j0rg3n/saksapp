@@ -24,6 +24,18 @@ public sealed class SimplePdfWriter
     private const double Margin = 40;
     private const double LineGap = 4;
 
+    private class PendingLink
+    {
+        public int PageNumber { get; init; }
+        public double Y { get; init; }
+        public double Width { get; init; }
+        public double Height { get; init; }
+        public int TargetPage { get; init; }
+    }
+
+    private readonly List<PendingLink> _pendingLinks = new();
+    private readonly Dictionary<int, int> _attachmentPageNumbers = new();
+
     public SimplePdfWriter()
     {
         _page = _doc.AddPage();
@@ -107,16 +119,47 @@ public sealed class SimplePdfWriter
 
     private void WriteLinkText(string text, XFont font, int targetPageNum)
     {
-        // Draw blue text to indicate it's a link (actual clickable links require more complex PdfSharpCore setup)
         var fontHeight = font.GetHeight();
-        var rect = new XRect(Margin, _y, _page.Width - 2 * Margin, fontHeight + LineGap);
+        var textWidth = _gfx.MeasureString(text, font).Width;
+        
+        // Draw blue text
+        var rect = new XRect(Margin, _y, textWidth, fontHeight + LineGap);
         _gfx.DrawString(text, font, XBrushes.DarkBlue, rect, XStringFormats.TopLeft);
+        
+        // Store for later annotation creation
+        _pendingLinks.Add(new PendingLink
+        {
+            PageNumber = _doc.PageCount,
+            Y = _y,
+            Width = textWidth,
+            Height = fontHeight + LineGap,
+            TargetPage = targetPageNum
+        });
+        
         _y += fontHeight + LineGap;
     }
 
-    public Dictionary<int, int> GetAttachmentPageNumbers() => _attachmentPageNumbers;
+    public void ApplyPendingLinks()
+    {
+        foreach (var link in _pendingLinks)
+        {
+            // Look up the actual page number for this attachment
+            if (!_attachmentPageNumbers.TryGetValue(link.TargetPage, out var actualTargetPage))
+                continue;
+            
+            // Convert Y to PDF coordinates (origin at bottom-left of page)
+            var pageHeight = _doc.Pages[link.PageNumber - 1].Height;
+            var pdfY = pageHeight - link.Y - link.Height;
+            
+            // Create PdfRectangle using XRect conversion
+            var pdfRect = new PdfRectangle(new XPoint(link.Y, pdfY), new XPoint(link.Y + link.Width, pdfY + link.Height));
+            
+            var annotation = PdfLinkAnnotation.CreateDocumentLink(pdfRect, actualTargetPage);
+            _doc.Pages[link.PageNumber - 1].Annotations.Add(annotation);
+        }
+    }
 
-    private readonly Dictionary<int, int> _attachmentPageNumbers = new();
+    public Dictionary<int, int> GetAttachmentPageNumbers() => _attachmentPageNumbers;
 
     public void Blank(double points = 8) => _y += points;
 
@@ -179,6 +222,9 @@ public sealed class SimplePdfWriter
 
     public byte[] ToBytes()
     {
+        // Apply any pending links now that all pages are created
+        ApplyPendingLinks();
+        
         using var ms = new MemoryStream();
         _doc.Save(ms, closeStream: false);
         return ms.ToArray();
