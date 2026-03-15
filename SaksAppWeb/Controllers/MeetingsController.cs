@@ -447,7 +447,67 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
     // We'll also collect a de-duplicated attachment list for the whole agenda
     var referencedAttachments = new Dictionary<string, (string ContentType, byte[] Content)>(StringComparer.OrdinalIgnoreCase);
+    
+    // Track which attachments belong to which source (prev meeting ID or comment ID)
+    var attachmentSources = new Dictionary<string, List<object>>(); // filename -> list of source IDs (prev meeting int.Id or comment int.Id)
 
+    // First pass: collect all attachments and their sources
+    foreach (var row in agenda)
+    {
+        if (previousByCaseId.TryGetValue(row.c.Id, out var prev))
+        {
+            if (prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var prevAtts) && prevAtts.Count > 0)
+            {
+                foreach (var att in prevAtts)
+                {
+                    if (!referencedAttachments.ContainsKey(att.Item1))
+                        referencedAttachments[att.Item1] = (att.Item2, att.Item3);
+                    
+                    if (!attachmentSources.ContainsKey(att.Item1))
+                        attachmentSources[att.Item1] = new List<object>();
+                    attachmentSources[att.Item1].Add(prev.Id);
+                }
+            }
+        }
+
+        // Comments between meetings
+        var windowStart = previousByCaseId.TryGetValue(row.c.Id, out var p2)
+            ? new DateTimeOffset(p2.MeetingDate.Year, p2.MeetingDate.Month, p2.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero)
+            : DateTimeOffset.MinValue;
+        var windowEnd = new DateTimeOffset(meeting.MeetingDate.Year, meeting.MeetingDate.Month, meeting.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero);
+        var between = allComments
+            .Where(c => c.BoardCaseId == row.c.Id)
+            .Where(c => c.CreatedAt > windowStart && c.CreatedAt <= windowEnd)
+            .OrderByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
+            .ToList();
+
+        foreach (var com in between)
+        {
+            if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var atts) && atts.Count > 0)
+            {
+                foreach (var att in atts)
+                {
+                    if (!referencedAttachments.ContainsKey(att.Item1))
+                        referencedAttachments[att.Item1] = (att.Item2, att.Item3);
+                    
+                    if (!attachmentSources.ContainsKey(att.Item1))
+                        attachmentSources[att.Item1] = new List<object>();
+                    attachmentSources[att.Item1].Add(com.Id);
+                }
+            }
+        }
+    }
+
+    // Assign numbers to attachments
+    var attachmentNumberByFileName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+    var num = 1;
+    foreach (var key in referencedAttachments.Keys)
+    {
+        attachmentNumberByFileName[key] = num++;
+    }
+
+    // Now render the agenda with attachment references
     foreach (var row in agenda)
     {
         var assignee = userDisplay.TryGetValue(row.c.AssigneeUserId, out var d) ? d : row.c.AssigneeUserId;
@@ -496,11 +556,8 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
             if (prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var prevAtts) && prevAtts.Count > 0)
             {
-                foreach (var att in prevAtts)
-                {
-                    if (!referencedAttachments.ContainsKey(att.Item1))
-                        referencedAttachments[att.Item1] = (att.Item2, att.Item3);
-                }
+                var attRefs = string.Join(", ", prevAtts.Select(a => $"[Vedlegg {attachmentNumberByFileName[a.Item1]}]"));
+                pdf.WriteTextWithAttachmentLinks($"Vedlegg: {attRefs}", pdf.GetAttachmentPageNumbers());
             }
         }
         else
@@ -545,15 +602,37 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
             foreach (var com in between)
             {
-                pdf.ParagraphItalicIndented($"{com.CreatedAt:yyyy-MM-dd}: {com.Text}");
+                var fullText = $"{com.CreatedAt:yyyy-MM-dd}: {com.Text}";
+                
+                // Split into first line and continuation at word boundary
+                var firstLineMaxLen = 50;
+                string firstLine, continuation;
+                if (fullText.Length <= firstLineMaxLen)
+                {
+                    firstLine = fullText;
+                    continuation = "";
+                }
+                else
+                {
+                    var splitIdx = fullText.LastIndexOf(' ', firstLineMaxLen);
+                    if (splitIdx > 10) // only split if we found a reasonable word boundary
+                    {
+                        firstLine = fullText.Substring(0, splitIdx);
+                        continuation = fullText.Substring(splitIdx + 1);
+                    }
+                    else
+                    {
+                        firstLine = fullText;
+                        continuation = "";
+                    }
+                }
+
+                pdf.ParagraphFirstLine(firstLine, continuation, isItalic: true);
 
                 if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var atts) && atts.Count > 0)
                 {
-                    foreach (var att in atts)
-                    {
-                        if (!referencedAttachments.ContainsKey(att.Item1))
-                            referencedAttachments[att.Item1] = (att.Item2, att.Item3);
-                    }
+                    var attRefs = string.Join(", ", atts.Select(a => $"[Vedlegg {attachmentNumberByFileName[a.Item1]}]"));
+                    pdf.WriteTextWithAttachmentLinks(attRefs, pdf.GetAttachmentPageNumbers());
                 }
             }
         }
@@ -565,6 +644,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
     // Append attachments at the end
     if (referencedAttachments.Count > 0)
     {
+        // Attachment list
         pdf.Blank(6);
         pdf.Heading2("Vedlegg");
 
@@ -573,7 +653,14 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         {
             var (attachmentFileName, contentType, content) = (kvp.Key, kvp.Value.ContentType, kvp.Value.Content);
             pdf.Paragraph($"Vedlegg {attachmentNumber}: {attachmentFileName}");
+            attachmentNumber++;
+        }
 
+        // Attachment content
+        attachmentNumber = 1;
+        foreach (var kvp in referencedAttachments)
+        {
+            var (attachmentFileName, contentType, content) = (kvp.Key, kvp.Value.ContentType, kvp.Value.Content);
             if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
             {
                 pdf.AddPdfAttachment(content, attachmentFileName, attachmentNumber);

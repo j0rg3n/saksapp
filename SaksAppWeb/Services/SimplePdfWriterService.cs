@@ -2,6 +2,7 @@ using System.Text;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
+using PdfSharpCore.Pdf.Annotations;
 
 namespace SaksAppWeb.Services;
 
@@ -40,17 +41,88 @@ public sealed class SimplePdfWriter
     public void ParagraphIndented(string text) => WriteWrapped(text, _pFont, extraBottom: 6, indent: true);
     public void ParagraphItalicIndented(string text) => WriteWrapped(text, _pItalicFont, extraBottom: 6, indent: true);
 
+    public void ParagraphFirstLine(string firstLine, string continuation, bool isItalic = false)
+    {
+        var font = isItalic ? _pItalicFont : _pFont;
+        WriteWrapped(firstLine, font, extraBottom: 0);
+        if (!string.IsNullOrWhiteSpace(continuation))
+            WriteWrapped(continuation, font, extraBottom: 6, indent: true);
+    }
+
     public void HeadingInline(string heading, string text)
     {
         WriteWrapped(heading, _hFont, extraBottom: 0);
         WriteWrapped(text, _pFont, extraBottom: 4, indent: true);
     }
 
+    public void WriteTextWithAttachmentLinks(string text, Dictionary<int, int> attachmentPageNumbers)
+    {
+        var font = _pFont;
+        
+        // Find all [Vedlegg N] patterns and style them as links (blue)
+        var pattern = @"\[Vedlegg (\d+)\]";
+        var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern);
+        
+        if (matches.Count == 0)
+        {
+            WriteWrapped(text, font, extraBottom: 6);
+            return;
+        }
+
+        var lastEnd = 0;
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            // Write text before the match
+            if (match.Index > lastEnd)
+            {
+                var beforeText = text.Substring(lastEnd, match.Index - lastEnd);
+                WriteWrapped(beforeText, font, extraBottom: 0);
+            }
+
+            // Get attachment number and write as blue "link" text
+            var attNum = int.Parse(match.Groups[1].Value);
+            if (attachmentPageNumbers.TryGetValue(attNum, out var targetPageNum) && targetPageNum > 0)
+            {
+                WriteLinkText($"[Vedlegg {attNum}]", font, targetPageNum);
+            }
+            else
+            {
+                WriteWrapped($"[Vedlegg {attNum}]", font, extraBottom: 0);
+            }
+
+            lastEnd = match.Index + match.Length;
+        }
+
+        // Write remaining text after last match
+        if (lastEnd < text.Length)
+        {
+            var afterText = text.Substring(lastEnd);
+            WriteWrapped(afterText, font, extraBottom: 6);
+        }
+        else
+        {
+            _y += 6;
+        }
+    }
+
+    private void WriteLinkText(string text, XFont font, int targetPageNum)
+    {
+        // Draw blue text to indicate it's a link (actual clickable links require more complex PdfSharpCore setup)
+        var fontHeight = font.GetHeight();
+        var rect = new XRect(Margin, _y, _page.Width - 2 * Margin, fontHeight + LineGap);
+        _gfx.DrawString(text, font, XBrushes.DarkBlue, rect, XStringFormats.TopLeft);
+        _y += fontHeight + LineGap;
+    }
+
+    public Dictionary<int, int> GetAttachmentPageNumbers() => _attachmentPageNumbers;
+
+    private readonly Dictionary<int, int> _attachmentPageNumbers = new();
+
     public void Blank(double points = 8) => _y += points;
 
     public void AddPdfAttachment(byte[] pdfContent, string fileName, int number)
     {
-        AddPdfCoverPage(fileName, number);
+        var pageNum = AddAttachmentCoverPage(fileName, number);
 
         using var inputStream = new MemoryStream(pdfContent);
         var inputDoc = PdfReader.Open(inputStream, PdfDocumentOpenMode.Import);
@@ -58,26 +130,32 @@ public sealed class SimplePdfWriter
         for (int i = 0; i < inputDoc.PageCount; i++)
         {
             var page = inputDoc.Pages[i];
-            var newPage = _doc.AddPage(page);
+            _doc.AddPage(page);
         }
     }
 
-    private void AddPdfCoverPage(string fileName, int number)
+    private int AddAttachmentCoverPage(string fileName, int number)
     {
-        _page = _doc.AddPage();
-        _gfx = XGraphics.FromPdfPage(_page);
+        var page = _doc.AddPage();
+        _attachmentPageNumbers[number] = _doc.PageCount;
+        _gfx = XGraphics.FromPdfPage(page);
+        _page = page;
         _y = Margin;
 
         _gfx.DrawString($"Vedlegg {number}:", _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
         _y += _hFont.GetHeight() + LineGap;
 
         _gfx.DrawString(fileName, _attachmentTitleFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+
+        return _doc.PageCount;
     }
 
     public void AddImageAttachment(byte[] imageContent, string fileName, int number)
     {
-        _page = _doc.AddPage();
-        _gfx = XGraphics.FromPdfPage(_page);
+        var page = _doc.AddPage();
+        _attachmentPageNumbers[number] = _doc.PageCount;
+        _gfx = XGraphics.FromPdfPage(page);
+        _page = page;
         _y = Margin;
 
         _gfx.DrawString($"Vedlegg {number}: {fileName}", _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
