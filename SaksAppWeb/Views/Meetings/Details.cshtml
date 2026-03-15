@@ -53,7 +53,7 @@
     {
         <tr>
             <td>@a.AgendaOrder</td>
-            <td>#@a.CaseNumber — @a.Title</td>
+            <td><a asp-controller="Cases" asp-action="Details" asp-route-id="@a.CaseId">#@a.CaseNumber — @a.Title</a></td>
             <td>@a.AssigneeDisplay</td>
             <td style="white-space: pre-wrap">@a.AgendaTextSnapshot</td>
             <td>

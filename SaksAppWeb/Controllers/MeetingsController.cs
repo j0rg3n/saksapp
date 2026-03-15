@@ -545,7 +545,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
             foreach (var com in between)
             {
-                pdf.ParagraphItalic($"{com.CreatedAt:yyyy-MM-dd}: {com.Text}");
+                pdf.ParagraphItalicIndented($"{com.CreatedAt:yyyy-MM-dd}: {com.Text}");
 
                 if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var atts) && atts.Count > 0)
                 {

@@ -42,7 +42,8 @@ public sealed class SimplePdfWriter
 
     public void HeadingInline(string heading, string text)
     {
-        WriteWrapped(heading + text, _h3Font, extraBottom: 4);
+        WriteWrapped(heading, _hFont, extraBottom: 0);
+        WriteWrapped(text, _pFont, extraBottom: 4, indent: true);
     }
 
     public void Blank(double points = 8) => _y += points;

@@ -7,7 +7,13 @@
 
 <div class="d-flex justify-content-between align-items-center">
     <h1>Cases</h1>
-    <a class="btn btn-primary" asp-action="Create">New case</a>
+    <div>
+        <form method="get" asp-action="Index" class="d-inline-flex align-items-center gap-2">
+            <input type="checkbox" class="form-check-input" name="showClosed" id="showClosed" value="true" @(Context.Request.Query["showClosed"].ToString() == "true" ? "checked" : "") onchange="this.form.submit()">
+            <label class="form-check-label" for="showClosed">Show closed</label>
+        </form>
+        <a class="btn btn-primary ms-3" asp-action="Create">New case</a>
+    </div>
 </div>
 
 <table class="table table-sm table-striped">

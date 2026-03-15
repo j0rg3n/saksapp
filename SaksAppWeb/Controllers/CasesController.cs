@@ -36,12 +36,15 @@ public class CasesController : Controller
         _logger = logger;
     }
 
-    public async Task<IActionResult> Index(CaseStatus? status, string? assigneeUserId, CancellationToken ct)
+    public async Task<IActionResult> Index(CaseStatus? status, string? assigneeUserId, bool showClosed, CancellationToken ct)
     {
         var q = _db.BoardCases.AsNoTracking();
 
         if (status is not null)
             q = q.Where(x => x.Status == status);
+        
+        if (!showClosed)
+            q = q.Where(x => x.Status != CaseStatus.Closed);
 
         if (!string.IsNullOrWhiteSpace(assigneeUserId))
             q = q.Where(x => x.AssigneeUserId == assigneeUserId);
