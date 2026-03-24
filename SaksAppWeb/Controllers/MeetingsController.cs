@@ -557,7 +557,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             if (prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var prevAtts) && prevAtts.Count > 0)
             {
                 var attRefs = string.Join(", ", prevAtts.Select(a => $"[Vedlegg {attachmentNumberByFileName[a.Item1]}]"));
-                pdf.WriteTextWithAttachmentLinks($"Vedlegg: {attRefs}", pdf.GetAttachmentPageNumbers());
+                pdf.WriteTextWithAttachmentLinks($"Vedlegg: {attRefs}");
             }
         }
         else
@@ -632,7 +632,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                 if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var atts) && atts.Count > 0)
                 {
                     var attRefs = string.Join(", ", atts.Select(a => $"[Vedlegg {attachmentNumberByFileName[a.Item1]}]"));
-                    pdf.WriteTextWithAttachmentLinks(attRefs, pdf.GetAttachmentPageNumbers());
+                    pdf.WriteTextWithAttachmentLinks(attRefs);
                 }
             }
         }

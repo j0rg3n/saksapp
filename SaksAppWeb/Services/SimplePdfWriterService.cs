@@ -30,7 +30,7 @@ public sealed class SimplePdfWriter
         public double Y { get; init; }
         public double Width { get; init; }
         public double Height { get; init; }
-        public int TargetPage { get; init; }
+        public int AttachmentNumber { get; init; } // Store attachment number, not page
     }
 
     private readonly List<PendingLink> _pendingLinks = new();
@@ -67,7 +67,7 @@ public sealed class SimplePdfWriter
         WriteWrapped(text, _pFont, extraBottom: 4, indent: true);
     }
 
-    public void WriteTextWithAttachmentLinks(string text, Dictionary<int, int> attachmentPageNumbers)
+    public void WriteTextWithAttachmentLinks(string text)
     {
         var font = _pFont;
         
@@ -91,16 +91,9 @@ public sealed class SimplePdfWriter
                 WriteWrapped(beforeText, font, extraBottom: 0);
             }
 
-            // Get attachment number and write as blue "link" text
+            // Get attachment number - we'll look up page number later
             var attNum = int.Parse(match.Groups[1].Value);
-            if (attachmentPageNumbers.TryGetValue(attNum, out var targetPageNum) && targetPageNum > 0)
-            {
-                WriteLinkText($"[Vedlegg {attNum}]", font, targetPageNum);
-            }
-            else
-            {
-                WriteWrapped($"[Vedlegg {attNum}]", font, extraBottom: 0);
-            }
+            WriteLinkText($"[Vedlegg {attNum}]", font, attNum);
 
             lastEnd = match.Index + match.Length;
         }
@@ -117,7 +110,7 @@ public sealed class SimplePdfWriter
         }
     }
 
-    private void WriteLinkText(string text, XFont font, int targetPageNum)
+    private void WriteLinkText(string text, XFont font, int attachmentNumber)
     {
         var fontHeight = font.GetHeight();
         var textWidth = _gfx.MeasureString(text, font).Width;
@@ -133,7 +126,7 @@ public sealed class SimplePdfWriter
             Y = _y,
             Width = textWidth,
             Height = fontHeight + LineGap,
-            TargetPage = targetPageNum
+            AttachmentNumber = attachmentNumber
         });
         
         _y += fontHeight + LineGap;
@@ -144,18 +137,26 @@ public sealed class SimplePdfWriter
         foreach (var link in _pendingLinks)
         {
             // Look up the actual page number for this attachment
-            if (!_attachmentPageNumbers.TryGetValue(link.TargetPage, out var actualTargetPage))
+            if (!_attachmentPageNumbers.TryGetValue(link.AttachmentNumber, out var actualTargetPage))
+            {
+                Console.WriteLine($"DEBUG: No page found for attachment {link.AttachmentNumber}");
                 continue;
+            }
             
             // Convert Y to PDF coordinates (origin at bottom-left of page)
             var pageHeight = _doc.Pages[link.PageNumber - 1].Height;
             var pdfY = pageHeight - link.Y - link.Height;
             
-            // Create PdfRectangle using XRect conversion
-            var pdfRect = new PdfRectangle(new XPoint(link.Y, pdfY), new XPoint(link.Y + link.Width, pdfY + link.Height));
+            Console.WriteLine($"DEBUG: Creating link on page {link.PageNumber}, target page {actualTargetPage - 1}");
+            Console.WriteLine($"DEBUG: link.Y={link.Y}, pdfY={pdfY}, width={link.Width}, height={link.Height}, pageHeight={pageHeight}");
             
-            var annotation = PdfLinkAnnotation.CreateDocumentLink(pdfRect, actualTargetPage);
+            // Create PdfRectangle 
+            var pdfRect = new PdfRectangle(new XPoint(link.Y, pdfY), new XPoint(link.Y + link.Width, pdfY + link.Height));
+            Console.WriteLine($"DEBUG: pdfRect={pdfRect}");
+            
+            var annotation = PdfLinkAnnotation.CreateDocumentLink(pdfRect, actualTargetPage - 1);
             _doc.Pages[link.PageNumber - 1].Annotations.Add(annotation);
+            Console.WriteLine($"DEBUG: Added annotation to page {link.PageNumber - 1}");
         }
     }
 

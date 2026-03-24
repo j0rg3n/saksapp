@@ -6,3 +6,4 @@ auth/
 .idea/
 *.user
 *.suo
+*.tar
