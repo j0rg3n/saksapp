@@ -1147,20 +1147,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             pdf.Blank(12);
             pdf.Heading("Vedlegg");
 
-            var attachmentPageNumbers = new List<int>();
-            foreach (var _ in allAttachments)
-            {
-                attachmentPageNumbers.Add(pdf.AddPdfAttachmentStart());
-            }
-
             var attachmentNumber = 1;
-            foreach (var att in allAttachments)
-            {
-                pdf.WriteAttachmentTocEntry(attachmentPageNumbers[attachmentNumber - 1], attachmentNumber, att.Item2);
-                attachmentNumber++;
-            }
-
-            attachmentNumber = 1;
             foreach (var att in allAttachments)
             {
                 var (attachmentFileName, contentType, content) = (att.Item2, att.Item3, att.Item4);
@@ -1173,6 +1160,14 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                 {
                     pdf.AddImageAttachment(content, attachmentFileName, attachmentNumber);
                 }
+                attachmentNumber++;
+            }
+
+            var pageNumbers = pdf.GetAttachmentPageNumbers();
+            attachmentNumber = 1;
+            foreach (var att in allAttachments)
+            {
+                pdf.WriteAttachmentTocEntry(pageNumbers[attachmentNumber], attachmentNumber, att.Item2);
                 attachmentNumber++;
             }
         }
