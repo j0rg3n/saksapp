@@ -7,3 +7,5 @@ auth/
 *.user
 *.suo
 *.tar
+*.sqlite
+backups/

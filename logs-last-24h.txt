@@ -1,0 +1,500 @@
+2026-04-04T09:53:06.174459967Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T09:53:06.174486874Z       Database backup written to /app/db/Backups/app-20260404-095306.sqlite
+2026-04-04T10:53:06.174133384Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T10:53:06.174159480Z       Database backup written to /app/db/Backups/app-20260404-105306.sqlite
+2026-04-04T11:53:06.182231207Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T11:53:06.182252517Z       Database backup written to /app/db/Backups/app-20260404-115306.sqlite
+2026-04-04T12:53:06.177440873Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T12:53:06.177467730Z       Database backup written to /app/db/Backups/app-20260404-125306.sqlite
+2026-04-04T13:53:06.181217173Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T13:53:06.181249448Z       Database backup written to /app/db/Backups/app-20260404-135306.sqlite
+2026-04-04T14:53:06.177259386Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T14:53:06.177286042Z       Database backup written to /app/db/Backups/app-20260404-145306.sqlite
+2026-04-04T15:53:06.203249126Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T15:53:06.203402976Z       Database backup written to /app/db/Backups/app-20260404-155306.sqlite
+2026-04-04T16:53:06.179942346Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T16:53:06.179968140Z       Database backup written to /app/db/Backups/app-20260404-165306.sqlite
+2026-04-04T17:53:06.198551279Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T17:53:06.198576924Z       Database backup written to /app/db/Backups/app-20260404-175306.sqlite
+2026-04-04T18:53:06.177506963Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T18:53:06.177531586Z       Database backup written to /app/db/Backups/app-20260404-185306.sqlite
+2026-04-04T19:53:06.180172170Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T19:53:06.180201500Z       Database backup written to /app/db/Backups/app-20260404-195306.sqlite
+2026-04-04T20:53:06.177089883Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T20:53:06.177117220Z       Database backup written to /app/db/Backups/app-20260404-205306.sqlite
+2026-04-04T21:53:06.178081742Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T21:53:06.178110542Z       Database backup written to /app/db/Backups/app-20260404-215306.sqlite
+2026-04-04T22:53:06.189078341Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T22:53:06.189105278Z       Database backup written to /app/db/Backups/app-20260404-225306.sqlite
+2026-04-04T23:53:06.180159583Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-04T23:53:06.180186851Z       Database backup written to /app/db/Backups/app-20260404-235306.sqlite
+2026-04-05T00:53:06.180304568Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T00:53:06.180333138Z       Database backup written to /app/db/Backups/app-20260405-005306.sqlite
+2026-04-05T01:53:06.175788588Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T01:53:06.175815725Z       Database backup written to /app/db/Backups/app-20260405-015306.sqlite
+2026-04-05T02:53:06.177485214Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T02:53:06.177508346Z       Database backup written to /app/db/Backups/app-20260405-025306.sqlite
+2026-04-05T03:53:06.198693509Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T03:53:06.198717512Z       Database backup written to /app/db/Backups/app-20260405-035306.sqlite
+2026-04-05T04:53:06.191120398Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T04:53:06.191147565Z       Database backup written to /app/db/Backups/app-20260405-045306.sqlite
+2026-04-05T05:53:06.184206311Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T05:53:06.184234480Z       Database backup written to /app/db/Backups/app-20260405-055306.sqlite
+2026-04-05T06:53:06.214329004Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T06:53:06.216166872Z       Database backup written to /app/db/Backups/app-20260405-065306.sqlite
+2026-04-05T07:53:06.176441348Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T07:53:06.176468996Z       Database backup written to /app/db/Backups/app-20260405-075306.sqlite
+2026-04-05T08:31:54.856754097Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:31:54.856787293Z       Executed DbCommand (2ms) [Parameters=[@__p_0='?' (Size = 36)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:31:54.856789206Z       SELECT "a"."Id", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."Email", "a"."EmailConfirmed", "a"."FullName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName"
+2026-04-05T08:31:54.856792270Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:31:54.856793532Z       WHERE "a"."Id" = @__p_0
+2026-04-05T08:31:54.856794714Z       LIMIT 1
+2026-04-05T08:31:54.858169627Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:31:54.858181844Z       Executed DbCommand (0ms) [Parameters=[@__user_Id_0='?' (Size = 36)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:31:54.858190986Z       SELECT "a"."Id", "a"."ClaimType", "a"."ClaimValue", "a"."UserId"
+2026-04-05T08:31:54.858203914Z       FROM "AspNetUserClaims" AS "a"
+2026-04-05T08:31:54.858204835Z       WHERE "a"."UserId" = @__user_Id_0
+2026-04-05T08:31:59.726883633Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:31:59.726911041Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:31:59.726912823Z       SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:31:59.726915086Z       FROM "BoardCases" AS "b"
+2026-04-05T08:31:59.726915998Z       WHERE NOT ("b"."IsDeleted") AND "b"."Status" <> 3
+2026-04-05T08:31:59.727851767Z       ORDER BY "b"."CaseNumber" DESC
+2026-04-05T08:31:59.728386753Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:31:59.728393493Z       Executed DbCommand (0ms) [Parameters=[@__assigneeIds_0='?' (Size = 235)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:31:59.728395025Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:31:59.728396267Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:31:59.728397098Z       WHERE "a"."Id" IN (
+2026-04-05T08:31:59.728397969Z           SELECT "a0"."value"
+2026-04-05T08:31:59.728398760Z           FROM json_each(@__assigneeIds_0) AS "a0"
+2026-04-05T08:31:59.728399581Z       )
+2026-04-05T08:32:06.127430897Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:32:06.127469450Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:32:06.127471573Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:32:06.127473416Z       FROM "Meetings" AS "m"
+2026-04-05T08:32:06.127474588Z       WHERE NOT ("m"."IsDeleted")
+2026-04-05T08:32:06.127475639Z       ORDER BY "m"."MeetingDate" DESC
+2026-04-05T08:32:14.204264811Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:32:14.204304415Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:32:14.204306398Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:32:14.204308831Z       FROM "Meetings" AS "m"
+2026-04-05T08:32:14.204309943Z       WHERE NOT ("m"."IsDeleted") AND "m"."Id" = @__id_0
+2026-04-05T08:32:14.204321178Z       LIMIT 1
+2026-04-05T08:32:14.204400177Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:32:14.204402320Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:32:14.204419674Z       SELECT "m"."Id", "m"."AgendaOrder", "m"."AgendaPointNumber", "m"."AgendaTextSnapshot", "m"."BoardCaseId", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpTextDraft", "m"."IsDeleted", "m"."MeetingId", "m"."Outcome", "m"."TidsfristOverrideDate", "m"."TidsfristOverrideText", "t"."Id", "t"."AssigneeUserId", "t"."CaseNumber", "t"."ClosedDate", "t"."CustomTidsfristDate", "t"."CustomTidsfristText", "t"."DeletedAt", "t"."DeletedByUserId", "t"."Description", "t"."IsDeleted", "t"."Priority", "t"."StartDate", "t"."Status", "t"."Theme", "t"."Title"
+2026-04-05T08:32:14.204424690Z       FROM "MeetingCases" AS "m"
+2026-04-05T08:32:14.204432672Z       INNER JOIN (
+2026-04-05T08:32:14.204439902Z           SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:32:14.204441264Z           FROM "BoardCases" AS "b"
+2026-04-05T08:32:14.204442094Z           WHERE NOT ("b"."IsDeleted")
+2026-04-05T08:32:14.204442855Z       ) AS "t" ON "m"."BoardCaseId" = "t"."Id"
+2026-04-05T08:32:14.204443807Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:32:14.204451057Z       ORDER BY "m"."AgendaOrder"
+2026-04-05T08:32:14.204951957Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:32:14.204959958Z       Executed DbCommand (0ms) [Parameters=[@__assigneeIds_0='?' (Size = 196)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:32:14.204961080Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:32:14.204982529Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:32:14.204983470Z       WHERE "a"."Id" IN (
+2026-04-05T08:32:14.204984231Z           SELECT "a0"."value"
+2026-04-05T08:32:14.204984992Z           FROM json_each(@__assigneeIds_0) AS "a0"
+2026-04-05T08:32:14.204985854Z       )
+2026-04-05T08:32:14.205334895Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:32:14.205339741Z       Executed DbCommand (0ms) [Parameters=[@__alreadyScheduledCaseIds_0='?' (Size = 66)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:32:14.205341373Z       SELECT "b"."Id", "b"."CaseNumber", "b"."Title"
+2026-04-05T08:32:14.205354391Z       FROM "BoardCases" AS "b"
+2026-04-05T08:32:14.205355603Z       WHERE NOT ("b"."IsDeleted") AND "b"."Status" <> 3 AND "b"."Id" NOT IN (
+2026-04-05T08:32:14.205390732Z           SELECT "a"."value"
+2026-04-05T08:32:14.205391653Z           FROM json_each(@__alreadyScheduledCaseIds_0) AS "a"
+2026-04-05T08:32:14.205392424Z       )
+2026-04-05T08:32:14.205393185Z       ORDER BY "b"."Priority" DESC, "b"."CaseNumber"
+2026-04-05T08:53:06.189506197Z info: SaksAppWeb.Services.DatabaseBackupService[0]
+2026-04-05T08:53:06.189553923Z       Database backup written to /app/db/Backups/app-20260405-085306.sqlite
+2026-04-05T08:54:51.013537748Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:54:51.013576671Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:54:51.013578694Z       SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:54:51.013581508Z       FROM "BoardCases" AS "b"
+2026-04-05T08:54:51.013582709Z       WHERE NOT ("b"."IsDeleted") AND "b"."Id" = @__id_0
+2026-04-05T08:54:51.013583981Z       LIMIT 1
+2026-04-05T08:54:51.013584973Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:54:51.013586024Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:54:51.013587115Z       SELECT "c"."Id", "c"."BoardCaseId", "c"."CreatedAt", "c"."CreatedByUserId", "c"."DeletedAt", "c"."DeletedByUserId", "c"."IsDeleted", "c"."Text"
+2026-04-05T08:54:51.013588448Z       FROM "CaseComments" AS "c"
+2026-04-05T08:54:51.013589489Z       WHERE NOT ("c"."IsDeleted") AND "c"."BoardCaseId" = @__id_0
+2026-04-05T08:54:51.013590651Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:54:51.013591662Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:54:51.013592754Z       SELECT "m"."Id" AS "MinutesEntryId", "m"."MeetingId", "t"."MeetingDate", "t"."Year", "t"."YearSequenceNumber", "m"."Outcome", "m"."OfficialNotes", "m"."DecisionText", "m"."FollowUpText"
+2026-04-05T08:54:51.013594225Z       FROM "MeetingMinutesCaseEntries" AS "m"
+2026-04-05T08:54:51.013595267Z       INNER JOIN (
+2026-04-05T08:54:51.013596228Z           SELECT "m0"."Id", "m0"."MeetingDate", "m0"."Year", "m0"."YearSequenceNumber"
+2026-04-05T08:54:51.013597410Z           FROM "Meetings" AS "m0"
+2026-04-05T08:54:51.013598471Z           WHERE NOT ("m0"."IsDeleted")
+2026-04-05T08:54:51.013599563Z       ) AS "t" ON "m"."MeetingId" = "t"."Id"
+2026-04-05T08:54:51.013600745Z       WHERE NOT ("m"."IsDeleted") AND "m"."BoardCaseId" = @__id_0
+2026-04-05T08:54:51.013799637Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:54:51.013802882Z       Executed DbCommand (0ms) [Parameters=[@__minutesEntryIds_0='?' (Size = 9)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:54:51.013812424Z       SELECT "m"."MeetingMinutesCaseEntryId", "m"."Id", "t"."Id", "t"."OriginalFileName", "t"."ContentType", "t"."SizeBytes"
+2026-04-05T08:54:51.013813886Z       FROM "MeetingMinutesCaseEntryAttachments" AS "m"
+2026-04-05T08:54:51.013814858Z       INNER JOIN (
+2026-04-05T08:54:51.013815589Z           SELECT "a"."Id", "a"."ContentType", "a"."OriginalFileName", "a"."SizeBytes"
+2026-04-05T08:54:51.013816590Z           FROM "Attachments" AS "a"
+2026-04-05T08:54:51.013823189Z           WHERE NOT ("a"."IsDeleted")
+2026-04-05T08:54:51.013824271Z       ) AS "t" ON "m"."AttachmentId" = "t"."Id"
+2026-04-05T08:54:51.013825152Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingMinutesCaseEntryId" IN (
+2026-04-05T08:54:51.013826033Z           SELECT "m0"."value"
+2026-04-05T08:54:51.013826824Z           FROM json_each(@__minutesEntryIds_0) AS "m0"
+2026-04-05T08:54:51.013827596Z       )
+2026-04-05T08:54:51.013835266Z       ORDER BY "t"."Id" DESC
+2026-04-05T08:54:51.014103033Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:54:51.014106948Z       Executed DbCommand (0ms) [Parameters=[@__commentIds_0='?' (Size = 4)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:54:51.014126055Z       SELECT "c"."CaseCommentId", "c"."Id", "t"."Id", "t"."OriginalFileName", "t"."ContentType", "t"."SizeBytes"
+2026-04-05T08:54:51.014127347Z       FROM "CaseCommentAttachments" AS "c"
+2026-04-05T08:54:51.014128338Z       INNER JOIN (
+2026-04-05T08:54:51.014129029Z           SELECT "a"."Id", "a"."ContentType", "a"."OriginalFileName", "a"."SizeBytes"
+2026-04-05T08:54:51.014130000Z           FROM "Attachments" AS "a"
+2026-04-05T08:54:51.014137801Z           WHERE NOT ("a"."IsDeleted")
+2026-04-05T08:54:51.014138622Z       ) AS "t" ON "c"."AttachmentId" = "t"."Id"
+2026-04-05T08:54:51.014139453Z       WHERE NOT ("c"."IsDeleted") AND "c"."CaseCommentId" IN (
+2026-04-05T08:54:51.014140245Z           SELECT "c0"."value"
+2026-04-05T08:54:51.014140995Z           FROM json_each(@__commentIds_0) AS "c0"
+2026-04-05T08:54:51.014141756Z       )
+2026-04-05T08:54:51.015664737Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:54:51.015671937Z       Executed DbCommand (0ms) [Parameters=[@__userIds_0='?' (Size = 79)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:54:51.015673239Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:54:51.015685876Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:54:51.015692876Z       WHERE "a"."Id" IN (
+2026-04-05T08:54:51.015694228Z           SELECT "u"."value"
+2026-04-05T08:54:51.015695380Z           FROM json_each(@__userIds_0) AS "u"
+2026-04-05T08:54:51.015696521Z       )
+2026-04-05T08:55:00.923926891Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:00.923962940Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:00.923964873Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:55:00.923966656Z       FROM "Meetings" AS "m"
+2026-04-05T08:55:00.923967767Z       WHERE NOT ("m"."IsDeleted") AND "m"."Id" = @__id_0
+2026-04-05T08:55:00.923969079Z       LIMIT 1
+2026-04-05T08:55:00.924005369Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:00.924006791Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:00.924023764Z       SELECT "m"."Id", "m"."AgendaOrder", "m"."AgendaPointNumber", "m"."AgendaTextSnapshot", "m"."BoardCaseId", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpTextDraft", "m"."IsDeleted", "m"."MeetingId", "m"."Outcome", "m"."TidsfristOverrideDate", "m"."TidsfristOverrideText", "t"."Id", "t"."AssigneeUserId", "t"."CaseNumber", "t"."ClosedDate", "t"."CustomTidsfristDate", "t"."CustomTidsfristText", "t"."DeletedAt", "t"."DeletedByUserId", "t"."Description", "t"."IsDeleted", "t"."Priority", "t"."StartDate", "t"."Status", "t"."Theme", "t"."Title"
+2026-04-05T08:55:00.924027830Z       FROM "MeetingCases" AS "m"
+2026-04-05T08:55:00.924035931Z       INNER JOIN (
+2026-04-05T08:55:00.924043451Z           SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:55:00.924045144Z           FROM "BoardCases" AS "b"
+2026-04-05T08:55:00.924052544Z           WHERE NOT ("b"."IsDeleted")
+2026-04-05T08:55:00.924053645Z       ) AS "t" ON "m"."BoardCaseId" = "t"."Id"
+2026-04-05T08:55:00.924054817Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:55:00.924066443Z       ORDER BY "m"."AgendaOrder"
+2026-04-05T08:55:00.924514398Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:00.924520296Z       Executed DbCommand (0ms) [Parameters=[@__assigneeIds_0='?' (Size = 196)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:00.924521928Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:55:00.924541025Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:55:00.924542016Z       WHERE "a"."Id" IN (
+2026-04-05T08:55:00.924542787Z           SELECT "a0"."value"
+2026-04-05T08:55:00.924543669Z           FROM json_each(@__assigneeIds_0) AS "a0"
+2026-04-05T08:55:00.924544459Z       )
+2026-04-05T08:55:00.924808031Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:00.924811646Z       Executed DbCommand (0ms) [Parameters=[@__alreadyScheduledCaseIds_0='?' (Size = 66)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:00.924812727Z       SELECT "b"."Id", "b"."CaseNumber", "b"."Title"
+2026-04-05T08:55:00.924829921Z       FROM "BoardCases" AS "b"
+2026-04-05T08:55:00.924830892Z       WHERE NOT ("b"."IsDeleted") AND "b"."Status" <> 3 AND "b"."Id" NOT IN (
+2026-04-05T08:55:00.924832285Z           SELECT "a"."value"
+2026-04-05T08:55:00.924833215Z           FROM json_each(@__alreadyScheduledCaseIds_0) AS "a"
+2026-04-05T08:55:00.924834007Z       )
+2026-04-05T08:55:00.924834688Z       ORDER BY "b"."Priority" DESC, "b"."CaseNumber"
+2026-04-05T08:55:35.052770948Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:35.052809922Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:35.052812115Z       SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:55:35.052814578Z       FROM "BoardCases" AS "b"
+2026-04-05T08:55:35.052816190Z       WHERE NOT ("b"."IsDeleted") AND "b"."Id" = @__id_0
+2026-04-05T08:55:35.052817492Z       LIMIT 1
+2026-04-05T08:55:35.052851970Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:35.052853261Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:35.052861283Z       SELECT "c"."Id", "c"."BoardCaseId", "c"."CreatedAt", "c"."CreatedByUserId", "c"."DeletedAt", "c"."DeletedByUserId", "c"."IsDeleted", "c"."Text"
+2026-04-05T08:55:35.052862765Z       FROM "CaseComments" AS "c"
+2026-04-05T08:55:35.052863916Z       WHERE NOT ("c"."IsDeleted") AND "c"."BoardCaseId" = @__id_0
+2026-04-05T08:55:35.053129511Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:35.053134457Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:35.053145342Z       SELECT "m"."Id" AS "MinutesEntryId", "m"."MeetingId", "t"."MeetingDate", "t"."Year", "t"."YearSequenceNumber", "m"."Outcome", "m"."OfficialNotes", "m"."DecisionText", "m"."FollowUpText"
+2026-04-05T08:55:35.053157008Z       FROM "MeetingMinutesCaseEntries" AS "m"
+2026-04-05T08:55:35.053157950Z       INNER JOIN (
+2026-04-05T08:55:35.053200929Z           SELECT "m0"."Id", "m0"."MeetingDate", "m0"."Year", "m0"."YearSequenceNumber"
+2026-04-05T08:55:35.053202090Z           FROM "Meetings" AS "m0"
+2026-04-05T08:55:35.053202941Z           WHERE NOT ("m0"."IsDeleted")
+2026-04-05T08:55:35.053203722Z       ) AS "t" ON "m"."MeetingId" = "t"."Id"
+2026-04-05T08:55:35.053204574Z       WHERE NOT ("m"."IsDeleted") AND "m"."BoardCaseId" = @__id_0
+2026-04-05T08:55:35.053738487Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:35.053745206Z       Executed DbCommand (0ms) [Parameters=[@__minutesEntryIds_0='?' (Size = 4)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:35.053827660Z       SELECT "m"."MeetingMinutesCaseEntryId", "m"."Id", "t"."Id", "t"."OriginalFileName", "t"."ContentType", "t"."SizeBytes"
+2026-04-05T08:55:35.053829462Z       FROM "MeetingMinutesCaseEntryAttachments" AS "m"
+2026-04-05T08:55:35.053830604Z       INNER JOIN (
+2026-04-05T08:55:35.053831355Z           SELECT "a"."Id", "a"."ContentType", "a"."OriginalFileName", "a"."SizeBytes"
+2026-04-05T08:55:35.053832386Z           FROM "Attachments" AS "a"
+2026-04-05T08:55:35.053833127Z           WHERE NOT ("a"."IsDeleted")
+2026-04-05T08:55:35.053833979Z       ) AS "t" ON "m"."AttachmentId" = "t"."Id"
+2026-04-05T08:55:35.053834809Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingMinutesCaseEntryId" IN (
+2026-04-05T08:55:35.053835671Z           SELECT "m0"."value"
+2026-04-05T08:55:35.053836422Z           FROM json_each(@__minutesEntryIds_0) AS "m0"
+2026-04-05T08:55:35.053837183Z       )
+2026-04-05T08:55:35.053837874Z       ORDER BY "t"."Id" DESC
+2026-04-05T08:55:35.054134000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:35.054138046Z       Executed DbCommand (0ms) [Parameters=[@__commentIds_0='?' (Size = 4)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:35.054153357Z       SELECT "c"."CaseCommentId", "c"."Id", "t"."Id", "t"."OriginalFileName", "t"."ContentType", "t"."SizeBytes"
+2026-04-05T08:55:35.054154679Z       FROM "CaseCommentAttachments" AS "c"
+2026-04-05T08:55:35.054155600Z       INNER JOIN (
+2026-04-05T08:55:35.054156431Z           SELECT "a"."Id", "a"."ContentType", "a"."OriginalFileName", "a"."SizeBytes"
+2026-04-05T08:55:35.054157322Z           FROM "Attachments" AS "a"
+2026-04-05T08:55:35.054163691Z           WHERE NOT ("a"."IsDeleted")
+2026-04-05T08:55:35.054164482Z       ) AS "t" ON "c"."AttachmentId" = "t"."Id"
+2026-04-05T08:55:35.054165263Z       WHERE NOT ("c"."IsDeleted") AND "c"."CaseCommentId" IN (
+2026-04-05T08:55:35.054169719Z           SELECT "c0"."value"
+2026-04-05T08:55:35.054170520Z           FROM json_each(@__commentIds_0) AS "c0"
+2026-04-05T08:55:35.054171291Z       )
+2026-04-05T08:55:35.054431238Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:35.054436626Z       Executed DbCommand (0ms) [Parameters=[@__userIds_0='?' (Size = 79)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:35.054437567Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:55:35.054446168Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:55:35.054447060Z       WHERE "a"."Id" IN (
+2026-04-05T08:55:35.054447941Z           SELECT "u"."value"
+2026-04-05T08:55:35.054448732Z           FROM json_each(@__userIds_0) AS "u"
+2026-04-05T08:55:35.054449483Z       )
+2026-04-05T08:55:50.379253194Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:50.379292728Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:50.379294791Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:55:50.379296713Z       FROM "Meetings" AS "m"
+2026-04-05T08:55:50.379297824Z       WHERE NOT ("m"."IsDeleted") AND "m"."Id" = @__id_0
+2026-04-05T08:55:50.379299076Z       LIMIT 1
+2026-04-05T08:55:50.379345009Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:50.379346442Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:50.379380869Z       SELECT "m"."Id", "m"."AgendaOrder", "m"."AgendaPointNumber", "m"."AgendaTextSnapshot", "m"."BoardCaseId", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpTextDraft", "m"."IsDeleted", "m"."MeetingId", "m"."Outcome", "m"."TidsfristOverrideDate", "m"."TidsfristOverrideText", "t"."Id", "t"."AssigneeUserId", "t"."CaseNumber", "t"."ClosedDate", "t"."CustomTidsfristDate", "t"."CustomTidsfristText", "t"."DeletedAt", "t"."DeletedByUserId", "t"."Description", "t"."IsDeleted", "t"."Priority", "t"."StartDate", "t"."Status", "t"."Theme", "t"."Title"
+2026-04-05T08:55:50.379383753Z       FROM "MeetingCases" AS "m"
+2026-04-05T08:55:50.379393006Z       INNER JOIN (
+2026-04-05T08:55:50.379401197Z           SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:55:50.379403069Z           FROM "BoardCases" AS "b"
+2026-04-05T08:55:50.379404171Z           WHERE NOT ("b"."IsDeleted")
+2026-04-05T08:55:50.379421525Z       ) AS "t" ON "m"."BoardCaseId" = "t"."Id"
+2026-04-05T08:55:50.379422596Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:55:50.379433211Z       ORDER BY "m"."AgendaOrder"
+2026-04-05T08:55:50.379847129Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:50.379856091Z       Executed DbCommand (0ms) [Parameters=[@__assigneeIds_0='?' (Size = 196)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:50.379857133Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:55:50.379868519Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:55:50.379869490Z       WHERE "a"."Id" IN (
+2026-04-05T08:55:50.379870321Z           SELECT "a0"."value"
+2026-04-05T08:55:50.379871182Z           FROM json_each(@__assigneeIds_0) AS "a0"
+2026-04-05T08:55:50.379871963Z       )
+2026-04-05T08:55:50.380547090Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:55:50.380560318Z       Executed DbCommand (0ms) [Parameters=[@__alreadyScheduledCaseIds_0='?' (Size = 66)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:55:50.380561650Z       SELECT "b"."Id", "b"."CaseNumber", "b"."Title"
+2026-04-05T08:55:50.380582399Z       FROM "BoardCases" AS "b"
+2026-04-05T08:55:50.380583650Z       WHERE NOT ("b"."IsDeleted") AND "b"."Status" <> 3 AND "b"."Id" NOT IN (
+2026-04-05T08:55:50.380585683Z           SELECT "a"."value"
+2026-04-05T08:55:50.380586594Z           FROM json_each(@__alreadyScheduledCaseIds_0) AS "a"
+2026-04-05T08:55:50.380587375Z       )
+2026-04-05T08:55:50.380588056Z       ORDER BY "b"."Priority" DESC, "b"."CaseNumber"
+2026-04-05T08:57:07.836207095Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:07.836247411Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:07.836249554Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:57:07.836251496Z       FROM "Meetings" AS "m"
+2026-04-05T08:57:07.836252838Z       WHERE NOT ("m"."IsDeleted")
+2026-04-05T08:57:07.836253910Z       ORDER BY "m"."MeetingDate" DESC
+2026-04-05T08:57:36.230123415Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:36.230162469Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:36.230164441Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:57:36.230166514Z       FROM "Meetings" AS "m"
+2026-04-05T08:57:36.230176228Z       WHERE NOT ("m"."IsDeleted")
+2026-04-05T08:57:36.230177189Z       ORDER BY "m"."MeetingDate" DESC
+2026-04-05T08:57:39.667920379Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:39.667951723Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:39.667953375Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:57:39.667954967Z       FROM "Meetings" AS "m"
+2026-04-05T08:57:39.667956049Z       WHERE NOT ("m"."IsDeleted") AND "m"."Id" = @__id_0
+2026-04-05T08:57:39.667956910Z       LIMIT 1
+2026-04-05T08:57:39.671280063Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:39.671288996Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:39.671309303Z       SELECT "m"."Id", "m"."AgendaOrder", "m"."AgendaPointNumber", "m"."AgendaTextSnapshot", "m"."BoardCaseId", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpTextDraft", "m"."IsDeleted", "m"."MeetingId", "m"."Outcome", "m"."TidsfristOverrideDate", "m"."TidsfristOverrideText", "t"."Id", "t"."AssigneeUserId", "t"."CaseNumber", "t"."ClosedDate", "t"."CustomTidsfristDate", "t"."CustomTidsfristText", "t"."DeletedAt", "t"."DeletedByUserId", "t"."Description", "t"."IsDeleted", "t"."Priority", "t"."StartDate", "t"."Status", "t"."Theme", "t"."Title"
+2026-04-05T08:57:39.671311887Z       FROM "MeetingCases" AS "m"
+2026-04-05T08:57:39.671319758Z       INNER JOIN (
+2026-04-05T08:57:39.671327307Z           SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:57:39.671329070Z           FROM "BoardCases" AS "b"
+2026-04-05T08:57:39.671335799Z           WHERE NOT ("b"."IsDeleted")
+2026-04-05T08:57:39.671336710Z       ) AS "t" ON "m"."BoardCaseId" = "t"."Id"
+2026-04-05T08:57:39.671337762Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:57:39.671347706Z       ORDER BY "m"."AgendaOrder"
+2026-04-05T08:57:39.671374603Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:39.671375994Z       Executed DbCommand (0ms) [Parameters=[@__assigneeIds_0='?' (Size = 196)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:39.671376935Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:57:39.671384877Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:57:39.671385798Z       WHERE "a"."Id" IN (
+2026-04-05T08:57:39.671386569Z           SELECT "a0"."value"
+2026-04-05T08:57:39.671397614Z           FROM json_each(@__assigneeIds_0) AS "a0"
+2026-04-05T08:57:39.671398455Z       )
+2026-04-05T08:57:39.671405895Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:39.671406707Z       Executed DbCommand (0ms) [Parameters=[@__alreadyScheduledCaseIds_0='?' (Size = 66)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:39.671407508Z       SELECT "b"."Id", "b"."CaseNumber", "b"."Title"
+2026-04-05T08:57:39.671414687Z       FROM "BoardCases" AS "b"
+2026-04-05T08:57:39.671415579Z       WHERE NOT ("b"."IsDeleted") AND "b"."Status" <> 3 AND "b"."Id" NOT IN (
+2026-04-05T08:57:39.671416790Z           SELECT "a"."value"
+2026-04-05T08:57:39.671425352Z           FROM json_each(@__alreadyScheduledCaseIds_0) AS "a"
+2026-04-05T08:57:39.671426174Z       )
+2026-04-05T08:57:39.671427355Z       ORDER BY "b"."Priority" DESC, "b"."CaseNumber"
+2026-04-05T08:57:41.812322917Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.812351317Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.812353069Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:57:41.812354912Z       FROM "Meetings" AS "m"
+2026-04-05T08:57:41.812367910Z       WHERE NOT ("m"."IsDeleted") AND "m"."Id" = @__id_0
+2026-04-05T08:57:41.812369241Z       LIMIT 1
+2026-04-05T08:57:41.814096193Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.814102842Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.814104314Z       SELECT "m"."Id", "m"."AbsenceText", "m"."ApprovalOfPreviousMinutesText", "m"."AttendanceText", "m"."DeletedAt", "m"."DeletedByUserId", "m"."EventueltText", "m"."IsDeleted", "m"."MeetingId", "m"."NextMeetingDate"
+2026-04-05T08:57:41.814106177Z       FROM "MeetingMinutes" AS "m"
+2026-04-05T08:57:41.814107238Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:57:41.814108389Z       LIMIT 1
+2026-04-05T08:57:41.814127836Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.814129268Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.814137149Z       SELECT "m"."Id", "m"."AgendaOrder", "m"."AgendaPointNumber", "m"."AgendaTextSnapshot", "m"."BoardCaseId", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpTextDraft", "m"."IsDeleted", "m"."MeetingId", "m"."Outcome", "m"."TidsfristOverrideDate", "m"."TidsfristOverrideText"
+2026-04-05T08:57:41.814138902Z       FROM "MeetingCases" AS "m"
+2026-04-05T08:57:41.814169083Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:57:41.814170064Z       ORDER BY "m"."AgendaOrder"
+2026-04-05T08:57:41.814349471Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.814351694Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.814374175Z       SELECT "m"."Id", "m"."BoardCaseId", "m"."DecisionText", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpText", "m"."IsDeleted", "m"."MeetingCaseId", "m"."MeetingId", "m"."OfficialNotes", "m"."Outcome"
+2026-04-05T08:57:41.814376769Z       FROM "MeetingMinutesCaseEntries" AS "m"
+2026-04-05T08:57:41.814377580Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:57:41.816759721Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.816766270Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.816790743Z       SELECT "m"."Id", "m"."BoardCaseId", "m"."DecisionText", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpText", "m"."IsDeleted", "m"."MeetingCaseId", "m"."MeetingId", "m"."OfficialNotes", "m"."Outcome", "t"."Id", "t"."AgendaOrder", "t"."AgendaPointNumber", "t"."AgendaTextSnapshot", "t"."BoardCaseId", "t"."DeletedAt", "t"."DeletedByUserId", "t"."FollowUpTextDraft", "t"."IsDeleted", "t"."MeetingId", "t"."Outcome", "t"."TidsfristOverrideDate", "t"."TidsfristOverrideText", "t0"."Id", "t0"."AssigneeUserId", "t0"."CaseNumber", "t0"."ClosedDate", "t0"."CustomTidsfristDate", "t0"."CustomTidsfristText", "t0"."DeletedAt", "t0"."DeletedByUserId", "t0"."Description", "t0"."IsDeleted", "t0"."Priority", "t0"."StartDate", "t0"."Status", "t0"."Theme", "t0"."Title"
+2026-04-05T08:57:41.816793747Z       FROM "MeetingMinutesCaseEntries" AS "m"
+2026-04-05T08:57:41.816794658Z       INNER JOIN (
+2026-04-05T08:57:41.816808377Z           SELECT "m0"."Id", "m0"."AgendaOrder", "m0"."AgendaPointNumber", "m0"."AgendaTextSnapshot", "m0"."BoardCaseId", "m0"."DeletedAt", "m0"."DeletedByUserId", "m0"."FollowUpTextDraft", "m0"."IsDeleted", "m0"."MeetingId", "m0"."Outcome", "m0"."TidsfristOverrideDate", "m0"."TidsfristOverrideText"
+2026-04-05T08:57:41.816809859Z           FROM "MeetingCases" AS "m0"
+2026-04-05T08:57:41.816810650Z           WHERE NOT ("m0"."IsDeleted")
+2026-04-05T08:57:41.816811512Z       ) AS "t" ON "m"."MeetingCaseId" = "t"."Id"
+2026-04-05T08:57:41.816812383Z       INNER JOIN (
+2026-04-05T08:57:41.816827603Z           SELECT "b"."Id", "b"."AssigneeUserId", "b"."CaseNumber", "b"."ClosedDate", "b"."CustomTidsfristDate", "b"."CustomTidsfristText", "b"."DeletedAt", "b"."DeletedByUserId", "b"."Description", "b"."IsDeleted", "b"."Priority", "b"."StartDate", "b"."Status", "b"."Theme", "b"."Title"
+2026-04-05T08:57:41.816829065Z           FROM "BoardCases" AS "b"
+2026-04-05T08:57:41.816842735Z           WHERE NOT ("b"."IsDeleted")
+2026-04-05T08:57:41.816843616Z       ) AS "t0" ON "m"."BoardCaseId" = "t0"."Id"
+2026-04-05T08:57:41.816844457Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:57:41.816845238Z       ORDER BY "t"."AgendaOrder"
+2026-04-05T08:57:41.817275418Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.817280055Z       Executed DbCommand (0ms) [Parameters=[@__assigneeIds_0='?' (Size = 196)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.817281137Z       SELECT "a"."Id", "a"."FullName", "a"."Email", "a"."UserName"
+2026-04-05T08:57:41.817291050Z       FROM "AspNetUsers" AS "a"
+2026-04-05T08:57:41.817292052Z       WHERE "a"."Id" IN (
+2026-04-05T08:57:41.817292822Z           SELECT "a0"."value"
+2026-04-05T08:57:41.817293543Z           FROM json_each(@__assigneeIds_0) AS "a0"
+2026-04-05T08:57:41.817294585Z       )
+2026-04-05T08:57:41.817583272Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.817588439Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.817684612Z       SELECT "t"."Id" AS "AttachmentId", "t"."OriginalFileName", "t"."SizeBytes"
+2026-04-05T08:57:41.817687285Z       FROM "MeetingMinutesAttachments" AS "m"
+2026-04-05T08:57:41.817688136Z       INNER JOIN (
+2026-04-05T08:57:41.817688867Z           SELECT "a"."Id", "a"."OriginalFileName", "a"."SizeBytes"
+2026-04-05T08:57:41.817689979Z           FROM "Attachments" AS "a"
+2026-04-05T08:57:41.817690700Z           WHERE NOT ("a"."IsDeleted")
+2026-04-05T08:57:41.817691471Z       ) AS "t" ON "m"."AttachmentId" = "t"."Id"
+2026-04-05T08:57:41.817692282Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:57:41.817693113Z       ORDER BY "t"."Id" DESC
+2026-04-05T08:57:41.817709134Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.817709995Z       Executed DbCommand (0ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.817724315Z       SELECT "m"."Id", "m"."BoardCaseId", "m"."DecisionText", "m"."DeletedAt", "m"."DeletedByUserId", "m"."FollowUpText", "m"."IsDeleted", "m"."MeetingCaseId", "m"."MeetingId", "m"."OfficialNotes", "m"."Outcome"
+2026-04-05T08:57:41.817725537Z       FROM "MeetingMinutesCaseEntries" AS "m"
+2026-04-05T08:57:41.817726328Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingId" = @__id_0
+2026-04-05T08:57:41.818134499Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:57:41.818138495Z       Executed DbCommand (0ms) [Parameters=[@__minutesEntryIds_0='?' (Size = 73)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:57:41.818168546Z       SELECT "m"."MeetingMinutesCaseEntryId", "m"."Id", "t"."Id", "t"."OriginalFileName", "t"."ContentType", "t"."SizeBytes"
+2026-04-05T08:57:41.818170299Z       FROM "MeetingMinutesCaseEntryAttachments" AS "m"
+2026-04-05T08:57:41.818171500Z       INNER JOIN (
+2026-04-05T08:57:41.818172522Z           SELECT "a"."Id", "a"."ContentType", "a"."OriginalFileName", "a"."SizeBytes"
+2026-04-05T08:57:41.818173793Z           FROM "Attachments" AS "a"
+2026-04-05T08:57:41.818174844Z           WHERE NOT ("a"."IsDeleted")
+2026-04-05T08:57:41.818176025Z       ) AS "t" ON "m"."AttachmentId" = "t"."Id"
+2026-04-05T08:57:41.818177187Z       WHERE NOT ("m"."IsDeleted") AND "m"."MeetingMinutesCaseEntryId" IN (
+2026-04-05T08:57:41.818178479Z           SELECT "m0"."value"
+2026-04-05T08:57:41.818179490Z           FROM json_each(@__minutesEntryIds_0) AS "m0"
+2026-04-05T08:57:41.818180521Z       )
+2026-04-05T08:57:41.818181483Z       ORDER BY "t"."Id" DESC
+2026-04-05T08:58:00.770931867Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-04-05T08:58:00.770978361Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:58:00.770980354Z       SELECT "m"."Id", "m"."DeletedAt", "m"."DeletedByUserId", "m"."IsDeleted", "m"."Location", "m"."MeetingDate", "m"."Year", "m"."YearSequenceNumber"
+2026-04-05T08:58:00.770982497Z       FROM "Meetings" AS "m"
+2026-04-05T08:58:00.770983618Z       WHERE NOT ("m"."IsDeleted")
+2026-04-05T08:58:00.770984689Z       ORDER BY "m"."MeetingDate" DESC
+2026-04-05T08:58:22.572857466Z fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+2026-04-05T08:58:22.572888389Z       Failed executing DbCommand (1ms) [Parameters=[@p0='?' (DbType = DateTimeOffset), @p1='?', @p2='?' (DbType = Boolean), @p3='?', @p4='?' (DbType = Date), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+2026-04-05T08:58:22.572890321Z       INSERT INTO "Meetings" ("DeletedAt", "DeletedByUserId", "IsDeleted", "Location", "MeetingDate", "Year", "YearSequenceNumber")
+2026-04-05T08:58:22.572891973Z       VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+2026-04-05T08:58:22.572893516Z       RETURNING "Id";
+2026-04-05T08:58:22.574121743Z fail: Microsoft.EntityFrameworkCore.Update[10000]
+2026-04-05T08:58:22.574127070Z       An exception occurred in the database while saving changes for context type 'SaksAppWeb.Data.ApplicationDbContext'.
+2026-04-05T08:58:22.574138436Z       Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+2026-04-05T08:58:22.574139788Z        ---> Microsoft.Data.Sqlite.SqliteException (0x80004005): SQLite Error 8: 'attempt to write a readonly database'.
+2026-04-05T08:58:22.574147268Z          at Microsoft.Data.Sqlite.SqliteException.ThrowExceptionForRC(Int32 rc, sqlite3 db)
+2026-04-05T08:58:22.574156310Z          at Microsoft.Data.Sqlite.SqliteDataReader.NextResult()
+2026-04-05T08:58:22.574157221Z          at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReader(CommandBehavior behavior)
+2026-04-05T08:58:22.574165072Z          at Microsoft.Data.Sqlite.SqliteCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574165973Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574195605Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574196556Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574197467Z          --- End of inner exception stack trace ---
+2026-04-05T08:58:22.574198158Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574198939Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574199720Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574200611Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574201402Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574202314Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574203135Z          at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574204106Z       Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+2026-04-05T08:58:22.574204887Z        ---> Microsoft.Data.Sqlite.SqliteException (0x80004005): SQLite Error 8: 'attempt to write a readonly database'.
+2026-04-05T08:58:22.574205698Z          at Microsoft.Data.Sqlite.SqliteException.ThrowExceptionForRC(Int32 rc, sqlite3 db)
+2026-04-05T08:58:22.574206419Z          at Microsoft.Data.Sqlite.SqliteDataReader.NextResult()
+2026-04-05T08:58:22.574207230Z          at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReader(CommandBehavior behavior)
+2026-04-05T08:58:22.574208002Z          at Microsoft.Data.Sqlite.SqliteCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574209984Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574210825Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574211616Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574212397Z          --- End of inner exception stack trace ---
+2026-04-05T08:58:22.574213078Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574213850Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574214640Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574215432Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574216233Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574217034Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-04-05T08:58:22.574217855Z          at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580130255Z fail: Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware[1]
+2026-04-05T08:58:22.580135492Z       An unhandled exception has occurred while executing the request.
+2026-04-05T08:58:22.580153577Z       Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+2026-04-05T08:58:22.580154489Z        ---> Microsoft.Data.Sqlite.SqliteException (0x80004005): SQLite Error 8: 'attempt to write a readonly database'.
+2026-04-05T08:58:22.580155370Z          at Microsoft.Data.Sqlite.SqliteException.ThrowExceptionForRC(Int32 rc, sqlite3 db)
+2026-04-05T08:58:22.580156161Z          at Microsoft.Data.Sqlite.SqliteDataReader.NextResult()
+2026-04-05T08:58:22.580156912Z          at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReader(CommandBehavior behavior)
+2026-04-05T08:58:22.580157633Z          at Microsoft.Data.Sqlite.SqliteCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580158444Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580213509Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580214550Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580215392Z          --- End of inner exception stack trace ---
+2026-04-05T08:58:22.580216092Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580216843Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580217615Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580218385Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580219177Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580219967Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580220759Z          at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580221530Z          at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-04-05T08:58:22.580222281Z          at SaksAppWeb.Controllers.MeetingsController.Create(MeetingEditVm vm, CancellationToken ct) in /src/SaksAppWeb/Controllers/MeetingsController.cs:line 59
+2026-04-05T08:58:22.580223202Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+2026-04-05T08:58:22.580224033Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+2026-04-05T08:58:22.580225095Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+2026-04-05T08:58:22.580226096Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+2026-04-05T08:58:22.580226867Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+2026-04-05T08:58:22.580228900Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+2026-04-05T08:58:22.580229741Z       --- End of stack trace from previous location ---
+2026-04-05T08:58:22.580230552Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+2026-04-05T08:58:22.580231494Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+2026-04-05T08:58:22.580232284Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+2026-04-05T08:58:22.580233126Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+2026-04-05T08:58:22.580235549Z       --- End of stack trace from previous location ---
+2026-04-05T08:58:22.580236270Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+2026-04-05T08:58:22.580237131Z          at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+2026-04-05T08:58:22.580238043Z          at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+2026-04-05T08:58:22.580238914Z          at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
