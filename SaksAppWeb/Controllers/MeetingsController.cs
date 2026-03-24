@@ -1039,7 +1039,6 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
             .ToDictionaryAsync(x => x.Id, x => x.FullName ?? x.Email ?? x.UserName ?? x.Id, ct);
 
-        // Load attachments for entries
         var entryIds = entries.Select(x => x.e.Id).Distinct().ToList();
         var entryAttachments = entryIds.Count == 0
             ? new List<(int EntryId, string FileName, string ContentType, byte[] Content)>()
@@ -1056,19 +1055,29 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             .GroupBy(x => x.Item1)
             .ToDictionary(g => g.Key, g => g.Select(x => (x.Item2, x.Item3, x.Item4)).ToList());
 
+        var entryAttachmentNumbers = new Dictionary<int, List<int>>();
+        var globalAttNum = 1;
+        foreach (var entry in entries)
+        {
+            if (attachmentsByEntryId.TryGetValue(entry.e.Id, out var atts))
+            {
+                var nums = Enumerable.Range(globalAttNum, atts.Count).ToList();
+                entryAttachmentNumbers[entry.e.Id] = nums;
+                globalAttNum += atts.Count;
+            }
+        }
+
         var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.Minutes, ct);
 
         var pdf = new SimplePdfWriter();
-        pdf.Title($"Referat / Minutes — {meeting.MeetingDate} — {meeting.Year}/{meeting.YearSequenceNumber} — PDF v{seq}");
+        pdf.Title($"Referat — {meeting.MeetingDate} — {meeting.Year}/{meeting.YearSequenceNumber} — PDF v{seq}");
         if (!string.IsNullOrWhiteSpace(meeting.Location))
             pdf.Paragraph($"Sted: {meeting.Location}");
 
         pdf.Blank();
 
-        pdf.Heading("Møtenotater");
         if (!string.IsNullOrWhiteSpace(minutes.AttendanceText)) pdf.Paragraph($"Oppmøte: {minutes.AttendanceText}");
         if (!string.IsNullOrWhiteSpace(minutes.AbsenceText)) pdf.Paragraph($"Forfall: {minutes.AbsenceText}");
-        if (!string.IsNullOrWhiteSpace(minutes.ApprovalOfPreviousMinutesText)) pdf.Paragraph($"Godkjenning av forrige referat: {minutes.ApprovalOfPreviousMinutesText}");
 
         if (minutes.NextMeetingDate is not null)
         {
@@ -1082,7 +1091,14 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         pdf.Blank(12);
         pdf.Heading("Saker");
 
-        var i = 1;
+        if (!string.IsNullOrWhiteSpace(minutes.ApprovalOfPreviousMinutesText))
+        {
+            pdf.Heading("1. Godkjenning av forrige referat");
+            pdf.Paragraph(minutes.ApprovalOfPreviousMinutesText);
+            pdf.Blank(12);
+        }
+
+        var i = 2;
         foreach (var row in entries)
         {
             var assignee = userDisplay.TryGetValue(row.c.AssigneeUserId, out var d) ? d : row.c.AssigneeUserId;
@@ -1096,17 +1112,23 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                 _ => row.e.Outcome.ToString()
             };
 
-            pdf.Heading($"{i}. #{row.c.CaseNumber} — {row.c.Title} ({assignee})");
-            pdf.Paragraph($"Utfallet: {outcomeDisplay}");
+            pdf.Heading($"{i}. {row.c.Title} ({assignee}; #{row.c.CaseNumber})");
+            pdf.Paragraph($"Status: {outcomeDisplay}");
 
             if (!string.IsNullOrWhiteSpace(row.e.OfficialNotes))
-                pdf.Paragraph($"Notater: {row.e.OfficialNotes}");
+                pdf.Paragraph(row.e.OfficialNotes);
 
             if (!string.IsNullOrWhiteSpace(row.e.DecisionText))
                 pdf.Paragraph($"Vedtak: {row.e.DecisionText}");
 
             if (!string.IsNullOrWhiteSpace(row.e.FollowUpText))
                 pdf.Paragraph($"Oppfølging: {row.e.FollowUpText}");
+
+            if (entryAttachmentNumbers.TryGetValue(row.e.Id, out var attNums) && attNums.Count > 0)
+            {
+                var attRefs = string.Join(", ", attNums.Select(n => $"Vedlegg {n}"));
+                pdf.Paragraph(attRefs);
+            }
 
             pdf.Blank(10);
             i++;
@@ -1119,7 +1141,6 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             pdf.Paragraph(minutes.EventueltText);
         }
 
-        // Collect and embed all attachments
         var allAttachments = entryAttachments.Distinct().ToList();
         if (allAttachments.Count > 0)
         {
@@ -1127,9 +1148,12 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             pdf.Heading("Vedlegg");
 
             var attachmentNumber = 1;
+            var attachmentPageNumbers = new List<int>();
             foreach (var att in allAttachments)
             {
                 var (attachmentFileName, contentType, content) = (att.Item2, att.Item3, att.Item4);
+                var pageNum = pdf.AddPdfAttachmentStart();
+                attachmentPageNumbers.Add(pageNum);
 
                 if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
                 {
@@ -1140,6 +1164,15 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                     pdf.AddImageAttachment(content, attachmentFileName, attachmentNumber);
                 }
                 attachmentNumber++;
+            }
+
+            attachmentNumber = 1;
+            var idx = 0;
+            foreach (var att in allAttachments)
+            {
+                pdf.WriteAttachmentTocEntry(attachmentPageNumbers[idx], attachmentNumber, att.Item2);
+                attachmentNumber++;
+                idx++;
             }
         }
 
