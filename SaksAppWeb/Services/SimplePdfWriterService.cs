@@ -30,10 +30,20 @@ public sealed class SimplePdfWriter
         public double Y { get; init; }
         public double Width { get; init; }
         public double Height { get; init; }
-        public int AttachmentNumber { get; init; } // Store attachment number, not page
+        public int AttachmentNumber { get; init; }
+    }
+
+    private class PendingTocLink
+    {
+        public int PageNumber { get; init; }
+        public double Y { get; init; }
+        public double Width { get; init; }
+        public double Height { get; init; }
+        public int TargetPageNumber { get; init; }
     }
 
     private readonly List<PendingLink> _pendingLinks = new();
+    private readonly List<PendingTocLink> _pendingTocLinks = new();
     private readonly Dictionary<int, int> _attachmentPageNumbers = new();
 
     public SimplePdfWriter()
@@ -136,37 +146,55 @@ public sealed class SimplePdfWriter
     {
         foreach (var link in _pendingLinks)
         {
-            // Look up the actual page number for this attachment
             if (!_attachmentPageNumbers.TryGetValue(link.AttachmentNumber, out var actualTargetPage))
             {
-                Console.WriteLine($"DEBUG: No page found for attachment {link.AttachmentNumber}");
                 continue;
             }
             
-            // Convert Y to PDF coordinates (origin at bottom-left of page)
             var pageHeight = _doc.Pages[link.PageNumber - 1].Height;
             var pdfY = pageHeight - link.Y - link.Height;
             
-            Console.WriteLine($"DEBUG: Creating link on page {link.PageNumber}, target page {actualTargetPage - 1}");
-            Console.WriteLine($"DEBUG: link.Y={link.Y}, pdfY={pdfY}, width={link.Width}, height={link.Height}, pageHeight={pageHeight}");
-            
-            // Create PdfRectangle 
             var pdfRect = new PdfRectangle(new XPoint(link.Y, pdfY), new XPoint(link.Y + link.Width, pdfY + link.Height));
-            Console.WriteLine($"DEBUG: pdfRect={pdfRect}");
             
             var annotation = PdfLinkAnnotation.CreateDocumentLink(pdfRect, actualTargetPage - 1);
             _doc.Pages[link.PageNumber - 1].Annotations.Add(annotation);
-            Console.WriteLine($"DEBUG: Added annotation to page {link.PageNumber - 1}");
         }
     }
 
     public Dictionary<int, int> GetAttachmentPageNumbers() => _attachmentPageNumbers;
 
+    public int GetCurrentPageNumber() => _doc.PageCount;
+
     public void Blank(double points = 8) => _y += points;
+
+    public void WriteAttachmentTocEntry(int pageNumber, int attachmentNumber, string fileName)
+    {
+        var text = $"{pageNumber}: Vedlegg {attachmentNumber}: {fileName}";
+        var fontHeight = _pFont.GetHeight();
+        var textWidth = _gfx.MeasureString(text, _pFont).Width;
+
+        _gfx.DrawString(text, _pFont, XBrushes.Black, new XRect(Margin, _y, textWidth, fontHeight + LineGap), XStringFormats.TopLeft);
+
+        _pendingTocLinks.Add(new PendingTocLink
+        {
+            PageNumber = _doc.PageCount,
+            Y = _y,
+            Width = textWidth,
+            Height = fontHeight + LineGap,
+            TargetPageNumber = pageNumber
+        });
+
+        _y += fontHeight + LineGap + 4;
+    }
+
+    public int AddPdfAttachmentStart()
+    {
+        return _doc.PageCount + 1;
+    }
 
     public void AddPdfAttachment(byte[] pdfContent, string fileName, int number)
     {
-        var pageNum = AddAttachmentCoverPage(fileName, number);
+        AddAttachmentCoverPage(fileName, number);
 
         using var inputStream = new MemoryStream(pdfContent);
         var inputDoc = PdfReader.Open(inputStream, PdfDocumentOpenMode.Import);
@@ -223,12 +251,26 @@ public sealed class SimplePdfWriter
 
     public byte[] ToBytes()
     {
-        // Apply any pending links now that all pages are created
         ApplyPendingLinks();
+        ApplyPendingTocLinks();
         
         using var ms = new MemoryStream();
         _doc.Save(ms, closeStream: false);
         return ms.ToArray();
+    }
+
+    private void ApplyPendingTocLinks()
+    {
+        foreach (var link in _pendingTocLinks)
+        {
+            var pageHeight = _doc.Pages[link.PageNumber - 1].Height;
+            var pdfY = pageHeight - link.Y - link.Height;
+
+            var pdfRect = new PdfRectangle(new XPoint(link.Y, pdfY), new XPoint(link.Y + link.Width, pdfY + link.Height));
+
+            var annotation = PdfLinkAnnotation.CreateDocumentLink(pdfRect, link.TargetPageNumber - 1);
+            _doc.Pages[link.PageNumber - 1].Annotations.Add(annotation);
+        }
     }
 
     private const double IndentWidth = 20;
