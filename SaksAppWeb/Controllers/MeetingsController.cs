@@ -431,7 +431,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
     // --- Build PDF ---
     var pdf = new SimplePdfWriter();
-    pdf.Title($"Innkalling styremøte #{meeting.YearSequenceNumber} {meeting.Year} — {meeting.MeetingDate}");
+    pdf.Title($"Innkalling styremøte #{meeting.YearSequenceNumber} {meeting.Year} — {meeting.MeetingDate:dd.MM.yyyy}");
     pdf.Paragraph($"(v{seq})");
     if (!string.IsNullOrWhiteSpace(meeting.Location))
         pdf.Paragraph($"Sted: {meeting.Location}");
@@ -532,7 +532,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         // Previous meeting follow-up (official)
         if (previousByCaseId.TryGetValue(row.c.Id, out var prev))
         {
-            pdf.Heading3($"Forrige møte ({prev.MeetingDate}):");
+            pdf.Heading3($"Forrige møte ({prev.MeetingDate:dd.MM.yyyy}):");
 
             if (!string.IsNullOrWhiteSpace(prev.OfficialNotes))
             {
@@ -684,7 +684,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         reason: "Generated enriched agenda PDF (prev follow-up + between-meeting comments + attachment refs)",
         ct: ct);
 
-    var pdfFileName = $"{meeting.Year}-#{meeting.YearSequenceNumber}-innkalling-{meeting.MeetingDate}-v{seq}.pdf";
+    var pdfFileName = $"{meeting.Year}-#{meeting.YearSequenceNumber}-innkalling-{meeting.MeetingDate:dd.MM.yyyy}-v{seq}.pdf";
     return File(bytes, "application/pdf", pdfFileName);
 }
 
@@ -712,7 +712,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.AssigneeReminder, ct);
 
         var pdf = new SimplePdfWriter();
-        pdf.Title($"Påminnelse per ansvarlig — {meeting.MeetingDate} — {meeting.Year}/{meeting.YearSequenceNumber} — PDF v{seq}");
+        pdf.Title($"Påminnelse per ansvarlig — {meeting.MeetingDate:dd.MM.yyyy} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
         pdf.Paragraph("Kort liste per ansvarlig over saker til møtet.");
 
         pdf.Blank();
@@ -751,7 +751,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             reason: "Generated assignee reminder PDF",
             ct: ct);
 
-        var fileName = $"reminder-{meeting.Year}-{meeting.YearSequenceNumber:00}-{meeting.MeetingDate}-v{seq}.pdf";
+        var fileName = $"reminder-{meeting.Year}-{meeting.YearSequenceNumber:00}-{meeting.MeetingDate:dd.MM.yyyy}-v{seq}.pdf";
         return File(bytes, "application/pdf", fileName);
     }
 
@@ -1070,7 +1070,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
         var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.Minutes, ct);
 
         var pdf = new SimplePdfWriter();
-        pdf.Title($"Referat — {meeting.MeetingDate} — {meeting.Year}/{meeting.YearSequenceNumber} — PDF v{seq}");
+        pdf.Title($"Referat — {meeting.MeetingDate:dd.MM.yyyy} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
         if (!string.IsNullOrWhiteSpace(meeting.Location))
             pdf.Paragraph($"Sted: {meeting.Location}");
 
@@ -1081,7 +1081,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
         if (minutes.NextMeetingDate is not null)
         {
-            pdf.Paragraph($"Neste møte: {minutes.NextMeetingDate}");
+            pdf.Paragraph($"Neste møte: {minutes.NextMeetingDate:dd.MM.yyyy}");
         }
         else
         {
@@ -1147,13 +1147,23 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             pdf.Blank(12);
             pdf.Heading("Vedlegg");
 
-            var attachmentNumber = 1;
             var attachmentPageNumbers = new List<int>();
+            foreach (var _ in allAttachments)
+            {
+                attachmentPageNumbers.Add(pdf.AddPdfAttachmentStart());
+            }
+
+            var attachmentNumber = 1;
+            foreach (var att in allAttachments)
+            {
+                pdf.WriteAttachmentTocEntry(attachmentPageNumbers[attachmentNumber - 1], attachmentNumber, att.Item2);
+                attachmentNumber++;
+            }
+
+            attachmentNumber = 1;
             foreach (var att in allAttachments)
             {
                 var (attachmentFileName, contentType, content) = (att.Item2, att.Item3, att.Item4);
-                var pageNum = pdf.AddPdfAttachmentStart();
-                attachmentPageNumbers.Add(pageNum);
 
                 if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
                 {
@@ -1164,15 +1174,6 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
                     pdf.AddImageAttachment(content, attachmentFileName, attachmentNumber);
                 }
                 attachmentNumber++;
-            }
-
-            attachmentNumber = 1;
-            var idx = 0;
-            foreach (var att in allAttachments)
-            {
-                pdf.WriteAttachmentTocEntry(attachmentPageNumbers[idx], attachmentNumber, att.Item2);
-                attachmentNumber++;
-                idx++;
             }
         }
 
@@ -1187,7 +1188,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             reason: "Generated minutes PDF",
             ct: ct);
 
-        var fileName = $"minutes-{meeting.Year}-{meeting.YearSequenceNumber:00}-{meeting.MeetingDate}-v{seq}.pdf";
+        var fileName = $"minutes-{meeting.Year}-{meeting.YearSequenceNumber:00}-{meeting.MeetingDate:dd.MM.yyyy}-v{seq}.pdf";
         return File(bytes, "application/pdf", fileName);
     }
 
