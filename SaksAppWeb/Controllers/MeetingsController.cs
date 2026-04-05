@@ -520,6 +520,12 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             pdf.ParagraphItalic($"{row.c.Description}");
         }
 
+        if (!string.IsNullOrWhiteSpace(row.mc.AgendaTextSnapshot) &&
+            !row.mc.AgendaTextSnapshot.Equals(row.c.Description, StringComparison.OrdinalIgnoreCase))
+        {
+            pdf.Paragraph(row.mc.AgendaTextSnapshot);
+        }
+
         // Tidsfrist display (same logic as before)
         var tidsfrist = (row.mc.TidsfristOverrideDate is not null || !string.IsNullOrWhiteSpace(row.mc.TidsfristOverrideText))
             ? $"{row.mc.TidsfristOverrideDate?.ToString() ?? ""} {row.mc.TidsfristOverrideText ?? ""}".Trim()
