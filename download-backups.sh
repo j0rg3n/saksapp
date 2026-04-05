@@ -3,7 +3,7 @@ set -e
 
 VM_HOST="root@212.147.235.100"
 VM_PATH="/root/SaksAppWeb/db/Backups"
-LOCAL_PATH="./backups"
+LOCAL_PATH="../SaksApp_backups"
 KEEP_REMOTE=5
 
 echo "=== Syncing SaksApp Backups ==="

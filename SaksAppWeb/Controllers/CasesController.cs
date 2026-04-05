@@ -78,7 +78,8 @@ public class CasesController : Controller
                 AssigneeUserId = c.AssigneeUserId,
                 AssigneeDisplay = displayById.TryGetValue(c.AssigneeUserId, out var d) ? d : c.AssigneeUserId,
                 CustomTidsfristDate = c.CustomTidsfristDate,
-                CustomTidsfristText = c.CustomTidsfristText
+                CustomTidsfristText = c.CustomTidsfristText,
+                Theme = c.Theme
             })
             .ToList();
 

@@ -15,4 +15,6 @@ public class CaseIndexRowVm
 
     public DateOnly? CustomTidsfristDate { get; set; }
     public string? CustomTidsfristText { get; set; }
+
+    public string? Theme { get; set; }
 }
