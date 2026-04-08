@@ -101,6 +101,39 @@ A case scheduled for a specific meeting. An agenda item has:
 - Mark outcome (e.g., continued, decided, archived)
 - Download minutes PDF
 
+### Eventuelt (Extra Items)
+- Cases can be marked as "Eventuelt" (extra items)
+- Eventuelt cases appear in meeting minutes but not in the agenda PDF
+- They are full cases, just with special status
+
+### Board Log (Styrelogg)
+
+**Overview**
+- A chronological log of events and activities related to board operations
+- Events can exist independently or be linked to specific cases
+- Multiple categories for different types of events
+
+**Event Management**
+- Create events with category (deviation/avvik, measure/tiltak, general, etc.)
+- Link events to one or more cases
+- Create events without linking to a case
+- Meeting notes are treated as events with special types: "referat" (minutes), "vedtak" (decision), "oppfølging" (follow-up)
+
+**WhatsApp Integration** (future)
+- SaksApp bot for WhatsApp group
+- Create events directly from WhatsApp
+- Two-way sync: WhatsApp messages to log and vice versa
+- Messages tagged with WhatsApp ID, updated on edit
+- If edit fails, post new version as reply with link to old
+
+### HMS Deviation and Measures Log
+
+**Overview**
+- Dedicated view for deviations and measures (Helse, Miljø, Sikkerhet)
+- Shows all events categorized as deviations and measures
+- Can reference related cases
+- Typically does not include meetings (decisions not made there)
+
 ### PDF Generation
 
 **Unified visual style**
@@ -154,6 +187,8 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 - **MeetingMinutes** - Minutes for a meeting
 - **MeetingMinutesCaseEntry** - Per-agenda-item minutes
 - **PdfGeneration** - Log of generated PDFs
+- **BoardEvent** - Event/log entry in the board log (future)
+- **BoardEventCase** - Many-to-many link between events and cases (future)
 
 ### Soft Deletes
 All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
