@@ -230,3 +230,23 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 
 ### Background Services
 - Database backup service - hourly backups using SQLite Online Backup API
+
+### Testing
+
+**Coverage Target**
+- Minimum 75% code coverage for business logic
+- Focus on services, controllers, and data transformation logic
+
+**Mocking Strategy**
+To achieve the coverage target, the following external services must be mockable:
+- **Database**: Entity Framework DbContext - use in-memory provider or mocking libraries
+- **Email (SMTP)**: SmtpEmailSender - mock IEmailSender interface
+- **PDF Generation**: SimplePdfWriter - mock or use test implementation
+- **User Manager**: ASP.NET Identity UserManager - mock for authentication tests
+- **File System**: Data protection keys, database files - use temporary directories
+- **Audit Service**: IAuditService - mock to capture logged events
+
+**Test Organization**
+- Unit tests for isolated logic
+- Integration tests for database operations
+- Controller tests for HTTP request/response handling
