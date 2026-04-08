@@ -10,21 +10,18 @@
 ### Visualisering
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ SAKER                                                                    [+ Ny sak] │
+│ [ ] Vis lukkede saker                                    SAKER    [+ Ny sak] │
 ├──────┬────────────────────────┬────────┬────────┬──────────┬────────────────┤
 │  #   │ Tittel                 │ Tema   │ Pri    │ Status   │ Ansvarlig     │
 ├──────┼────────────────────────┼────────┼────────┼──────────┼────────────────┤
 │  47  │ Oppsett vaskeri        │ drift  │   2    │ Åpen     │ Hansen        │
 │  46  │ Budsjett 2026          │ økonomi│   3    │ Åpen     │ Johansen      │
 │  45  │ Alt                   │        │   1    │ Lukket   │ --            │
-├──────┴────────────────────────┴────────┴────────┴──────────┴────────────────┤
-│ [ ] Vis lukkede saker                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+└──────┴────────────────────────┴────────┴────────┴──────────┴────────────────┘
 ```
 
 ### Struktur
-- **Header**: Tittel "Saker", "Ny sak"-knapp (høyre)
-- **Filter**: Checkbox "Vis lukkede saker" (venstre, samme linje som header)
+- **Header**: Checkbox "Vis lukkede saker" (venstre), Tittel "Saker" (sentrert), "Ny sak"-knapp (høyre)
 - **Tabellkolonner**: #, Tittel, Tema, Pri (prioritet), Status, Ansvarlig, Tidsfrist, Handlinger
 - **Rad**: Klikk på rad for å åpne sak
 
@@ -46,23 +43,29 @@
 │ Det er behov for å etablere et nytt vaskeri i bygget. Vi har fått tilbud   │
 │ fra tre leverandører som må evalueres.                                     │
 │                                                                           ─── │
-│ SAKSHENDELSER (nyeste først)                                               │
+│ SAKSHENDELSER (kronologisk)                                                │
+│ [+ Ny saksmerknad 📎]                                                      │
+│                                                                           ─── │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ 10.04.2026 14:30 — Saksmerknad                                          │ │
-│ │ Mottatt tilbud fra leverandørene, sendt til styret for vurdering      │ │
-│ │ [Vedlegg: tilbud_abc.pdf]                                              │ │
+│ │ 12.03.2026 18:00 — Møte 2026/3 — Referat                                📎 │
+│ │ Saken ble behandlet. Styret besluttet å utsette avgjørelsen.            │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ 12.03.2026 18:00 — Møte 2026/3 — Vedtak                                 │ │
+│ │ Saken utsettes til neste møte                                           │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ 12.03.2026 18:00 — Møte 2026/3 — Oppfølging                             📎 │
+│ │ Hansen innhenter ytterligere tilbud                                      │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ 10.04.2026 14:30 — Saksmerknad                                          📎 │
+│ │ Mottatt tilbud fra leverandørene, sendt til styret for vurdering       │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
 │ │ 05.04.2026 09:15 — Saksmerknad                                          │ │
 │ │ Møte med leverandører planlagt                                         │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                           ─── │
-│ MØTEHISTORIKK                                                              │
-│ • Møte 2026/3 (12.03.2026) — Vedtak: Utsatt                               │
-│ • Møte 2026/2 (15.02.2026) — Vedtak: Fortsetter                           │
-│                                                                           ─── │
-│ HANDLINGER                                                                  │
-│ [Ny saksmerknad]  [Last opp vedlegg]                                       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -71,9 +74,11 @@
 - **Sakstittel**: # og tittel
 - **Metadata**: Prioritet, Status, Ansvarlig, Tidsfrist, Tema
 - **Beskrivelse**: Full tekst
-- **Sakshendelser**: Kronologisk liste med dato, type, innhold, vedlegg
-- **Møtehistorikk**: Lista over møter der saken har vært behandlet
-- **Handlinger**: Knapper for nye hendelser/vedlegg
+- **Sakshendelser** (kronologisk):
+  - "Ny saksmerknad" + opplastingsikon på samme linje (topp)
+  - Interleaved entries: Saksmerknader + Møtehistorikk (Vedtak, Referat, Oppfølging)
+  - Hver entry har: Dato/tid, Kilde (Møte eller Saksmerknad), Type, Innhold, Vedlegg-ikon
+  - Icons: 📎 for vedlegg eksisterende, kan ha eget icon for å legge til vedlegg
 
 ---
 
@@ -103,7 +108,7 @@
 ### Visualisering
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ ← Tilbake                     [Referat]  [Last ned innkalling PDF]          │
+│ ← Tilbake       [Rediger]  [Referat]  [Last ned innkalling PDF]            │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Møte 2026/4 — 15.04.2026                                                     │
 │ Borettslagets hus                                                           │
@@ -126,7 +131,7 @@
 ```
 
 ### Struktur
-- **Header**: Tilbake, Referat, Last ned PDF
+- **Header**: Tilbake, Rediger, Referat, Last ned PDF
 - **Møteinfo**: Dato, nummer, sted
 - **Legg til sak**: Dropdown med åpne saker, "Legg til"-knapp
 - **Sakliste**: Tabell med kolonner: Rekkefølge, Saksinfo (nr, tittel, ansvarlig, tidsfrist, tema), Handlinger
@@ -149,24 +154,22 @@
 │ └─────────────────────────────────┴───────────────────────────────────────┘ │
 │ Godkjenning av forrige referat: [________________________________________]  │
 │ Neste møte: [____-__-__]                                                     │
-│ Eventuelt: [___________________________________________________________]    │
+│ [Legg til eventuelt sak 📎]                                                  │
 │                                                                           ─── │
 │ SAKSPROSESSOR                                                                │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
 │ │ [< Forrige]  SAK 2 AV 5  [Neste >]                                     │ │
 │ │                                                                      │ │
-│ │ #46 — Budsjett 2026 (Johansen)                                        │ │
+│ │ #46 — Budsjett 2026 (Johansen)    [● Fortsetter]                     │ │
 │ │ ────────────────────────────────────────────────────────────────      │ │
-│ │ UTALL: [Fortsetter ▼]                                                 │ │
-│ │                                                                       │ │
 │ │ Referat: [______________________________________________________]     │ │
 │ │                                                                       │ │
 │ │ Vedtak: [_____________________________________________________]      │ │
 │ │                                                                       │ │
-│ │ Oppfølging: [___________________________________________________]    │ │
+│ │ Oppfølging: [___________________________________________________]     │ │
 │ │                                                                       │ │
 │ │ Vedlegg: ingen                                                       │ │
-│ │ [Last opp vedlegg]                                                   │ │
+│ │ [📎 Last opp vedlegg]                                                │ │
 │ │                                                                      │ │
 │ │ [Lagre]                                                             │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
@@ -175,15 +178,16 @@
 
 ### Struktur
 - **Header**: Navigasjon, Last ned PDF
-- **Møteinfo**: Oppmøte, Forfall, Godkjenning, Neste møte, Eventuelt
+- **Møteinfo**: Oppmøte, Forfall, Godkjenning, Neste møte
+- **Eventuelt**: "Legg til eventuelt sak" knapp med vedlegg-ikon
 - **Saksprosessor**:
   - Navigering: Forrige/Neste-knapper + saksnummer
-  - Saksinfo: Casenumber, tittel, ansvarlig
-  - Utfall: Dropdown (Fortsetter, Avsluttet, Utsatt, Orientering)
+  - Saksinfo: Casenumber, tittel, ansvarlig, Utfall-badge
+  - Utfall: Farget badge (● Blå=Fortsetter, ● Grønn=Avsluttet, ● Grå=Utsatt, ● Lilla=Orientering)
   - Referat: Tekstfelt
   - Vedtak: Tekstfelt
   - Oppfølging: Tekstfelt
-  - Vedlegg: Liste + last opp
+  - Vedlegg: Liste + opplastingsikon
   - Lagre-knapp
 
 ---
@@ -213,7 +217,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ Rediger saks punkt — #47 Oppsett vaskeri                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Dagsorden-tekst (snitt):                                                    │
+│ Dagsorden-tekst:                                                            │
 │ [________________________________________________________________________] │
 │                                                                           __ │
 │ Tidsfrist:                                                                  │
@@ -237,16 +241,23 @@
 │                                                                           ─── │
 │ KRONOLOGI                                                                     │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ 12.04.2026 14:30 — AVDELING: HMS                                        │ │
-│ │ Avvik: Varmtvannstank lekkasje                                         │ │
-│ │ Beskrivelse: Oppdaget lekkasje i kjeller. Produsent varslet.           │ │
-│ │ Relatert sak: #47 Oppsett vaskeri                                      │ │
-│ │ Tiltak: Installere ny tank                                             │ │
+│ │ 12.04.2026 14:30 — HMS                                                   │ │
+│ │ Avvik: Varmtvannstank lekkasje                                          │ │
+│ │ Beskrivelse: Oppdaget lekkasje i kjeller. Produsent varslet.            │ │
+│ │ Relatert sak: #47 (Åpen)                                                │ │
+│ │ Tiltak: Installere ny tank                                              │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ 10.04.2026 09:00 — AVDELING: Drift                                     │ │
-│ │ Generell: Møte med vaskerileverandør                                   │ │
-│ │ Saksmerknad: Mottatt tilbud fra tre leverandører                       │ │
+│ │ 10.04.2026 09:00 — Drift                                                 │ │
+│ │ Generell: Møte med vaskerileverandør                                    │ │
+│ │ Saksmerknad: Mottatt tilbud fra tre leverandører                        │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ 01.04.2026 11:00 — HMS                                                   │ │
+│ │ Avvik: Kontroll av brannslukningsapparat                                │ │
+│ │ Beskrivelse: Årlig kontroll gjennomført                                 │ │
+│ │ Relatert sak: -- (ingen sak knyttet)                                    │ │
+│ │ Tiltak: --                                                              │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -254,7 +265,9 @@
 ### Struktur
 - **Header**: Tittel, "Ny hendelse"-knapp
 - **Filter**: Kategori, dato range, sak
-- **Kronologi**: Liste med dato/tid, kategori, tittel, beskrivelse, relaterte saker, tiltak
+- **Kronologi**: Liste med dato/tid, kategori, tittel, beskrivelse
+- **Relatert sak**: Kan være tom (ingen sak knyttet)
+- **Automatisk lukking**: Hvis avvik er knyttet til sak og saken lukkes, lukkes avvik automatisk
 
 ---
 
@@ -267,26 +280,40 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ SAMMENDRAG                                                                  │
 │ ╔══════════════════════════════════════════════════════════════════════╗ │
-│ ║  Antall avvik: 12   |  Åpne: 3  |  Lukket: 9  |  Tiltak: 8          ║ │
+│ ║  Avvik: 12  |  Åpne: 3  |  Lukket: 9  |  Tiltak: 8                   ║ │
 │ ╚══════════════════════════════════════════════════════════════════════╝ │
 │                                                                           ─── │
 │ AVDELINGSLISTE                                                              │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ #12 — 12.04.2026 — Varmtvannstank lekkasje                            │ │
-│ │ Status: Åpen  |  Tiltak: Installere ny tank                           │ │
-│ │ Relatert sak: #47                                                     │ │
+│ │ ● 12.04.2026 — Varmtvannstank lekkasje                                 📎│ │
+│ │ Tiltak: Installere ny tank                                            │ │
+│ │ Sak: #47 Oppsett vaskeri (Åpen)                                       │ │
+│ │                                                                       │ │
+│ │ Status: Åpen (automatisk lukkes når sak #47 lukkes)                  │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ #11 — 01.04.2026 — Brannslukningsapparat kontrollert                  │ │
-│ │ Status: Lukket  |  Tiltak: --                                         │ │
+│ │ ✓ 01.04.2026 — Brannslukningsapparat kontrollert                        │ │
+│ │ Tiltak: --                                                            │ │
+│ │ Sak: -- (ingen sak knyttet)                                           │ │
+│ │                                                                       │ │
+│ │ Status: Lukket                                                        │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Struktur
 - **Header**: "HMS AVDELINGEN"
-- **Sammendrag**: Tellere (antall avvik, åpne/lukkede, tiltak)
-- **Avviksliste**: Kort per avvik med status, tiltak, relatert sak
+- **Sammendrag**: Tellere (avvik, åpne/lukkede, tiltak)
+- **Avviksliste**: Kort per avvik med:
+  - Status-indikator (● Åpen / ✓ Lukket)
+  - Dato, tittel, vedlegg-ikon
+  - Tiltak
+  - Relatert sak (kan være tom)
+  - Automatisk lukking-melding hvis koblet til sak
+- **Regler**:
+  - Avvik kan eksistere uten sak (CaseId = null)
+  - Tiltak kan eksistere uten avvik (spørsmålstegn i loggen)
+  - Når sak knyttet til avvik lukkes, lukkes avvik automatisk
 
 ---
 
@@ -338,13 +365,15 @@
 - **Sted**: Under overskrift
 - **Dagsorden**:
   - Fast punkt 1: "Godkjenne forrige referat"
-  - Per sak:
+  - Per sak (nummerert):
     - Nummer + tittel + ansvarlig + saksnummer (H2)
     - Beskrivelse (kursiv)
     - Dagsorden (normal, hvis ulik beskrivelse)
     - Tidsfrist
-    - Forrige møte (hvis finnes): dato, vedtak, oppfølging, vedlegg-referanser
-- **Vedlegg**: Tabell med nummer, filnavn, sidenummer
+    - **Forrige møte** (hvis finnes): Inkluderer alle case events (referat, vedtak, oppfølging) fra forrige møte
+    - **Sakshendelser**: Alle saksmerknader etter forrige møte og frem til dette møtet
+    - Vedlegg-referanser (per-case: 2.1, 2.2)
+- **Vedlegg**: Tabell med casenr.navn, filnavn, sidenummer
 
 ---
 
@@ -367,18 +396,17 @@
 │ 1. Godkjenning av forrige referat                                          │
 │   Godkjent uten merknader                                                  │
 │                                                                           ─── │
-│ 2. Oppsett vaskeri (Hansen; #47)                                          │
-│   Utfall: Fortsetter                                                       │
+│ 2. Oppsett vaskeri (Hansen; #47)   ● Fortsetter                           │
 │   Referat: Diskutert ulike leverandører. Styret ønsker ytterligere...     │
 │   Vedtak: Saken utsettes til neste møte for endelig avgjørelse            │
 │   Oppfølging: Hansen innhenter ytterligere tilbud                        │
-│   Vedlegg: Vedlegg 2.1, 2.2                                               │
+│   Vedlegg: 2.1, 2.2                                                        │
 │                                                                           ─── │
-│ 3. Budsjett 2026 (Johansen; #46)                                          │
+│ 3. Budsjett 2026 (Johansen; #46)   ● Avsluttet                            │
 │   ...                                                                     │
 │                                                                           ─── │
 │ Eventuelt                                                                  │
-│ Ikke behandlet                                                             │
+│ [Her vises eventuelt-saker som ikke er på innkalling]                    │
 │                                                                           ─── │
 │ ─────────────────────────────────────────────────────────────────────────  │
 │ Vedlegg                                                                   │
@@ -394,13 +422,13 @@
 - **Saker**:
   - Fast punkt 1: "Godkjenning av forrige referat" (hvis tekst finnes)
   - Per sak (H2):
-    - Tittel + ansvarlig + saksnummer
-    - Utfall (label + verdi)
+    - Tittel + ansvarlig + saksnummer + Utfall-badge
+    - Utfall: Farget badge (● Blå=Fortsetter, ● Grønn=Avsluttet, ● Grå=Utsatt, ● Lilla=Orientering)
     - Referat (hvis ikke tom)
     - Vedtak (hvis ikke tom)
     - Oppfølging (hvis ikke tom)
     - Vedlegg (per case: 2.1, 2.2)
-- **Eventuelt**: Eventuelt-tekst
+- **Eventuelt**: Eventuelt-saker (ikke på innkalling) vises her
 - **Vedlegg**: Tabell med casenr.navn, filnavn, sidetall
 
 ---
