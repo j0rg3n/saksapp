@@ -36,6 +36,10 @@ A case scheduled for a specific meeting. An agenda item has:
 - **AgendaTextSnapshot** - Text snapshot of the case's agenda text at time of scheduling
 - **TidsfristOverride** - Optional override of the case's default tidsfrist
 
+## Layouts
+
+Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
+
 ## User Functions
 
 ### Authentication
@@ -148,6 +152,8 @@ CaseEvent is the unified model replacing CaseComment, MeetingMinutesCaseEntry, a
 **Unified visual style**
 
 Compact. Use font sizes, styles, and spacing to visually distinguish different sections and speed up visual search.
+
+**Layouts**: See [LAYOUTS.md](./LAYOUTS.md) for detailed visual mockups and specifications.
 
 **Agenda PDF**
 - For each agenda item: Title, CaseNumber, Assignee
