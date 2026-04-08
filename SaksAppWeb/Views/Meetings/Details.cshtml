@@ -10,6 +10,7 @@
         <div class="text-muted">@Model.Meeting.Location</div>
     </div>
     <div class="text-end">
+        <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@Model.Meeting.Id">Edit</a>
         <a class="btn btn-outline-secondary" asp-action="Minutes" asp-route-id="@Model.Meeting.Id">Minutes</a>
         <a class="btn btn-outline-primary" asp-action="DownloadAgendaPdf" asp-route-id="@Model.Meeting.Id">Download agenda PDF</a>
         <a class="btn btn-outline-primary" asp-action="DownloadAssigneeReminderPdf" asp-route-id="@Model.Meeting.Id">Download reminder PDF</a>
