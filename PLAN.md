@@ -4,6 +4,46 @@
 
 ---
 
+## Phase 0: Test-oppsett
+
+**Mål**: Etabler test-infrastruktur og skriv tester for eksisterende funksjonalitet før refaktoring.
+
+### 0.1 Opprett Test-prosjekt
+- [ ] **Task 0.1.1**: Opprett `SaksAppWeb.Tests` xUnit-prosjekt
+- [ ] **Task 0.1.2**: Legg til referanse til `SaksAppWeb`
+- [ ] **Task 0.1.3**: Legg til pakker: Moq, Microsoft.EntityFrameworkCore.InMemory, Microsoft.AspNetCore.Mvc.Testing
+
+### 0.2 Skriv Tester for Kjernefunksjonalitet
+
+#### 0.2.1 CaseController Tester
+- [ ] **Task 0.2.1.1**: Test at AddComment oppretter kommentar
+- [ ] **Task 0.2.1.2**: Test at DeleteComment (soft) delete fungerer
+- [ ] **Task 0.2.1.3**: Test at kommentarer vises i sak-details
+- [ ] **Task 0.2.1.4**: Test at attachment upload fungerer
+
+#### 0.2.2 MeetingsController Tester
+- [ ] **Task 0.2.2.1**: Test at agenda-lasting returnerer korrekt data
+- [ ] **Task 0.2.2.2**: Test at minutes-lasting returnerer korrekt data
+- [ ] **Task 0.2.2.3**: Test at add case to agenda fungerer
+- [ ] **Task 0.2.2.4**: Test at edit agenda item fungerer
+
+#### 0.2.3 PDF-generering Tester
+- [ ] **Task 0.2.3.1**: Test at Agenda PDF genererer korrekt innhold
+- [ ] **Task 0.2.3.2**: Test at Minutes PDF genererer korrekt innhold
+- [ ] **Task 0.2.3.3**: Test at vedlegg-nummerering er korrekt
+
+#### 0.2.4 View Model Tester
+- [ ] **Task 0.2.4.1**: Test CaseIndexRowVm mapping
+- [ ] **Task 0.2.4.2**: Test MeetingMinutesVm mapping
+
+### 0.3 Verifiser Dekning
+- [ ] **Task 0.3.1**: Kjør test suite og verifiser alle passerer
+- [ ] **Task 0.3.2**: Mål code coverage (mål: 75%)
+
+**Test**: Alle eksisterende tester må passere før videre faser.
+
+---
+
 ## 1. Terminologimapping
 
 Tabellen under viser nåværende engelske termer i kode og UI, og deres anbefalte norske (Borettslag) termer.
@@ -206,11 +246,17 @@ public class MeetingEventLink
 ## 4. Avhengigheter
 
 ```
+Phase 0 (Test-oppsett)
+  └─ Ingen avhengigheter, starter først
+
 Phase 1 (Terminologi)
   └─ Kan startes når som helst, ingen avhengigheter
 
 Phase 2 (Database)
-  └─ Avhenger av: Phase 1
+  └─ Avhenger av: Phase 0 (tester på plass)
+
+Phase 3 (API/Controllers)
+  └─ Avhenger av: Phase 2
 
 Phase 3 (API/Controllers)
   └─ Avhenger av: Phase 2
