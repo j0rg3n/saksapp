@@ -69,6 +69,52 @@ public class MeetingsController : Controller
         return RedirectToAction(nameof(Details), new { id = meeting.Id });
     }
 
+    public async Task<IActionResult> Edit(int id, CancellationToken ct)
+    {
+        var meeting = await _db.Meetings.FindAsync(new object[] { id }, ct);
+        if (meeting is null) return NotFound();
+
+        var vm = new MeetingEditVm
+        {
+            Id = meeting.Id,
+            MeetingDate = meeting.MeetingDate,
+            YearSequenceNumber = meeting.YearSequenceNumber,
+            Location = meeting.Location
+        };
+
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(MeetingEditVm vm, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return View(vm);
+
+        var meeting = await _db.Meetings.FindAsync(new object[] { vm.Id }, ct);
+        if (meeting is null) return NotFound();
+
+        var before = new { meeting.MeetingDate, meeting.Year, meeting.YearSequenceNumber, meeting.Location };
+
+        meeting.MeetingDate = vm.MeetingDate;
+        meeting.Year = vm.MeetingDate.Year;
+        meeting.YearSequenceNumber = vm.YearSequenceNumber;
+        meeting.Location = vm.Location;
+
+        await _db.SaveChangesAsync(ct);
+
+        await _audit.LogAsync(
+            AuditAction.Update,
+            nameof(Meeting),
+            meeting.Id.ToString(),
+            before: before,
+            after: new { meeting.MeetingDate, meeting.Year, meeting.YearSequenceNumber, meeting.Location },
+            ct: ct);
+
+        return RedirectToAction(nameof(Details), new { id = meeting.Id });
+    }
+
     public async Task<IActionResult> Details(int id, CancellationToken ct)
     {
         var meeting = await _db.Meetings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
