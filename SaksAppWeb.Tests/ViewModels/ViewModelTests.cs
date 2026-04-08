@@ -7,9 +7,8 @@ namespace SaksAppWeb.Tests.ViewModels;
 public class CaseIndexRowVmTests
 {
     [Fact]
-    public void CaseIndexRowVm_MapsCorrectly()
+    public void CaseIndexRowVm_MapsAllFields()
     {
-        // Arrange
         var boardCase = new BoardCase
         {
             Id = 1,
@@ -23,7 +22,6 @@ public class CaseIndexRowVmTests
             Theme = "Finance"
         };
 
-        // Act
         var vm = new CaseIndexRowVm
         {
             Id = boardCase.Id,
@@ -38,7 +36,6 @@ public class CaseIndexRowVmTests
             Theme = boardCase.Theme
         };
 
-        // Assert
         Assert.Equal(1, vm.Id);
         Assert.Equal(42, vm.CaseNumber);
         Assert.Equal("Test Case", vm.Title);
@@ -52,25 +49,30 @@ public class CaseIndexRowVmTests
     }
 
     [Theory]
-    [InlineData(CasePriority.Low, 1)]
-    [InlineData(CasePriority.Medium, 2)]
-    [InlineData(CasePriority.High, 3)]
-    public void CaseIndexRowVm_PriorityValues(CasePriority priority, int expectedValue)
+    [InlineData(CasePriority.Low)]
+    [InlineData(CasePriority.Medium)]
+    [InlineData(CasePriority.High)]
+    public void CaseIndexRowVm_PriorityValues(CasePriority priority)
     {
-        // Act
         var vm = new CaseIndexRowVm { Priority = priority };
-
-        // Assert
         Assert.Equal(priority, vm.Priority);
+    }
+
+    [Theory]
+    [InlineData(CaseStatus.Open)]
+    [InlineData(CaseStatus.Closed)]
+    public void CaseIndexRowVm_StatusValues(CaseStatus status)
+    {
+        var vm = new CaseIndexRowVm { Status = status };
+        Assert.Equal(status, vm.Status);
     }
 }
 
 public class MeetingMinutesVmTests
 {
     [Fact]
-    public void MeetingMinutesVm_InitializesCorrectly()
+    public void MeetingMinutesVm_InitializesAllFields()
     {
-        // Act
         var vm = new MeetingMinutesVm
         {
             MeetingId = 1,
@@ -82,10 +84,13 @@ public class MeetingMinutesVmTests
             AbsenceText = "Olsen",
             ApprovalOfPreviousMinutesText = "Godkjent",
             NextMeetingDate = new DateOnly(2026, 5, 1),
-            EventueltText = "Ingen eventuelt"
+            EventueltText = "Ingen eventuelt",
+            CaseEntries = new List<MeetingMinutesCaseEntryVm>
+            {
+                new() { BoardCaseId = 1, CaseNumber = 42, Title = "Test" }
+            }
         };
 
-        // Assert
         Assert.Equal(1, vm.MeetingId);
         Assert.Equal(new DateOnly(2026, 4, 1), vm.MeetingDate);
         Assert.Equal(2026, vm.Year);
@@ -96,5 +101,184 @@ public class MeetingMinutesVmTests
         Assert.Equal("Godkjent", vm.ApprovalOfPreviousMinutesText);
         Assert.Equal(new DateOnly(2026, 5, 1), vm.NextMeetingDate);
         Assert.Equal("Ingen eventuelt", vm.EventueltText);
+        Assert.Single(vm.CaseEntries);
+    }
+
+    [Fact]
+    public void MeetingMinutesVm_CanBeEmpty()
+    {
+        var vm = new MeetingMinutesVm();
+
+        Assert.Equal(0, vm.MeetingId);
+        Assert.Null(vm.Location);
+        Assert.Null(vm.CaseEntries);
+    }
+}
+
+public class MeetingMinutesCaseEntryVmTests
+{
+    [Fact]
+    public void MeetingMinutesCaseEntryVm_MapsFields()
+    {
+        var vm = new MeetingMinutesCaseEntryVm
+        {
+            MeetingCaseId = 1,
+            BoardCaseId = 42,
+            CaseNumber = 100,
+            Title = "Test Case",
+            AssigneeDisplay = "John Doe",
+            OfficialNotes = "Note text",
+            DecisionText = "Decision made",
+            FollowUpText = "Follow up needed",
+            Outcome = MeetingCaseOutcome.Continue
+        };
+
+        Assert.Equal(1, vm.MeetingCaseId);
+        Assert.Equal(42, vm.BoardCaseId);
+        Assert.Equal(100, vm.CaseNumber);
+        Assert.Equal("Test Case", vm.Title);
+        Assert.Equal("John Doe", vm.AssigneeDisplay);
+        Assert.Equal("Note text", vm.OfficialNotes);
+        Assert.Equal("Decision made", vm.DecisionText);
+        Assert.Equal("Follow up needed", vm.FollowUpText);
+        Assert.Equal(MeetingCaseOutcome.Continue, vm.Outcome);
+    }
+}
+
+public class CaseEditVmTests
+{
+    [Fact]
+    public void CaseEditVm_DefaultValues()
+    {
+        var vm = new CaseEditVm();
+
+        Assert.Null(vm.Id);
+        Assert.Equal(string.Empty, vm.Title);
+        Assert.Equal(CasePriority.P2, vm.Priority);
+        Assert.Equal(CaseStatus.Open, vm.Status);
+    }
+
+    [Fact]
+    public void CaseEditVm_CanSetAllFields()
+    {
+        var vm = new CaseEditVm
+        {
+            Id = 1,
+            Title = "Test Title",
+            Description = "Test Description",
+            Theme = "Theme",
+            Priority = CasePriority.High,
+            Status = CaseStatus.Closed,
+            AssigneeUserId = "user-123",
+            StartDate = new DateOnly(2026, 1, 1),
+            ClosedDate = new DateOnly(2026, 3, 1),
+            CustomTidsfristDate = new DateOnly(2026, 6, 1),
+            CustomTidsfristText = "Tidsfrist text"
+        };
+
+        Assert.Equal(1, vm.Id);
+        Assert.Equal("Test Title", vm.Title);
+        Assert.Equal("Test Description", vm.Description);
+        Assert.Equal("Theme", vm.Theme);
+        Assert.Equal(CasePriority.High, vm.Priority);
+        Assert.Equal(CaseStatus.Closed, vm.Status);
+        Assert.Equal("user-123", vm.AssigneeUserId);
+    }
+}
+
+public class MeetingEditVmTests
+{
+    [Fact]
+    public void MeetingEditVm_DefaultValues()
+    {
+        var vm = new MeetingEditVm();
+
+        Assert.Null(vm.Id);
+        Assert.Equal(1, vm.YearSequenceNumber);
+    }
+
+    [Fact]
+    public void MeetingEditVm_SetsDateProperties()
+    {
+        var vm = new MeetingEditVm
+        {
+            MeetingDate = new DateOnly(2026, 4, 15),
+            YearSequenceNumber = 3,
+            Location = "Oslo"
+        };
+
+        Assert.Equal(new DateOnly(2026, 4, 15), vm.MeetingDate);
+        Assert.Equal(3, vm.YearSequenceNumber);
+        Assert.Equal("Oslo", vm.Location);
+    }
+}
+
+public class CaseDetailsVmTests
+{
+    [Fact]
+    public void CaseDetailsVm_ContainsAllSections()
+    {
+        var vm = new CaseDetailsVm
+        {
+            Case = new BoardCase { Id = 1, CaseNumber = 42, Title = "Test", Status = CaseStatus.Open },
+            Comments = new List<CaseCommentVm>(),
+            Attachments = new List<CaseAttachmentVm>(),
+            Timeline = new List<TimelineItemVm>()
+        };
+
+        Assert.NotNull(vm.Case);
+        Assert.NotNull(vm.Comments);
+        Assert.NotNull(vm.Attachments);
+        Assert.NotNull(vm.Timeline);
+    }
+
+    [Fact]
+    public void TimelineItemVm_FormatsCorrectly()
+    {
+        var item = new TimelineItemVm
+        {
+            Timestamp = new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero),
+            Kind = TimelineItemKind.Comment,
+            Content = "Test content"
+        };
+
+        Assert.Equal(new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero), item.Timestamp);
+        Assert.Equal(TimelineItemKind.Comment, item.Kind);
+        Assert.Equal("Test content", item.Content);
+    }
+}
+
+public class CaseStatusEnumTests
+{
+    [Fact]
+    public void CaseStatus_HasExpectedValues()
+    {
+        Assert.Equal(0, (int)CaseStatus.Open);
+        Assert.Equal(1, (int)CaseStatus.Closed);
+    }
+}
+
+public class CasePriorityEnumTests
+{
+    [Fact]
+    public void CasePriority_HasExpectedValues()
+    {
+        Assert.Equal(0, (int)CasePriority.Low);
+        Assert.Equal(1, (int)CasePriority.Medium);
+        Assert.Equal(2, (int)CasePriority.High);
+    }
+}
+
+public class MeetingCaseOutcomeEnumTests
+{
+    [Theory]
+    [InlineData(MeetingCaseOutcome.Continue)]
+    [InlineData(MeetingCaseOutcome.Closed)]
+    [InlineData(MeetingCaseOutcome.Deferred)]
+    [InlineData(MeetingCaseOutcome.Info)]
+    public void MeetingCaseOutcome_AllValuesWork(MeetingCaseOutcome outcome)
+    {
+        var vm = new MeetingMinutesCaseEntryVm { Outcome = outcome };
+        Assert.Equal(outcome, vm.Outcome);
     }
 }
