@@ -106,25 +106,34 @@ A case scheduled for a specific meeting. An agenda item has:
 - Eventuelt cases appear in meeting minutes but not in the agenda PDF
 - They are full cases, just with special status
 
-### Board Log (Styrelogg)
+### CaseEvent (Unified Event System)
 
-**Overview**
-- A chronological log of events and activities related to board operations
-- Events can exist independently or be linked to specific cases
-- Multiple categories for different types of events
+CaseEvent is the unified model replacing CaseComment, MeetingMinutesCaseEntry, and the proposed BoardEvent.
 
-**Event Management**
-- Create events with category (deviation/avvik, measure/tiltak, general, etc.)
-- Link events to one or more cases
-- Create events without linking to a case
-- Meeting notes are treated as events with special types: "referat" (minutes), "vedtak" (decision), "oppfølging" (follow-up)
+**Structure:**
+- **CaseEvent** - The core event entity
+  - `CaseId` - Optional (can be null for standalone board events)
+  - `CreatedAt` - Timestamp (unique, single occurrence)
+  - `Content` - Text content
+  - `Category` - Event category (comment, general, avvik, tiltak, etc.)
+  - `Attachments` - Associated files
 
-**WhatsApp Integration** (future)
-- SaksApp bot for WhatsApp group
-- Create events directly from WhatsApp
-- Two-way sync: WhatsApp messages to log and vice versa
-- Messages tagged with WhatsApp ID, updated on edit
-- If edit fails, post new version as reply with link to old
+- **MeetingEventLink** - Links CaseEvents to meetings with meeting-specific metadata
+  - `MeetingId` - The meeting this event is associated with
+  - `CaseEventId` - The linked event
+  - `AgendaOrder` - Index of the case in the meeting agenda
+  - `OfficialNotes` - Referat (meeting minutes notes)
+  - `DecisionText` - Vedtak (decision)
+  - `FollowUpText` - Oppfølging (follow-up)
+
+**Notes:**
+- A CaseEvent has a single timestamp and cannot appear in multiple meetings
+- Meeting-specific outcomes (referat, vedtak, oppfølging) are stored on MeetingEventLink, not on CaseEvent
+- MeetingMinutes remains separate for meeting header information (date, approval status)
+
+**Migration:**
+- CaseComment → CaseEvent (Category = "comment")
+- MeetingMinutesCaseEntry → Up to 3 CaseEvents (one per non-empty field), linked via MeetingEventLink
 
 ### HMS Deviation and Measures Log
 
@@ -178,17 +187,22 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 
 ## Data Model
 
+### Unified Event System
+
+The unified event model replaces the previous separate entities (CaseComment, MeetingMinutesCaseEntry, BoardEvent, BoardEventCase).
+
 ### Entities
 - **BoardCase** - Case information
-- **CaseComment** - Comments on a case
-- **Attachment** - File attachments
+- **CaseEvent** - Unified event entry (replaces CaseComment and BoardEvent)
+  - Linked to Case via CaseEventCase
+  - Optional MeetingEventLink for meeting context
+- **CaseEventCase** - Many-to-many link between CaseEvent and BoardCase
+- **MeetingEventLink** - Links CaseEvent to Meeting with meeting-specific metadata (replaces MeetingCase and MeetingMinutesCaseEntry)
+  - Includes AgendaOrder, OfficialNotes, DecisionText, FollowUpText
+- **Attachment** - File attachments (linked to CaseEvent or standalone)
 - **Meeting** - Meeting metadata
-- **MeetingCase** - Agenda item (join table between Meeting and BoardCase)
-- **MeetingMinutes** - Minutes for a meeting
-- **MeetingMinutesCaseEntry** - Per-agenda-item minutes
+- **MeetingMinutes** - Minutes header info (approval status, etc.)
 - **PdfGeneration** - Log of generated PDFs
-- **BoardEvent** - Event/log entry in the board log (future)
-- **BoardEventCase** - Many-to-many link between events and cases (future)
 
 ### Soft Deletes
 All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
