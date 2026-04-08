@@ -12,7 +12,7 @@ Tabellen under viser nåværende engelske termer i kode og UI, og deres anbefalt
 |---------------------|----------------------|---------------------------|---------|
 | Case | Case / Sak | Sak | |
 | Meeting | Meeting / Møte | Møte | |
-| Agenda | Agenda / Innkalling | Innkalling / Dagsorden | "Innkalling" for innkalling PDF, "Dagsorden" kan brukes i UI |
+| Agenda | Agenda / Innkalling | Innkalling / Dagsorden | "Innkalling" for innkalling PDF |
 | Minutes | Minutes / Referat | Referat | |
 | Board | Board / Styret | Styret | |
 | Case Event / Comment | CaseComment / Saksmerknad | Saksmerknad | |
@@ -80,135 +80,183 @@ public class MeetingEventLink
     public string? DecisionText { get; set; }       // "Vedtak"  
     public string? FollowUpText { get; set; }        // "Oppfølging"
     public MeetingCaseOutcome? Outcome { get; set; } // "Utfall"
+    public bool IsEventuelt { get; set; }           // Eventuelt-status
 }
 ```
 
-#### Migration-steg
+---
 
-1. Opprett nye tabeller (`CaseEvent`, `CaseEventCase`, `MeetingEventLink`)
-2. Migrer `CaseComment` → `CaseEvent` (Category = "saksmerknad")
-3. Migrer `MeetingMinutesCaseEntry` → opptil 3 `CaseEvent` per entry (en for hvert ikke-tomt felt), deretter opprett `MeetingEventLink`
-4. Flytt data fra `MeetingCase` → `MeetingEventLink` (AgendaOrder)
-5. Slett gamle tabeller (`CaseComment`, `MeetingMinutesCaseEntry`, `MeetingCase`)
+## 3. Oppgaver (Task Tree)
+
+### Phase 1: Terminologi-oppdateringer (Enkle tekstoppdateringer)
+
+#### 1.1 Oppdater Enum-verdier
+- [ ] **Task 1.1.1**: Endre `MeetingCaseOutcome.Info` → `Orientering` i modellen
+
+#### 1.2 Oppdater View Labels
+- [ ] **Task 1.2.1**: Endre "Outcome" → "Utfall" i Minutes.cshtml
+- [ ] **Task 1.2.2**: Endre "Official notes" → "Referat" i Minutes.cshtml
+- [ ] **Task 1.2.3**: Endre "Decision" → "Vedtak" i Minutes.cshtml
+- [ ] **Task 1.2.4**: Endre "Follow-up" → "Oppfølging" i Minutes.cshtml
+- [ ] **Task 1.2.5**: Endre "Attendance" → "Oppmøte" i Minutes.cshtml
+- [ ] **Task 1.2.6**: Endre "Absence" → "Forfall" i Minutes.cshtml
+- [ ] **Task 1.2.7**: Endre "Outcome" → "Utfall" i EditAgendaItem.cshtml
+
+**Test**: Bygg og verifiser at appen kjører.
 
 ---
 
-## 3. UI-endringer
+### Phase 2: Database-migrering
 
-### 3.1 Møte Minutes — Fokusert visning
+#### 2.1 Opprett nye modeller
+- [ ] **Task 2.1.1**: Opprett `CaseEvent` modell
+- [ ] **Task 2.1.2**: Opprett `CaseEventCase` modell
+- [ ] **Task 2.1.3**: Opprett `MeetingEventLink` modell
+- [ ] **Task 2.1.4**: Opprett EF Core migrering for nye tabeller
+- [ ] **Task 2.1.5**: Kjør migrering og verifiser tabeller opprettes
 
-| Endringspunkt | Detaljer |
-|---------------|----------|
-| **Navigasjon** | Legg til "Forrige" / "Neste" knapper for å bla mellom saker |
-| **En sak om gangen** | Vis kun én sak om gangen, ikke alle i liste |
-| **Utfall-dropliste** | Oppdater label til "Utfall" (ikke "Outcome") |
+#### 2.2 Migrer eksisterende data
+- [ ] **Task 2.2.1**: Skriv migreringsscript for `CaseComment` → `CaseEvent`
+- [ ] **Task 2.2.2**: Test migrering av CaseComment (verify count)
+- [ ] **Task 2.2.3**: Skriv migreringsscript for `MeetingMinutesCaseEntry` → `CaseEvent` + `MeetingEventLink`
+- [ ] **Task 2.2.4**: Test migrering av MeetingMinutesCaseEntry (verify count)
+- [ ] **Task 2.2.5**: Migrer `MeetingCase` → `MeetingEventLink`
+- [ ] **Task 2.2.6**: Verifiser alle data er korrekt migrert
 
-**Steg:**
-1. Endre `MeetingMinutesVm` til å inkludere `CurrentIndex` og `TotalCount`
-2. Oppdater `Minutes.cshtml` til fokusert visning med navigasjon
-3. Legg til GET/POST actions for Previous/Next navigering
+#### 2.3 Oppdater modeller etter migrering
+- [ ] **Task 2.3.1**: Oppdater `CaseEvent` med felt for soft delete
+- [ ] **Task 2.3.2**: Legg til `IsEventuelt` på `MeetingEventLink`
 
-### 3.2 Vedlegg-nummerering
-
-| Endringspunkt | Detaljer |
-|---------------|----------|
-| **Per-case nummerering** | Endre fra global (Vedlegg 1, 2, 3) til per-case (2.1, 2.2) |
-| **PDF-oppdatering** | Oppdater `DownloadAgendaPdf` og `DownloadMinutesPdf` |
-
-**Steg:**
-1. Endre logikk i begge PDF-genereringsmetoder
-2. Oppdater LAYOUTS.md dokumentasjon
-
-### 3.3 Heading-nivåer
-
-| Endringspunkt | Detaljer |
-|---------------|----------|
-| **Agenda PDF** | Fikse inkonsistente heading-nivåer i "Forrige møte"-seksjonen |
-| **Konsistens** | Sørg for H1 → H2 → H3 er konsistent gjennom alle PDF-er |
-
-### 3.4 Board Log (Styrelogg) — Fremtidig
-
-| Endringspunkt | Detaljer |
-|---------------|----------|
-| **Ny side** | Opprett ny side for Styrelogg |
-| **Filter** | Kategori, dato, sak |
-| **Kronologi** | Liste over alle CaseEvents uten MeetingEventLink |
-
-### 3.5 HMS Avvik og Tiltak — Fremtidig
-
-| Endringspunkt | Detaljer |
-|---------------|----------|
-| **Ny side** | Opprett dedikert HMS-side |
-| **Sammendrag** | Vis tellere (antall avvik, åpne/lukkede, tiltak) |
-| **Avviksliste** | Filtrert liste for avvik og tiltak |
+**Test**: Kjør app og verifiser eksisterende funksjonalitet virker.
 
 ---
 
-## 4. Terminologi-oppdateringer i kode
+### Phase 3: API/Controllers
 
-### 4.1 Enum-verdier
+#### 3.1 Oppdater CaseController
+- [ ] **Task 3.1.1**: Endre `AddComment` til å opprette `CaseEvent` istedenfor `CaseComment`
+- [ ] **Task 3.1.2**: Endre `DeleteComment` til soft delete `CaseEvent`
+- [ ] **Task 3.1.3**: Test at kommentarer vises i sak-details
 
-| Enum | Gammel verdi | Ny verdi |
-|------|--------------|----------|
-| MeetingCaseOutcome | Info | Orientering |
+#### 3.2 Oppdater MeetingsController
+- [ ] **Task 3.2.1**: Endre `Minutes` til å bruke `MeetingEventLink`
+- [ ] **Task 3.2.2**: Endre `EditAgendaItem` til å lagre i `MeetingEventLink`
+- [ ] **Task 3.2.3**: Endre `AddCase` til å opprette `MeetingEventLink`
+- [ ] **Task 3.2.4**: Test at agenda-endringer lagres korrekt
 
-### 4.2 View-labels
+#### 3.3 Legg til CaseEvent-api
+- [ ] **Task 3.3.1**: Opprett `CaseEvents` controller for Board Log
+- [ ] **Task 3.3.2**: Legg til CRUD for CaseEvent (uten møtekobling)
 
-Oppdater alle labels i Views til norsk:
-- "Outcome" → "Utfall"
-- "Official notes" → "Referat"
-- "Decision" → "Vedtak"
-- "Follow-up" → "Oppfølging"
-- "Attendance" → "Oppmøte"
-- "Absence" → "Forfall"
-
----
-
-## 5. Implementeringsrekkefølge
-
-1. **Phase 1: Database**
-   - Opprett nye tabeller
-   - Kjør migrering av eksisterende data
-   - Test integritet
-
-2. **Phase 2: API/Controllers**
-   - Oppdater eksisterende endpoints til å bruke nye modeller
-   - Legg til nye endpoints for CaseEvent
-
-3. **Phase 3: UI - Minutes visning**
-   - Implementer fokusert visning med navigasjon
-   - Oppdater terminologi
-
-4. **Phase 4: PDF-er**
-   - Fiks heading-nivåer
-   - Implementer per-case vedlegg-nummerering
-
-5. **Phase 5: Nye features**
-   - Board Log (Styrelogg)
-   - HMS Avvik og Tiltak
+**Test**: Verifiser alle endpoints fungerer med nye modeller.
 
 ---
 
-## 6. TODO-liste
+### Phase 4: UI - Minutes Fokusert Visning
 
-- [ ] Opprett CaseEvent, CaseEventCase, MeetingEventLink tabeller
-- [ ] Migrer CaseComment → CaseEvent
-- [ ] Migrer MeetingMinutesCaseEntry → CaseEvent + MeetingEventLink
-- [ ] Migrer MeetingCase → MeetingEventLink
-- [ ] Slett gamle tabeller
-- [ ] Oppdater endpoints til nye modeller
-- [ ] Implementer fokusert Minutes-visning
-- [ ] Oppdater terminologi i UI
-- [ ] Fiks heading-nivåer i PDF-er
-- [ ] Implementer per-case vedlegg-nummerering
-- [ ] Board Log-side (fremtidig)
-- [ ] HMS-side (fremtidig)
+#### 4.1 Endre Minutes-visning
+- [ ] **Task 4.1.1**: Oppdater `MeetingMinutesVm` med `CurrentIndex`, `TotalCount`
+- [ ] **Task 4.1.2**: Endre Minutes.cshtml til fokusert visning (én sak om gangen)
+- [ ] **Task 4.1.3**: Legg til Previous/Next navigering i Minutes.cshtml
+- [ ] **Task 4.1.4**: Legg til GET/POST actions for Previous/Next
+
+#### 4.2 Eventuelt som sak
+- [ ] **Task 4.2.1**: Endre Eventuelt tekstfelt til "Legg til eventuelt sak" knapp
+- [ ] **Task 4.2.2**: Opprett modal/form for å opprette ny sak som Eventuelt
+- [ ] **Task 4.2.3**: Lagre Eventuelt-status i `MeetingEventLink.IsEventuelt`
+
+**Test**: Verifiser fokusert visning og Eventuelt-funksjonalitet.
 
 ---
 
-## 7. Avhengigheter
+### Phase 5: PDF-endringer
 
-- **Fase 1** må fullføres før **Fase 2**
-- **Fase 3** avhenger av **Fase 2**
-- **Fase 4** kan parallelliseres med **Fase 3**
-- **Fase 5** er uavhengig og kan implementeres etter behov
+#### 5.1 Fiks Heading-nivåer
+- [ ] **Task 5.1.1**: Gå gjennom Agenda PDF og standardiser H1/H2/H3
+- [ ] **Task 5.1.2**: Gå gjennom Minutes PDF og standardiser H1/H2/H3
+
+#### 5.2 Per-case Vedlegg-nummerering
+- [ ] **Task 5.2.1**: Endre logikk i `DownloadAgendaPdf` til per-case (2.1, 2.2)
+- [ ] **Task 5.2.2**: Endre logikk i `DownloadMinutesPdf` til per-case
+- [ ] **Task 5.2.3**: Test at vedlegg-nummerering er korrekt i generert PDF
+
+#### 5.3 Utfall Badge
+- [ ] **Task 5.3.1**: Endre Minutes PDF til å vise Utfall som badge (● farge)
+- [ ] **Task 5.3.2**: Definer fargekart: Blå=Fortsetter, Grønn=Avsluttet, Grå=Utsatt, Lilla=Orientering
+
+**Test**: Generer begge PDF-er og verifiser layout.
+
+---
+
+### Phase 6: Nye Features (Fremtidig)
+
+#### 6.1 Board Log (Styrelogg)
+- [ ] **Task 6.1.1**: Opprett Board Log controller og view
+- [ ] **Task 6.1.2**: Implementer filter (kategori, dato, sak)
+- [ ] **Task 6.1.3**: Vis kronologisk liste av CaseEvents uten MeetingEventLink
+
+#### 6.2 HMS Avvik og Tiltak
+- [ ] **Task 6.2.1**: Opprett HMS controller og view
+- [ ] **Task 6.2.2**: Vis sammendrag (tellere)
+- [ ] **Task 6.2.3**: Implementer auto-lukk av Avvik når relatert sak lukkes
+- [ ] **Task 6.2.4**: Tillat Avvik uten sak (null CaseId)
+
+---
+
+## 4. Avhengigheter
+
+```
+Phase 1 (Terminologi)
+  └─ Kan startes når som helst, ingen avhengigheter
+
+Phase 2 (Database)
+  └─ Avhenger av: Phase 1
+
+Phase 3 (API/Controllers)
+  └─ Avhenger av: Phase 2
+    ├─ Task 3.1.x avhenger av: Task 2.2.1, 2.2.2
+    ├─ Task 3.2.x avhenger av: Task 2.2.3, 2.2.4
+    └─ Task 3.3.x avhenger av: Task 2.1.5
+
+Phase 4 (UI - Minutes)
+  └─ Avhenger av: Phase 3
+    ├─ Task 4.1.x avhenger av: Task 3.2.1
+    └─ Task 4.2.x avhenger av: Task 3.3.1
+
+Phase 5 (PDF)
+  └─ Avhenger av: Phase 3
+    ├─ Task 5.1.x avhenger av: Task 3.2.1
+    └─ Task 5.2.x avhenger av: Task 3.2.1
+
+Phase 6 (Nye Features)
+  └─ Kan startes etter: Phase 3
+```
+
+---
+
+## 5. Anbefalt Rekkefølge
+
+**Start med Phase 1** (Terminologi) - Enkle endringer, rask feedback:
+1. Task 1.1.1 → Task 1.2.7 (alle under Phase 1)
+
+**Deretter Phase 2** (Database):
+1. Task 2.1.1 → 2.1.5 (opprett tabeller)
+2. Task 2.2.1 → 2.2.6 (migrer data)
+3. Task 2.3.1 → 2.3.2 (oppdater modeller)
+
+**Deretter Phase 3** (API):
+1. Task 3.1.x (CaseController)
+2. Task 3.2.x (MeetingsController)
+3. Task 3.3.x (CaseEvents API)
+
+**Deretter Phase 4** (UI):
+1. Task 4.1.x (fokusert visning)
+2. Task 4.2.x (eventuelt som sak)
+
+**Deretter Phase 5** (PDF):
+1. Task 5.1.x (heading-nivåer)
+2. Task 5.2.x (vedlegg-nummerering)
+3. Task 5.3.x (utfall badge)
+
+**Til slutt Phase 6** (fremtidig):
+- Når behov oppstår
