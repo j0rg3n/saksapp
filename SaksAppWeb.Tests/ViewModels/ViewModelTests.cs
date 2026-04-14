@@ -14,7 +14,7 @@ public class CaseIndexRowVmTests
             Id = 1,
             CaseNumber = 42,
             Title = "Test Case",
-            Priority = CasePriority.High,
+            Priority = CasePriority.P3,
             Status = CaseStatus.Open,
             AssigneeUserId = "user-123",
             CustomTidsfristDate = new DateOnly(2026, 5, 1),
@@ -39,7 +39,7 @@ public class CaseIndexRowVmTests
         Assert.Equal(1, vm.Id);
         Assert.Equal(42, vm.CaseNumber);
         Assert.Equal("Test Case", vm.Title);
-        Assert.Equal(CasePriority.High, vm.Priority);
+        Assert.Equal(CasePriority.P3, vm.Priority);
         Assert.Equal(CaseStatus.Open, vm.Status);
         Assert.Equal("user-123", vm.AssigneeUserId);
         Assert.Equal("Test User", vm.AssigneeDisplay);
@@ -49,9 +49,9 @@ public class CaseIndexRowVmTests
     }
 
     [Theory]
-    [InlineData(CasePriority.Low)]
-    [InlineData(CasePriority.Medium)]
-    [InlineData(CasePriority.High)]
+    [InlineData(CasePriority.P1)]
+    [InlineData(CasePriority.P2)]
+    [InlineData(CasePriority.P3)]
     public void CaseIndexRowVm_PriorityValues(CasePriority priority)
     {
         var vm = new CaseIndexRowVm { Priority = priority };
@@ -111,7 +111,7 @@ public class MeetingMinutesVmTests
 
         Assert.Equal(0, vm.MeetingId);
         Assert.Null(vm.Location);
-        Assert.Null(vm.CaseEntries);
+        Assert.Empty(vm.CaseEntries);
     }
 }
 
@@ -167,7 +167,7 @@ public class CaseEditVmTests
             Title = "Test Title",
             Description = "Test Description",
             Theme = "Theme",
-            Priority = CasePriority.High,
+            Priority = CasePriority.P3,
             Status = CaseStatus.Closed,
             AssigneeUserId = "user-123",
             StartDate = new DateOnly(2026, 1, 1),
@@ -180,7 +180,7 @@ public class CaseEditVmTests
         Assert.Equal("Test Title", vm.Title);
         Assert.Equal("Test Description", vm.Description);
         Assert.Equal("Theme", vm.Theme);
-        Assert.Equal(CasePriority.High, vm.Priority);
+        Assert.Equal(CasePriority.P3, vm.Priority);
         Assert.Equal(CaseStatus.Closed, vm.Status);
         Assert.Equal("user-123", vm.AssigneeUserId);
     }
@@ -221,30 +221,11 @@ public class CaseDetailsVmTests
         var vm = new CaseDetailsVm
         {
             Case = new BoardCase { Id = 1, CaseNumber = 42, Title = "Test", Status = CaseStatus.Open },
-            Comments = new List<CaseCommentVm>(),
-            Attachments = new List<CaseAttachmentVm>(),
-            Timeline = new List<TimelineItemVm>()
+            Timeline = new List<CaseTimelineItemVm>()
         };
 
         Assert.NotNull(vm.Case);
-        Assert.NotNull(vm.Comments);
-        Assert.NotNull(vm.Attachments);
         Assert.NotNull(vm.Timeline);
-    }
-
-    [Fact]
-    public void TimelineItemVm_FormatsCorrectly()
-    {
-        var item = new TimelineItemVm
-        {
-            Timestamp = new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero),
-            Kind = TimelineItemKind.Comment,
-            Content = "Test content"
-        };
-
-        Assert.Equal(new DateTimeOffset(2026, 4, 1, 10, 0, 0, TimeSpan.Zero), item.Timestamp);
-        Assert.Equal(TimelineItemKind.Comment, item.Kind);
-        Assert.Equal("Test content", item.Content);
     }
 }
 
@@ -253,8 +234,9 @@ public class CaseStatusEnumTests
     [Fact]
     public void CaseStatus_HasExpectedValues()
     {
-        Assert.Equal(0, (int)CaseStatus.Open);
-        Assert.Equal(1, (int)CaseStatus.Closed);
+        Assert.Equal(1, (int)CaseStatus.Open);
+        Assert.Equal(2, (int)CaseStatus.OnHold);
+        Assert.Equal(3, (int)CaseStatus.Closed);
     }
 }
 
@@ -263,9 +245,9 @@ public class CasePriorityEnumTests
     [Fact]
     public void CasePriority_HasExpectedValues()
     {
-        Assert.Equal(0, (int)CasePriority.Low);
-        Assert.Equal(1, (int)CasePriority.Medium);
-        Assert.Equal(2, (int)CasePriority.High);
+        Assert.Equal(1, (int)CasePriority.P1);
+        Assert.Equal(2, (int)CasePriority.P2);
+        Assert.Equal(3, (int)CasePriority.P3);
     }
 }
 

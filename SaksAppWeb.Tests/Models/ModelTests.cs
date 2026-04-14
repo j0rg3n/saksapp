@@ -28,7 +28,7 @@ public class BoardCaseTests
             Title = "Test Case",
             Description = "Description",
             Theme = "Theme",
-            Priority = CasePriority.High,
+            Priority = CasePriority.P3,
             AssigneeUserId = "user-123",
             StartDate = new DateOnly(2026, 1, 1),
             Status = CaseStatus.Closed,
@@ -42,7 +42,7 @@ public class BoardCaseTests
         Assert.Equal("Test Case", boardCase.Title);
         Assert.Equal("Description", boardCase.Description);
         Assert.Equal("Theme", boardCase.Theme);
-        Assert.Equal(CasePriority.High, boardCase.Priority);
+        Assert.Equal(CasePriority.P3, boardCase.Priority);
         Assert.Equal("user-123", boardCase.AssigneeUserId);
         Assert.Equal(new DateOnly(2026, 1, 1), boardCase.StartDate);
         Assert.Equal(CaseStatus.Closed, boardCase.Status);
@@ -167,7 +167,7 @@ public class MeetingMinutesTests
     {
         var minutes = new MeetingMinutes();
 
-        Assert.Equal(string.Empty, minutes.AttendanceText);
+        Assert.Null(minutes.AttendanceText);
     }
 
     [Fact]

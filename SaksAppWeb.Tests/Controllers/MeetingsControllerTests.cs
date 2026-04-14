@@ -8,7 +8,9 @@ using SaksAppWeb.Data;
 using SaksAppWeb.Models;
 using SaksAppWeb.Services;
 using System.Security.Claims;
+using System.IO;
 using Microsoft.AspNetCore.Http;
+using SaksAppWeb.Models.ViewModels;
 
 namespace SaksAppWeb.Tests.Controllers;
 
@@ -16,30 +18,37 @@ public class MeetingsControllerTests : IDisposable
 {
     private readonly ApplicationDbContext _db;
     private readonly Mock<IAuditService> _auditMock;
-    private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
+    private readonly TestUserManager _userManager;
     private readonly Mock<IPdfSequenceService> _pdfSequenceMock;
     private readonly MeetingsController _controller;
 
+    private readonly string _dbPath;
+
     public MeetingsControllerTests()
     {
+        _dbPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.db");
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseSqlite($"Data Source={_dbPath}")
             .Options;
         
         _db = new ApplicationDbContext(options);
+        _db.Database.EnsureCreated();
+        
+        using var cmd = _db.Database.GetDbConnection().CreateCommand();
+        cmd.CommandText = "PRAGMA foreign_keys=OFF;";
+        _db.Database.OpenConnection();
+        cmd.ExecuteNonQuery();
         
         _auditMock = new Mock<IAuditService>();
         
-        var userStore = new Mock<IUserStore<ApplicationUser>>();
-        _userManagerMock = new Mock<UserManager<ApplicationUser>>(
-            userStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+        _userManager = new TestUserManager();
         
         _pdfSequenceMock = new Mock<IPdfSequenceService>();
         
         _controller = new MeetingsController(
             _db,
             _auditMock.Object,
-            _userManagerMock.Object,
+            _userManager,
             _pdfSequenceMock.Object);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user-123") };
@@ -51,7 +60,10 @@ public class MeetingsControllerTests : IDisposable
 
     public void Dispose()
     {
+        _db.Database.CloseConnection();
         _db.Dispose();
+        if (File.Exists(_dbPath))
+            File.Delete(_dbPath);
     }
 
     #region Index Tests
@@ -88,7 +100,7 @@ public class MeetingsControllerTests : IDisposable
     [Fact]
     public async Task Create_Post_SavesNewMeeting()
     {
-        var vm = new Models.ViewModels.MeetingEditVm
+        var vm = new MeetingEditVm
         {
             MeetingDate = new DateOnly(2026, 4, 1),
             YearSequenceNumber = 3,
@@ -109,7 +121,7 @@ public class MeetingsControllerTests : IDisposable
     [Fact]
     public async Task Create_Post_SetsYearFromDate()
     {
-        var vm = new Models.ViewModels.MeetingEditVm
+        var vm = new MeetingEditVm
         {
             MeetingDate = new DateOnly(2026, 6, 15),
             YearSequenceNumber = 1,
@@ -171,7 +183,7 @@ public class MeetingsControllerTests : IDisposable
         _db.Meetings.Add(meeting);
         await _db.SaveChangesAsync();
 
-        var vm = new Models.ViewModels.MeetingEditVm
+        var vm = new MeetingEditVm
         {
             Id = meeting.Id,
             MeetingDate = new DateOnly(2026, 5, 1),
@@ -179,7 +191,7 @@ public class MeetingsControllerTests : IDisposable
             Location = "Bergen"
         };
 
-        var result = await _controller.Edit(meeting.Id, vm, CancellationToken.None);
+        var result = await _controller.Edit(vm, CancellationToken.None);
 
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
         
@@ -237,7 +249,7 @@ public class MeetingsControllerTests : IDisposable
         _db.MeetingCases.Add(meetingCase);
         await _db.SaveChangesAsync();
 
-        var vm = new Models.ViewModels.MeetingCaseEditVm
+        var vm = new MeetingCaseEditVm
         {
             Id = meetingCase.Id,
             AgendaTextSnapshot = "Updated agenda text",
@@ -342,8 +354,8 @@ public class MeetingsControllerTests : IDisposable
         var result = await _controller.Minutes(meeting.Id, CancellationToken.None);
 
         var viewResult = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsType<Models.ViewModels.MeetingMinutesVm>(viewResult.Model);
-        Assert.Equal(1, model.CaseEntries.Count);
+        var model = Assert.IsType<MeetingMinutesVm>(viewResult.Model);
+        Assert.Single(model.CaseEntries);
     }
 
     [Fact]
@@ -371,14 +383,14 @@ public class MeetingsControllerTests : IDisposable
         _db.MeetingMinutesCaseEntries.Add(minutesEntry);
         await _db.SaveChangesAsync();
 
-        var vm = new Models.ViewModels.MeetingMinutesVm
+        var vm = new MeetingMinutesVm
         {
             MeetingId = meeting.Id,
             AttendanceText = "Hansen, Johansen",
             AbsenceText = "Olsen",
             ApprovalOfPreviousMinutesText = "Godkjent",
             NextMeetingDate = new DateOnly(2026, 5, 1),
-            CaseEntries = new List<Models.ViewModels.MeetingMinutesCaseEntryVm>
+            CaseEntries = new List<MeetingMinutesCaseEntryVm>
             {
                 new() { MeetingCaseId = meetingCase.Id, BoardCaseId = boardCase.Id, CaseNumber = 1, Title = "Test", OfficialNotes = "Note", Outcome = MeetingCaseOutcome.Continue }
             }

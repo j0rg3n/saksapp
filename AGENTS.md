@@ -36,3 +36,9 @@ dotnet ef database update
 
 - Make local commits for major changes
 - Do not push to remote unless explicitly requested
+
+## Planning
+
+- PLAN.md should be lean - reference content in SPEC.md rather than duplicating
+- PLAN.md should contain ordered groups of tasks
+- Tasks within each group can be done in parallel
