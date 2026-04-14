@@ -17,3 +17,12 @@ services:
     environment:
       - SMTP__HOST=send.one.com
       - SMTP__PORT=465
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests
+    environment:
+      - TEST_ARGS=-p:CollectCoverage=true
+    profiles:
+      - test

@@ -1,0 +1,17 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+
+COPY SaksAppWeb.Tests/SaksAppWeb.Tests.csproj SaksAppWeb.Tests/
+COPY SaksAppWeb/SaksAppWeb.csproj SaksAppWeb/
+RUN dotnet restore SaksAppWeb.Tests/SaksAppWeb.Tests.csproj
+
+COPY . .
+
+WORKDIR /src/SaksAppWeb.Tests
+
+# Just build during image creation
+RUN dotnet build -c Release
+
+# Run tests at container start with optional coverage
+CMD sh -c 'dotnet test -c Release --logger "console;verbosity=normal" $TEST_ARGS'
