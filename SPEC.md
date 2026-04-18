@@ -237,16 +237,78 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 - Minimum 75% code coverage for business logic
 - Focus on services, controllers, and data transformation logic
 
-**Mocking Strategy**
-To achieve the coverage target, the following external services must be mockable:
-- **Database**: Entity Framework DbContext - use in-memory provider or mocking libraries
-- **Email (SMTP)**: SmtpEmailSender - mock IEmailSender interface
-- **PDF Generation**: SimplePdfWriter - mock or use test implementation
-- **User Manager**: ASP.NET Identity UserManager - mock for authentication tests
-- **File System**: Data protection keys, database files - use temporary directories
-- **Audit Service**: IAuditService - mock to capture logged events
+## Testability Architecture
 
-**Test Organization**
-- Unit tests for isolated logic
+To achieve the 75% coverage target, the codebase follows these architectural patterns:
+
+### Service Layer Abstraction
+All business logic is accessed through interfaces, enabling mocking in tests:
+
+```csharp
+// Query Services - Extract complex queries from controllers
+public interface ICaseQueryService
+{
+    Task<IReadOnlyList<BoardCase>> GetFilteredCasesAsync(CaseStatus? status, string? assigneeUserId, bool showClosed, CancellationToken ct);
+    Task<CaseDetailsVm> GetCaseDetailsAsync(int id, CancellationToken ct);
+}
+
+public interface IMeetingQueryService
+{
+    Task<IReadOnlyList<Meeting>> GetAllMeetingsAsync(CancellationToken ct);
+    Task<Meeting?> GetMeetingWithAgendaAsync(int id, CancellationToken ct);
+    Task<MeetingMinutesVm?> GetMeetingWithMinutesAsync(int id, CancellationToken ct);
+}
+
+public interface IUserDisplayService
+{
+    Task<Dictionary<string, string>> GetDisplayNamesAsync(IEnumerable<string> userIds, CancellationToken ct);
+}
+
+// Generator Services - Abstract external dependencies
+public interface IPdfGenerator
+{
+    Task<byte[]> GenerateAgendaPdfAsync(int meetingId, CancellationToken ct);
+    Task<byte[]> GenerateMinutesPdfAsync(int meetingId, CancellationToken ct);
+}
+
+public interface IHtmlCaseParser
+{
+    ParsedCaseData[] Parse(string html);
+}
+
+public interface IBackupService
+{
+    Task CreateBackupAsync(CancellationToken ct);
+}
+```
+
+### Dependency Injection
+All services are registered in Program.cs and injected via constructor:
+- Scoped: ICaseQueryService, IMeetingQueryService, IUserDisplayService
+- Singleton: IPdfGenerator, IBackupService
+
+### Mocking Strategy
+- **Database**: Use SQLite in-memory provider for integration tests
+- **Email**: Mock IEmailSender interface
+- **PDF**: Mock IPdfGenerator or use test implementation
+- **User Manager**: Use TestUserManager implementation
+- **Configuration**: Inject test values via IConfiguration
+
+### Test Organization
+- Unit tests for isolated logic (services, parsers)
 - Integration tests for database operations
 - Controller tests for HTTP request/response handling
+
+---
+
+## Implementation Phases
+
+### Phase 0: Test Infrastructure (COMPLETE)
+- Test project with xUnit, Moq, EF Core SQLite
+- Initial tests for controllers and services
+- Current coverage: ~9% (target: 75%)
+
+### Phase 0.1: Testability Refactoring (NEXT)
+Extract query logic and abstract external dependencies to enable effective mocking.
+
+See PLAN.md for detailed tasks.
