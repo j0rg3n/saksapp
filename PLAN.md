@@ -6,9 +6,61 @@
 
 ## Fase 0: Test-oppsett ✅ KOMPLETT
 
-- Testprosjekt opprettet med xUnit, Moq, EF Core InMemory
-- 66 tester (57 bestått, 9 hoppet over grunn InMemory-providers begrensninger)
-- Se SPEC.md section "Test Infrastructure Requirements" for detaljer
+- Testprosjekt opprettet med xUnit, Moq, EF Core SQLite
+- 86 tester (76 bestått, 10 hoppet over grunn teknisk begrensninger)
+- Coverage: ~9% line, ~44% method
+- Se SPEC.md section "Testability Architecture" for detaljer
+
+---
+
+## Fase 0.1: Testability Refaktorering
+
+**Mål**: Ekstraher query-logikk og-abstrahere eksterne avhengigheter for å muliggjøre effektiv mocking og øke testbarhet.
+
+### 0.1.1 Ekstraher Case Query Service
+- [ ] Opprett `ICaseQueryService` interface
+- [ ] Implementer `CaseQueryService` med metoder:
+  - `GetFilteredCasesAsync(status, assigneeUserId, showClosed)`
+  - `GetCaseDetailsAsync(id)`
+- [ ] Oppdater `CasesController` til å bruke `ICaseQueryService`
+- [ ] Legg til tester for CaseQueryService
+
+### 0.1.2 Ekstraher Meeting Query Service
+- [ ] Opprett `IMeetingQueryService` interface
+- [ ] Implementer `MeetingQueryService` med metoder:
+  - `GetAllMeetingsAsync()`
+  - `GetMeetingWithAgendaAsync(id)`
+  - `GetMeetingWithMinutesAsync(id)`
+- [ ] Oppdater `MeetingsController` til å bruke `IMeetingQueryService`
+- [ ] Legg til tester for MeetingQueryService
+
+### 0.1.3 Ekstraher User Display Service
+- [ ] Opprett `IUserDisplayService` interface
+- [ ] Implementer `UserDisplayService.GetDisplayNamesAsync(userIds)`
+- [ ] Oppdater controllere til å bruke `IUserDisplayService`
+- [ ] Legg til tester
+
+### 0.1.4 Abstraher PDF Generator
+- [ ] Opprett `IPdfGenerator` interface
+- [ ] Flyt PDF-genereringslogikk fra controller til service
+- [ ] Legg til interface-implementering som kan mockes
+
+### 0.1.5 Abstraher HTML Parser
+- [ ] Opprett `IHtmlCaseParser` interface med `Parse(html)` metode
+- [ ] Ekstraher parsing-logikk fra `HtmlCaseImporter`
+- [ ] Legg til tester for parser
+
+### 0.1.6 Abstraher Backup Service
+- [ ] Opprett `IBackupService` interface
+- [ ] Ekstraher backup-logikk fra `DatabaseBackupService`
+- [ ] Legg til tester
+
+### 0.1.7 Verifiser Coverage
+- [ ] Kjør test suite med coverage
+- [ ] Verifiser betydelig økning i dekningsgrad
+- [ ] Iterer med flere tester ved behov
+
+**Test**: Kjør `docker compose --profile test up test` og verifiser coverage >50% (mål: 75%)
 
 ---
 
