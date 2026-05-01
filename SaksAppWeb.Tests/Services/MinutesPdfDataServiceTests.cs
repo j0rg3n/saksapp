@@ -87,15 +87,17 @@ public class MinutesPdfDataServiceTests : IDisposable
         _db.BoardCases.AddRange(c1, c2);
         await _db.SaveChangesAsync();
 
-        var mc1 = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = c1.Id, AgendaOrder = 2 };
-        var mc2 = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = c2.Id, AgendaOrder = 1 };
-        _db.MeetingCases.AddRange(mc1, mc2);
+        var ce1 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ce2 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.AddRange(ce1, ce2);
         _db.MeetingMinutes.Add(new MeetingMinutes { MeetingId = meeting.Id });
         await _db.SaveChangesAsync();
 
-        _db.MeetingMinutesCaseEntries.AddRange(
-            new MeetingMinutesCaseEntry { MeetingId = meeting.Id, MeetingCaseId = mc1.Id, BoardCaseId = c1.Id, Outcome = MeetingCaseOutcome.Continue },
-            new MeetingMinutesCaseEntry { MeetingId = meeting.Id, MeetingCaseId = mc2.Id, BoardCaseId = c2.Id, Outcome = MeetingCaseOutcome.Continue });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce1.Id, BoardCaseId = c1.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce2.Id, BoardCaseId = c2.Id });
+        _db.MeetingEventLinks.AddRange(
+            new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce1.Id, AgendaOrder = 2, AgendaTextSnapshot = "" },
+            new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce2.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
         await _db.SaveChangesAsync();
 
         var result = await _service.GetMinutesDataAsync(meeting.Id);
@@ -115,13 +117,14 @@ public class MinutesPdfDataServiceTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        var ce = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(ce);
         _db.MeetingMinutes.Add(new MeetingMinutes { MeetingId = meeting.Id });
         await _db.SaveChangesAsync();
 
-        var entry = new MeetingMinutesCaseEntry { MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id, Outcome = MeetingCaseOutcome.Continue };
-        _db.MeetingMinutesCaseEntries.Add(entry);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.Add(mel);
         await _db.SaveChangesAsync();
 
         var att1 = new Attachment { OriginalFileName = "a.pdf", ContentType = "application/pdf", SizeBytes = 10, Content = new byte[10], UploadedByUserId = "u" };
@@ -129,9 +132,9 @@ public class MinutesPdfDataServiceTests : IDisposable
         _db.Attachments.AddRange(att1, att2);
         await _db.SaveChangesAsync();
 
-        _db.MeetingMinutesCaseEntryAttachments.AddRange(
-            new MeetingMinutesCaseEntryAttachment { MeetingMinutesCaseEntryId = entry.Id, AttachmentId = att1.Id },
-            new MeetingMinutesCaseEntryAttachment { MeetingMinutesCaseEntryId = entry.Id, AttachmentId = att2.Id });
+        _db.CaseEventAttachments.AddRange(
+            new CaseEventAttachment { CaseEventId = ce.Id, AttachmentId = att1.Id },
+            new CaseEventAttachment { CaseEventId = ce.Id, AttachmentId = att2.Id });
         await _db.SaveChangesAsync();
 
         var result = await _service.GetMinutesDataAsync(meeting.Id);

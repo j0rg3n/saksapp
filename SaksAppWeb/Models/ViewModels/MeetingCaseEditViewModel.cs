@@ -17,6 +17,4 @@ public class MeetingCaseEditVm
 
     [MaxLength(300)]
     public string? TidsfristOverrideText { get; set; }
-
-    public string? FollowUpTextDraft { get; set; }
 }

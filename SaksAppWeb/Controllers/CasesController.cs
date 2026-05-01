@@ -242,23 +242,32 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         var c = await _db.BoardCases.AsNoTracking().FirstOrDefaultAsync(x => x.Id == caseId, ct);
         if (c is null) return NotFound();
 
-        var entity = new CaseComment
-        {
-            BoardCaseId = caseId,
-            Text = text.Trim(),
-            CreatedAt = DateTimeOffset.UtcNow,
-            CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ""
-        };
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
 
-        _db.CaseComments.Add(entity);
+        var caseEvent = new CaseEvent
+        {
+            Category = "comment",
+            Content = text.Trim(),
+            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedByUserId = userId
+        };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync(ct);
+
+        var caseEventCase = new CaseEventCase
+        {
+            CaseEventId = caseEvent.Id,
+            BoardCaseId = caseId
+        };
+        _db.CaseEventCases.Add(caseEventCase);
         await _db.SaveChangesAsync(ct);
 
         await _audit.LogAsync(
             AuditAction.Create,
-            nameof(CaseComment),
-            entity.Id.ToString(),
+            nameof(CaseEvent),
+            caseEvent.Id.ToString(),
             before: null,
-            after: new { entity.Id, entity.BoardCaseId, entity.CreatedAt, entity.CreatedByUserId, entity.Text },
+            after: new { caseEvent.Id, BoardCaseId = caseId, caseEvent.CreatedAt, caseEvent.CreatedByUserId, caseEvent.Content },
             ct: ct);
 
         return RedirectToAction(nameof(Details), new { id = caseId });
@@ -268,15 +277,20 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadCommentAttachment(int commentId, IFormFile file, CancellationToken ct)
     {
-        _logger.LogInformation("UploadCommentAttachment called: commentId={CommentId}, file={File}", commentId, file?.FileName);
-        
-        var comment = await _db.CaseComments.FirstOrDefaultAsync(x => x.Id == commentId, ct);
-        if (comment is null) return NotFound();
+        _logger.LogInformation("UploadCommentAttachment called: caseEventId={CaseEventId}, file={File}", commentId, file?.FileName);
+
+        // commentId is now a CaseEventId
+        var caseEvent = await _db.CaseEvents
+            .Include(x => x.Cases)
+            .FirstOrDefaultAsync(x => x.Id == commentId, ct);
+        if (caseEvent is null) return NotFound();
+
+        var caseId = caseEvent.Cases.FirstOrDefault()?.BoardCaseId;
 
         if (file is null || file.Length <= 0)
         {
             _logger.LogWarning("UploadCommentAttachment: file is null or empty");
-            return RedirectToAction(nameof(Details), new { id = comment.BoardCaseId });
+            return RedirectToAction(nameof(Details), new { id = caseId });
         }
 
         if (file.Length > MaxUploadBytes)
@@ -284,7 +298,7 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
 
         var contentType = file.ContentType ?? "application/octet-stream";
         _logger.LogInformation("ContentType: {ContentType}, Length: {Length}", contentType, file.Length);
-        
+
         if (!IsAllowedContentType(contentType))
             return BadRequest("Only PDF and common image types are allowed.");
 
@@ -312,13 +326,13 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         await _db.SaveChangesAsync(ct);
         _logger.LogInformation("Attachment saved with ID: {Id}", attachment.Id);
 
-        var link = new CaseCommentAttachment
+        var link = new CaseEventAttachment
         {
-            CaseCommentId = commentId,
+            CaseEventId = commentId,
             AttachmentId = attachment.Id
         };
 
-        _db.CaseCommentAttachments.Add(link);
+        _db.CaseEventAttachments.Add(link);
         _logger.LogInformation("Saving link to DB...");
         await _db.SaveChangesAsync(ct);
         _logger.LogInformation("Link saved with ID: {Id}", link.Id);
@@ -333,13 +347,13 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
 
         await _audit.LogAsync(
             AuditAction.Create,
-            nameof(CaseCommentAttachment),
+            nameof(CaseEventAttachment),
             link.Id.ToString(),
             before: null,
-            after: new { link.Id, link.CaseCommentId, link.AttachmentId },
+            after: new { link.Id, link.CaseEventId, link.AttachmentId },
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = comment.BoardCaseId });
+        return RedirectToAction(nameof(Details), new { id = caseId });
     }
 
     [HttpGet]
@@ -372,13 +386,14 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveCommentAttachment(int linkId, CancellationToken ct)
     {
-        var link = await _db.CaseCommentAttachments
-            .Include(x => x.CaseComment)
+        var link = await _db.CaseEventAttachments
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.Cases)
             .FirstOrDefaultAsync(x => x.Id == linkId, ct);
 
         if (link is null) return NotFound();
 
-        var before = new { link.Id, link.CaseCommentId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
+        var before = new { link.Id, link.CaseEventId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
 
         link.IsDeleted = true;
         link.DeletedAt = DateTimeOffset.UtcNow;
@@ -386,59 +401,71 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
 
         await _db.SaveChangesAsync(ct);
 
-        var after = new { link.Id, link.CaseCommentId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
+        var after = new { link.Id, link.CaseEventId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
 
         await _audit.LogAsync(
             AuditAction.SoftDelete,
-            nameof(CaseCommentAttachment),
+            nameof(CaseEventAttachment),
             link.Id.ToString(),
             before,
             after,
             reason: "Unlinked attachment from comment",
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = link.CaseComment.BoardCaseId });
+        var caseId = link.CaseEvent.Cases.FirstOrDefault()?.BoardCaseId;
+        return RedirectToAction(nameof(Details), new { id = caseId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SoftDeleteComment(int commentId, CancellationToken ct)
     {
-        var comment = await _db.CaseComments.FirstOrDefaultAsync(x => x.Id == commentId, ct);
-        if (comment is null) return NotFound();
+        // commentId is now a CaseEventId
+        var caseEvent = await _db.CaseEvents
+            .Include(x => x.Cases)
+            .FirstOrDefaultAsync(x => x.Id == commentId, ct);
+        if (caseEvent is null) return NotFound();
 
-        var before = new { comment.Id, comment.BoardCaseId, comment.Text, comment.IsDeleted, comment.DeletedAt, comment.DeletedByUserId };
+        var caseId = caseEvent.Cases.FirstOrDefault()?.BoardCaseId;
 
-        comment.IsDeleted = true;
-        comment.DeletedAt = DateTimeOffset.UtcNow;
-        comment.DeletedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var before = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Content, caseEvent.IsDeleted, caseEvent.DeletedAt, caseEvent.DeletedByUserId };
+
+        caseEvent.IsDeleted = true;
+        caseEvent.DeletedAt = DateTimeOffset.UtcNow;
+        caseEvent.DeletedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         await _db.SaveChangesAsync(ct);
 
-        var after = new { comment.Id, comment.BoardCaseId, comment.Text, comment.IsDeleted, comment.DeletedAt, comment.DeletedByUserId };
+        var after = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Content, caseEvent.IsDeleted, caseEvent.DeletedAt, caseEvent.DeletedByUserId };
 
         await _audit.LogAsync(
             AuditAction.SoftDelete,
-            nameof(CaseComment),
-            comment.Id.ToString(),
+            nameof(CaseEvent),
+            caseEvent.Id.ToString(),
             before,
             after,
             reason: "Soft deleted comment",
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = comment.BoardCaseId });
+        return RedirectToAction(nameof(Details), new { id = caseId });
     }
 
     public async Task<IActionResult> EditComment(int commentId, CancellationToken ct)
     {
-        var comment = await _db.CaseComments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == commentId, ct);
-        if (comment is null) return NotFound();
+        // commentId is now a CaseEventId
+        var caseEvent = await _db.CaseEvents
+            .AsNoTracking()
+            .Include(x => x.Cases)
+            .FirstOrDefaultAsync(x => x.Id == commentId, ct);
+        if (caseEvent is null) return NotFound();
+
+        var caseId = caseEvent.Cases.FirstOrDefault()?.BoardCaseId ?? 0;
 
         var vm = new SaksAppWeb.Models.ViewModels.CommentEditVm
         {
-            Id = comment.Id,
-            CaseId = comment.BoardCaseId,
-            Text = comment.Text
+            Id = caseEvent.Id,
+            CaseId = caseId,
+            Text = caseEvent.Content
         };
 
         return View(vm);
@@ -451,26 +478,30 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         if (!ModelState.IsValid)
             return View(vm);
 
-        var comment = await _db.CaseComments.FirstOrDefaultAsync(x => x.Id == vm.Id, ct);
-        if (comment is null) return NotFound();
+        var caseEvent = await _db.CaseEvents
+            .Include(x => x.Cases)
+            .FirstOrDefaultAsync(x => x.Id == vm.Id, ct);
+        if (caseEvent is null) return NotFound();
 
-        var before = new { comment.Id, comment.BoardCaseId, comment.Text };
+        var caseId = caseEvent.Cases.FirstOrDefault()?.BoardCaseId ?? vm.CaseId;
 
-        comment.Text = vm.Text;
+        var before = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Content };
+
+        caseEvent.Content = vm.Text;
 
         await _db.SaveChangesAsync(ct);
 
-        var after = new { comment.Id, comment.BoardCaseId, comment.Text };
+        var after = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Content };
 
         await _audit.LogAsync(
             AuditAction.Update,
-            nameof(CaseComment),
-            comment.Id.ToString(),
+            nameof(CaseEvent),
+            caseEvent.Id.ToString(),
             before,
             after,
             reason: "Edited comment",
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = comment.BoardCaseId });
+        return RedirectToAction(nameof(Details), new { id = caseId });
     }
 }

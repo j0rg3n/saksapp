@@ -47,15 +47,18 @@ public sealed class MinutesSaveService : IMinutesSaveService
 
         await _db.SaveChangesAsync(ct);
 
-        var entries = await _db.MeetingMinutesCaseEntries
-            .Where(x => x.MeetingId == vm.MeetingId)
-            .ToListAsync(ct);
+        var melIds = vm.CaseEntries.Select(e => e.MeetingEventLinkId).Where(x => x > 0).Distinct().ToList();
+        var links = melIds.Count == 0
+            ? new List<MeetingEventLink>()
+            : await _db.MeetingEventLinks
+                .Where(x => melIds.Contains(x.Id))
+                .ToListAsync(ct);
 
-        var entriesByMeetingCaseId = entries.ToDictionary(x => x.MeetingCaseId, x => x);
+        var linksById = links.ToDictionary(x => x.Id, x => x);
 
         foreach (var e in vm.CaseEntries)
         {
-            if (!entriesByMeetingCaseId.TryGetValue(e.MeetingCaseId, out var entity))
+            if (!linksById.TryGetValue(e.MeetingEventLinkId, out var entity))
                 continue;
 
             var beforeEntry = new { entity.OfficialNotes, entity.DecisionText, entity.FollowUpText, entity.Outcome };
@@ -69,7 +72,7 @@ public sealed class MinutesSaveService : IMinutesSaveService
 
             await _audit.LogAsync(
                 AuditAction.Update,
-                nameof(MeetingMinutesCaseEntry),
+                nameof(MeetingEventLink),
                 entity.Id.ToString(),
                 beforeEntry,
                 afterEntry,

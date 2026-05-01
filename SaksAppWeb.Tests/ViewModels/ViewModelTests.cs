@@ -122,7 +122,7 @@ public class MeetingMinutesCaseEntryVmTests
     {
         var vm = new MeetingMinutesCaseEntryVm
         {
-            MeetingCaseId = 1,
+            MeetingEventLinkId = 1,
             BoardCaseId = 42,
             CaseNumber = 100,
             Title = "Test Case",
@@ -133,7 +133,7 @@ public class MeetingMinutesCaseEntryVmTests
             Outcome = MeetingCaseOutcome.Continue
         };
 
-        Assert.Equal(1, vm.MeetingCaseId);
+        Assert.Equal(1, vm.MeetingEventLinkId);
         Assert.Equal(42, vm.BoardCaseId);
         Assert.Equal(100, vm.CaseNumber);
         Assert.Equal("Test Case", vm.Title);

@@ -65,20 +65,20 @@
                 <div class="btn-group" role="group">
                     <form asp-action="MoveAgendaItem" method="post">
                         @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@a.MeetingCaseId" />
+                        <input type="hidden" name="id" value="@a.MeetingEventLinkId" />
                         <input type="hidden" name="up" value="true" />
                         <button class="btn btn-sm btn-outline-secondary" type="submit">Up</button>
                     </form>
                     <form asp-action="MoveAgendaItem" method="post">
                         @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@a.MeetingCaseId" />
+                        <input type="hidden" name="id" value="@a.MeetingEventLinkId" />
                         <input type="hidden" name="up" value="false" />
                         <button class="btn btn-sm btn-outline-secondary" type="submit">Down</button>
                     </form>
-                    <a class="btn btn-sm btn-outline-primary" asp-action="EditAgendaItem" asp-route-id="@a.MeetingCaseId">Edit</a>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="EditAgendaItem" asp-route-id="@a.MeetingEventLinkId">Edit</a>
                     <form asp-action="RemoveAgendaItem" method="post">
                         @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@a.MeetingCaseId" />
+                        <input type="hidden" name="id" value="@a.MeetingEventLinkId" />
                         <button class="btn btn-sm btn-outline-danger" type="submit"
                                 onclick="return confirm('Remove this agenda item?')">
                             Remove

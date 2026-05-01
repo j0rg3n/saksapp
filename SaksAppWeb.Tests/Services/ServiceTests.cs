@@ -263,9 +263,13 @@ public class MeetingQueryServiceTests : IDisposable
         var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
-        
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
         await _db.SaveChangesAsync();
 
         var result = await _service.GetMeetingWithAgendaAsync(meeting.Id, CancellationToken.None);
@@ -285,7 +289,12 @@ public class MeetingQueryServiceTests : IDisposable
         _db.BoardCases.AddRange(scheduled, available);
         await _db.SaveChangesAsync();
 
-        _db.MeetingCases.Add(new MeetingCase { MeetingId = meeting.Id, BoardCaseId = scheduled.Id, AgendaOrder = 1 });
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = scheduled.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
         await _db.SaveChangesAsync();
 
         var result = await _service.GetMeetingWithAgendaAsync(meeting.Id, CancellationToken.None);
@@ -340,54 +349,68 @@ public class MeetingQueryServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetMeetingWithMinutesAsync_CreatesEntriesForAllAgendaItems()
+    public async Task GetMeetingWithMinutesAsync_ReturnsCaseEntriesForMeetingEventLinks()
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
         _db.Meetings.Add(meeting);
         var case1 = new BoardCase { CaseNumber = 1, Title = "Case 1", Status = CaseStatus.Open };
         var case2 = new BoardCase { CaseNumber = 2, Title = "Case 2", Status = CaseStatus.Open };
         _db.BoardCases.AddRange(case1, case2);
+        _db.MeetingMinutes.Add(new MeetingMinutes { MeetingId = 0 }); // will be set after meeting is saved
         await _db.SaveChangesAsync();
 
-        _db.MeetingCases.AddRange(
-            new MeetingCase { MeetingId = meeting.Id, BoardCaseId = case1.Id, AgendaOrder = 1 },
-            new MeetingCase { MeetingId = meeting.Id, BoardCaseId = case2.Id, AgendaOrder = 2 });
+        var ce1 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ce2 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.AddRange(ce1, ce2);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce1.Id, BoardCaseId = case1.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce2.Id, BoardCaseId = case2.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce1.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce2.Id, AgendaOrder = 2, AgendaTextSnapshot = "" });
+
+        // Fix: set MeetingMinutes.MeetingId correctly
+        var mm = await _db.MeetingMinutes.FirstAsync();
+        mm.MeetingId = meeting.Id;
         await _db.SaveChangesAsync();
 
         var result = await _service.GetMeetingWithMinutesAsync(meeting.Id, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.CaseEntries.Count);
-        Assert.Equal(2, await _db.MeetingMinutesCaseEntries.CountAsync(x => x.MeetingId == meeting.Id));
     }
 
     [Fact]
-    public async Task GetMeetingWithMinutesAsync_DoesNotDuplicateExistingEntries()
+    public async Task GetMeetingWithMinutesAsync_ReturnsMeetingEventLinkData()
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
         _db.Meetings.Add(meeting);
         var boardCase = new BoardCase { CaseNumber = 1, Title = "Case", Status = CaseStatus.Open };
         _db.BoardCases.Add(boardCase);
+        _db.MeetingMinutes.Add(new MeetingMinutes { MeetingId = 0 });
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        _db.MeetingMinutesCaseEntries.Add(new MeetingMinutesCaseEntry
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink
         {
-            MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id,
-            Outcome = MeetingCaseOutcome.Closed, DecisionText = "Resolved"
+            MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "",
+            DecisionText = "Resolved", Outcome = MeetingCaseOutcome.Closed
         });
+
+        var mm = await _db.MeetingMinutes.FirstAsync();
+        mm.MeetingId = meeting.Id;
         await _db.SaveChangesAsync();
 
-        // Call twice — should not create a second entry
-        await _service.GetMeetingWithMinutesAsync(meeting.Id, CancellationToken.None);
         var result = await _service.GetMeetingWithMinutesAsync(meeting.Id, CancellationToken.None);
 
         Assert.NotNull(result);
-        Assert.Equal(1, await _db.MeetingMinutesCaseEntries.CountAsync(x => x.MeetingId == meeting.Id));
+        Assert.Single(result.CaseEntries);
         Assert.Equal("Resolved", result.CaseEntries[0].DecisionText);
+        Assert.Equal(MeetingCaseOutcome.Closed, result.CaseEntries[0].Outcome);
     }
 }
 

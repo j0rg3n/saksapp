@@ -42,17 +42,27 @@ public class MeetingQueryService : IMeetingQueryService
         var meeting = await _db.Meetings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (meeting is null) return null;
 
-        var agendaEntities = await _db.MeetingCases.AsNoTracking()
+        // Load MeetingEventLinks for this meeting, including CaseEvent -> Cases -> BoardCase
+        var agendaEntities = await _db.MeetingEventLinks.AsNoTracking()
             .Where(x => x.MeetingId == id)
-            .Join(_db.BoardCases.AsNoTracking(),
-                mc => mc.BoardCaseId,
-                c => c.Id,
-                (mc, c) => new { mc, c })
-            .OrderBy(x => x.mc.AgendaOrder)
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.Cases)
+                    .ThenInclude(cec => cec.BoardCase)
+            .OrderBy(x => x.AgendaOrder)
             .ToListAsync(ct);
 
-        var assigneeIds = agendaEntities
-            .Select(x => x.c.AssigneeUserId)
+        var agendaRows = agendaEntities
+            .Select(mel =>
+            {
+                var cec = mel.CaseEvent.Cases.FirstOrDefault();
+                return cec is null ? null : new { mel, cec, boardCase = cec.BoardCase };
+            })
+            .Where(x => x is not null)
+            .Select(x => x!)
+            .ToList();
+
+        var assigneeIds = agendaRows
+            .Select(x => x.boardCase.AssigneeUserId)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct()
             .ToList();
@@ -62,20 +72,20 @@ public class MeetingQueryService : IMeetingQueryService
             .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
             .ToDictionaryAsync(x => x.Id, x => x.FullName ?? x.Email ?? x.UserName ?? x.Id, ct);
 
-        var agenda = agendaEntities.Select(x => new MeetingAgendaRowVm
+        var agenda = agendaRows.Select(x => new MeetingAgendaRowVm
         {
-            MeetingCaseId = x.mc.Id,
-            AgendaOrder = x.mc.AgendaOrder,
-            CaseId = x.c.Id,
-            CaseNumber = x.c.CaseNumber,
-            Title = x.c.Title,
-            AssigneeDisplay = userDisplay.TryGetValue(x.c.AssigneeUserId, out var d) ? d : x.c.AssigneeUserId,
-            AgendaTextSnapshot = x.mc.AgendaTextSnapshot,
-            TidsfristOverrideDate = x.mc.TidsfristOverrideDate,
-            TidsfristOverrideText = x.mc.TidsfristOverrideText
+            MeetingEventLinkId = x.mel.Id,
+            AgendaOrder = x.mel.AgendaOrder,
+            CaseId = x.boardCase.Id,
+            CaseNumber = x.boardCase.CaseNumber,
+            Title = x.boardCase.Title,
+            AssigneeDisplay = userDisplay.TryGetValue(x.boardCase.AssigneeUserId ?? "", out var d) ? d : x.boardCase.AssigneeUserId,
+            AgendaTextSnapshot = x.mel.AgendaTextSnapshot,
+            TidsfristOverrideDate = x.mel.TidsfristOverrideDate,
+            TidsfristOverrideText = x.mel.TidsfristOverrideText
         }).ToList();
 
-        var alreadyScheduledCaseIds = agendaEntities.Select(x => x.c.Id).Distinct().ToList();
+        var alreadyScheduledCaseIds = agendaRows.Select(x => x.boardCase.Id).Distinct().ToList();
 
         var openCases = await _db.BoardCases.AsNoTracking()
             .Where(x => x.Status != CaseStatus.Closed)
@@ -117,60 +127,87 @@ public class MeetingQueryService : IMeetingQueryService
                 ct: ct);
         }
 
-        var agenda = await _db.MeetingCases.AsNoTracking()
+        // Load MeetingEventLinks for this meeting, including CaseEvent -> Cases -> BoardCase
+        var links = await _db.MeetingEventLinks.AsNoTracking()
             .Where(x => x.MeetingId == id)
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.Cases)
+                    .ThenInclude(cec => cec.BoardCase)
             .OrderBy(x => x.AgendaOrder)
             .ToListAsync(ct);
 
-        var agendaCaseIds = agenda.Select(x => x.Id).ToList();
+        var assigneeIds = links
+            .SelectMany(mel => mel.CaseEvent.Cases.Select(cec => cec.BoardCase.AssigneeUserId))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToList();
 
-        var existingEntries = await _db.MeetingMinutesCaseEntries
-            .Where(x => x.MeetingId == id)
-            .ToListAsync(ct);
-
-        var existingByMeetingCaseId = existingEntries.ToDictionary(x => x.MeetingCaseId, x => x);
-
-        foreach (var mc in agenda)
-        {
-            if (existingByMeetingCaseId.ContainsKey(mc.Id))
-                continue;
-
-            var entry = new MeetingMinutesCaseEntry
-            {
-                MeetingId = id,
-                MeetingCaseId = mc.Id,
-                BoardCaseId = mc.BoardCaseId,
-                Outcome = MeetingCaseOutcome.Continue
-            };
-
-            _db.MeetingMinutesCaseEntries.Add(entry);
-        }
-
-        if (_db.ChangeTracker.HasChanges())
-        {
-            await _db.SaveChangesAsync(ct);
-            await _audit.LogAsync(
-                AuditAction.Update,
-                nameof(Meeting),
-                meeting.Id.ToString(),
-                before: null,
-                after: new { AddedMinutesEntries = true },
-                reason: "Ensured minutes entries for agenda",
-                ct: ct);
-        }
-
-        var entries = await _db.MeetingMinutesCaseEntries.AsNoTracking()
-            .Where(x => x.MeetingId == id)
-            .Join(_db.MeetingCases.AsNoTracking(), e => e.MeetingCaseId, mc => mc.Id, (e, mc) => new { e, mc })
-            .Join(_db.BoardCases.AsNoTracking(), x => x.e.BoardCaseId, c => c.Id, (x, c) => new { x.e, x.mc, c })
-            .OrderBy(x => x.mc.AgendaOrder)
-            .ToListAsync(ct);
-
-        var assigneeIds = entries.Select(x => x.c.AssigneeUserId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var userDisplay = await _userManager.Users
             .Where(u => assigneeIds.Contains(u.Id))
             .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
             .ToDictionaryAsync(x => x.Id, x => x.FullName ?? x.Email ?? x.UserName ?? x.Id, ct);
+
+        var caseEventIds = links.Select(x => x.CaseEventId).Distinct().ToList();
+
+        // Load attachments for all case events in one query
+        var attachmentRows = caseEventIds.Count == 0
+            ? new List<(int CaseEventId, int LinkId, int AttachmentId, string FileName, string ContentType, long SizeBytes)>()
+            : await _db.CaseEventAttachments.AsNoTracking()
+                .Where(x => caseEventIds.Contains(x.CaseEventId))
+                .Join(_db.Attachments.AsNoTracking(),
+                    link => link.AttachmentId,
+                    att => att.Id,
+                    (link, att) => new
+                    {
+                        link.CaseEventId,
+                        LinkId = link.Id,
+                        AttachmentId = att.Id,
+                        att.OriginalFileName,
+                        att.ContentType,
+                        att.SizeBytes
+                    })
+                .OrderByDescending(x => x.AttachmentId)
+                .Select(x => new ValueTuple<int, int, int, string, string, long>(
+                    x.CaseEventId, x.LinkId, x.AttachmentId, x.OriginalFileName, x.ContentType, x.SizeBytes))
+                .ToListAsync(ct);
+
+        var attachmentsByCaseEventId = attachmentRows
+            .GroupBy(x => x.Item1)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var caseEntries = new List<MeetingMinutesCaseEntryVm>();
+        foreach (var mel in links)
+        {
+            var cec = mel.CaseEvent.Cases.FirstOrDefault();
+            if (cec is null) continue;
+
+            var boardCase = cec.BoardCase;
+            var atts = attachmentsByCaseEventId.TryGetValue(mel.CaseEventId, out var rawAtts) ? rawAtts : new();
+
+            var attachmentVms = atts.Select(a => new MinutesEntryAttachmentVm
+            {
+                LinkId = a.Item2,
+                AttachmentId = a.Item3,
+                OriginalFileName = a.Item4,
+                ContentType = a.Item5,
+                SizeBytes = a.Item6
+            }).ToList();
+
+            caseEntries.Add(new MeetingMinutesCaseEntryVm
+            {
+                MeetingEventLinkId = mel.Id,
+                CaseEventId = mel.CaseEventId,
+                BoardCaseId = boardCase.Id,
+                CaseNumber = boardCase.CaseNumber,
+                Title = boardCase.Title,
+                AssigneeDisplay = userDisplay.TryGetValue(boardCase.AssigneeUserId ?? "", out var d) ? d : boardCase.AssigneeUserId,
+                OfficialNotes = mel.OfficialNotes,
+                DecisionText = mel.DecisionText,
+                FollowUpText = mel.FollowUpText,
+                Outcome = mel.Outcome ?? MeetingCaseOutcome.Continue,
+                Attachments = attachmentVms
+            });
+        }
 
         var vm = new MeetingMinutesVm
         {
@@ -186,19 +223,7 @@ public class MeetingQueryService : IMeetingQueryService
             NextMeetingDate = minutes.NextMeetingDate,
             EventueltText = minutes.EventueltText,
 
-            CaseEntries = entries.Select(x => new MeetingMinutesCaseEntryVm
-            {
-                MeetingCaseId = x.mc.Id,
-                BoardCaseId = x.c.Id,
-                CaseNumber = x.c.CaseNumber,
-                Title = x.c.Title,
-                AssigneeDisplay = userDisplay.TryGetValue(x.c.AssigneeUserId, out var d) ? d : x.c.AssigneeUserId,
-                OfficialNotes = x.e.OfficialNotes,
-                DecisionText = x.e.DecisionText,
-                FollowUpText = x.e.FollowUpText,
-                Outcome = x.e.Outcome,
-                MinutesEntryId = x.e.Id
-            }).ToList()
+            CaseEntries = caseEntries
         };
 
         var signed = await _db.MeetingMinutesAttachments.AsNoTracking()
@@ -216,59 +241,6 @@ public class MeetingQueryService : IMeetingQueryService
             .ToListAsync(ct);
 
         vm.SignedMinutes = signed;
-
-        var minutesEntryEntities = await _db.MeetingMinutesCaseEntries.AsNoTracking()
-            .Where(x => x.MeetingId == id)
-            .ToListAsync(ct);
-
-        var minutesEntryIdByMeetingCaseId = minutesEntryEntities
-            .ToDictionary(x => x.MeetingCaseId, x => x.Id);
-
-        foreach (var ce in vm.CaseEntries)
-        {
-            ce.MinutesEntryId = minutesEntryIdByMeetingCaseId.TryGetValue(ce.MeetingCaseId, out var mid) ? mid : null;
-        }
-
-        var minutesEntryIds = minutesEntryEntities.Select(x => x.Id).ToList();
-
-        var attachmentRows = minutesEntryIds.Count == 0
-            ? new List<(int EntryId, MinutesEntryAttachmentVm Att)>()
-            : await _db.MeetingMinutesCaseEntryAttachments.AsNoTracking()
-                .Where(x => minutesEntryIds.Contains(x.MeetingMinutesCaseEntryId))
-                .Join(_db.Attachments.AsNoTracking(),
-                    link => link.AttachmentId,
-                    att => att.Id,
-                    (link, att) => new
-                    {
-                        link.MeetingMinutesCaseEntryId,
-                        LinkId = link.Id,
-                        AttachmentId = att.Id,
-                        att.OriginalFileName,
-                        att.ContentType,
-                        att.SizeBytes
-                    })
-                .OrderByDescending(x => x.AttachmentId)
-                .Select(x => new ValueTuple<int, MinutesEntryAttachmentVm>(
-                    x.MeetingMinutesCaseEntryId,
-                    new MinutesEntryAttachmentVm
-                    {
-                        LinkId = x.LinkId,
-                        AttachmentId = x.AttachmentId,
-                        OriginalFileName = x.OriginalFileName,
-                        ContentType = x.ContentType,
-                        SizeBytes = x.SizeBytes
-                    }))
-                .ToListAsync(ct);
-
-        var attachmentsByEntryId = attachmentRows
-            .GroupBy(x => x.Item1)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
-
-        foreach (var ce in vm.CaseEntries)
-        {
-            if (ce.MinutesEntryId is int eid && attachmentsByEntryId.TryGetValue(eid, out var list))
-                ce.Attachments = list;
-        }
 
         return vm;
     }

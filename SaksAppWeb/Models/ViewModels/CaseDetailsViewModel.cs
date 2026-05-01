@@ -44,12 +44,12 @@ public class CaseTimelineItemVm
     public long SortId { get; set; }
 
     // Comment-specific
-    public int? CommentId { get; set; }
+    public int? CaseEventId { get; set; }
     public string? CommentText { get; set; }
     public string? CommentAuthorUserId { get; set; }
 
     // Minutes-specific
-    public int? MeetingMinutesCaseEntryId { get; set; }
+    public int? MeetingEventLinkId { get; set; }
     public int? MeetingId { get; set; }
 
     public DateOnly? MeetingDate { get; set; }

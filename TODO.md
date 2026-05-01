@@ -210,24 +210,24 @@ public class MeetingEventLink
 
 ---
 
-### Phase 3: API/Controllers
+### Phase 3: API/Controllers ✅ KOMPLETT (3.1+3.2; 3.3 utsatt)
 
 #### 3.1 Oppdater CaseController
-- [ ] **Task 3.1.1**: Endre `AddComment` til å opprette `CaseEvent` istedenfor `CaseComment`
-- [ ] **Task 3.1.2**: Endre `DeleteComment` til soft delete `CaseEvent`
-- [ ] **Task 3.1.3**: Test at kommentarer vises i sak-details
+- [x] **Task 3.1.1**: `AddComment` oppretter `CaseEvent`+`CaseEventCase`
+- [x] **Task 3.1.2**: `SoftDeleteComment`, `EditComment` bruker `CaseEvent`
+- [x] **Task 3.1.3**: `GetCaseDetailsAsync` leser fra `CaseEvents`+`MeetingEventLinks`
 
 #### 3.2 Oppdater MeetingsController
-- [ ] **Task 3.2.1**: Endre `Minutes` til å bruke `MeetingEventLink`
-- [ ] **Task 3.2.2**: Endre `EditAgendaItem` til å lagre i `MeetingEventLink`
-- [ ] **Task 3.2.3**: Endre `AddCase` til å opprette `MeetingEventLink`
-- [ ] **Task 3.2.4**: Test at agenda-endringer lagres korrekt
+- [x] **Task 3.2.1**: `Minutes`/`SaveMinutes` bruker `MeetingEventLink`
+- [x] **Task 3.2.2**: `EditAgendaItem` lagrer til `MeetingEventLink`
+- [x] **Task 3.2.3**: `AddCase` oppretter `CaseEvent`+`MeetingEventLink`+`CaseEventCase`
+- [x] **Task 3.2.4**: Alle 162 tester passerer
 
 #### 3.3 Legg til CaseEvent-api
 - [ ] **Task 3.3.1**: Opprett `CaseEvents` controller for Board Log
 - [ ] **Task 3.3.2**: Legg til CRUD for CaseEvent (uten møtekobling)
 
-**Test**: Verifiser alle endpoints fungerer med nye modeller.
+**Test**: 162 tester passerer. ✅
 
 ---
 

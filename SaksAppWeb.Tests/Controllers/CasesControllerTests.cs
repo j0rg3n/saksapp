@@ -157,10 +157,15 @@ public class CasesControllerTests : IDisposable
         var result = await _controller.AddComment(boardCase.Id, "New comment", CancellationToken.None);
 
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
-        
-        var savedComment = await _db.CaseComments.FirstOrDefaultAsync();
-        Assert.NotNull(savedComment);
-        Assert.Equal("New comment", savedComment.Text);
+
+        var savedEvent = await _db.CaseEvents.FirstOrDefaultAsync();
+        Assert.NotNull(savedEvent);
+        Assert.Equal("New comment", savedEvent.Content);
+        Assert.Equal("comment", savedEvent.Category);
+
+        var savedLink = await _db.CaseEventCases.FirstOrDefaultAsync();
+        Assert.NotNull(savedLink);
+        Assert.Equal(boardCase.Id, savedLink.BoardCaseId);
     }
 
     [Fact]
@@ -245,14 +250,17 @@ public class CasesControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Delete me", CreatedAt = DateTime.UtcNow };
-        _db.CaseComments.Add(comment);
+        var caseEvent = new CaseEvent { Category = "comment", Content = "Delete me", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.SoftDeleteComment(comment.Id, CancellationToken.None);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.SoftDeleteComment(caseEvent.Id, CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
-        var updated = await _db.CaseComments.FindAsync(comment.Id);
+        var updated = await _db.CaseEvents.FindAsync(caseEvent.Id);
         Assert.True(updated!.IsDeleted);
     }
 
@@ -271,11 +279,14 @@ public class CasesControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Existing text", CreatedAt = DateTime.UtcNow };
-        _db.CaseComments.Add(comment);
+        var caseEvent = new CaseEvent { Category = "comment", Content = "Existing text", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.EditComment(comment.Id, CancellationToken.None);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.EditComment(caseEvent.Id, CancellationToken.None);
 
         var viewResult = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<CommentEditVm>(viewResult.Model);
@@ -297,17 +308,20 @@ public class CasesControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Old text", CreatedAt = DateTime.UtcNow };
-        _db.CaseComments.Add(comment);
+        var caseEvent = new CaseEvent { Category = "comment", Content = "Old text", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        var vm = new CommentEditVm { Id = comment.Id, CaseId = boardCase.Id, Text = "Updated text" };
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        await _db.SaveChangesAsync();
+
+        var vm = new CommentEditVm { Id = caseEvent.Id, CaseId = boardCase.Id, Text = "Updated text" };
 
         var result = await _controller.EditComment(vm, CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
-        var updated = await _db.CaseComments.FindAsync(comment.Id);
-        Assert.Equal("Updated text", updated!.Text);
+        var updated = await _db.CaseEvents.FindAsync(caseEvent.Id);
+        Assert.Equal("Updated text", updated!.Content);
     }
 
     [Fact]
@@ -341,15 +355,18 @@ public class CasesControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Hi", CreatedAt = DateTime.UtcNow };
-        _db.CaseComments.Add(comment);
+        var caseEvent = new CaseEvent { Category = "comment", Content = "Hi", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.UploadCommentAttachment(comment.Id, MakePdfFile("doc.pdf"), CancellationToken.None);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadCommentAttachment(caseEvent.Id, MakePdfFile("doc.pdf"), CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(1, await _db.Attachments.CountAsync());
-        Assert.Equal(1, await _db.CaseCommentAttachments.CountAsync(x => x.CaseCommentId == comment.Id));
+        Assert.Equal(1, await _db.CaseEventAttachments.CountAsync(x => x.CaseEventId == caseEvent.Id));
     }
 
     [Fact]
@@ -367,8 +384,11 @@ public class CasesControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Hi", CreatedAt = DateTime.UtcNow };
-        _db.CaseComments.Add(comment);
+        var caseEvent = new CaseEvent { Category = "comment", Content = "Hi", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
         await _db.SaveChangesAsync();
 
         var badFile = new Mock<IFormFile>();
@@ -376,7 +396,7 @@ public class CasesControllerTests : IDisposable
         badFile.Setup(f => f.ContentType).Returns("text/javascript");
         badFile.Setup(f => f.Length).Returns(100);
 
-        var result = await _controller.UploadCommentAttachment(comment.Id, badFile.Object, CancellationToken.None);
+        var result = await _controller.UploadCommentAttachment(caseEvent.Id, badFile.Object, CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
@@ -388,20 +408,23 @@ public class CasesControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Hi", CreatedAt = DateTime.UtcNow };
-        _db.CaseComments.Add(comment);
+        var caseEvent = new CaseEvent { Category = "comment", Content = "Hi", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         var att = new Attachment { OriginalFileName = "f.pdf", ContentType = "application/pdf", SizeBytes = 10, Content = new byte[10], UploadedByUserId = "u" };
         _db.Attachments.Add(att);
         await _db.SaveChangesAsync();
 
-        var link = new CaseCommentAttachment { CaseCommentId = comment.Id, AttachmentId = att.Id };
-        _db.CaseCommentAttachments.Add(link);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        await _db.SaveChangesAsync();
+
+        var link = new CaseEventAttachment { CaseEventId = caseEvent.Id, AttachmentId = att.Id };
+        _db.CaseEventAttachments.Add(link);
         await _db.SaveChangesAsync();
 
         var result = await _controller.RemoveCommentAttachment(link.Id, CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
-        var updated = await _db.CaseCommentAttachments.FindAsync(link.Id);
+        var updated = await _db.CaseEventAttachments.FindAsync(link.Id);
         Assert.True(updated!.IsDeleted);
     }
 

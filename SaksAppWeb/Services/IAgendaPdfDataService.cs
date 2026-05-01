@@ -20,7 +20,7 @@ public record PreviousMinutesData(
     IReadOnlyList<AgendaAttachmentRef> Attachments);
 
 public record AgendaItemData(
-    MeetingCase MeetingCase,
+    MeetingEventLink MeetingCase,
     BoardCase Case,
     string? AssigneeName,
     PreviousMinutesData? PreviousMinutes,
@@ -56,16 +56,26 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
         var meeting = await _db.Meetings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == meetingId, ct);
         if (meeting is null) return null;
 
-        var agenda = await _db.MeetingCases.AsNoTracking()
+        // Load MeetingEventLinks for this meeting, including CaseEvent -> Cases -> BoardCase
+        var agendaLinks = await _db.MeetingEventLinks.AsNoTracking()
             .Where(x => x.MeetingId == meetingId)
-            .Join(_db.BoardCases.AsNoTracking(),
-                mc => mc.BoardCaseId,
-                c => c.Id,
-                (mc, c) => new { mc, c })
-            .OrderBy(x => x.mc.AgendaOrder)
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.Cases)
+                    .ThenInclude(cec => cec.BoardCase)
+            .OrderBy(x => x.AgendaOrder)
             .ToListAsync(ct);
 
-        var assigneeIds = agenda.Select(x => x.c.AssigneeUserId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        var agendaRows = agendaLinks
+            .Select(mel =>
+            {
+                var cec = mel.CaseEvent.Cases.FirstOrDefault();
+                return cec is null ? null : new { mel, boardCase = cec.BoardCase };
+            })
+            .Where(x => x is not null)
+            .Select(x => x!)
+            .ToList();
+
+        var assigneeIds = agendaRows.Select(x => x.boardCase.AssigneeUserId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var userDisplay = await _userManager.Users
             .Where(u => assigneeIds.Contains(u.Id))
             .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
@@ -73,86 +83,101 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
 
         var seq = await _pdfSequence.AllocateNextAsync(meetingId, PdfDocumentType.Agenda, ct);
 
-        var caseIds = agenda.Select(x => x.c.Id).Distinct().ToList();
+        var caseIds = agendaRows.Select(x => x.boardCase.Id).Distinct().ToList();
 
-        // Previous minutes entries (last before this meeting date)
-        var previousMinutesCandidates = await _db.MeetingMinutesCaseEntries.AsNoTracking()
-            .Where(x => caseIds.Contains(x.BoardCaseId))
-            .Join(_db.Meetings.AsNoTracking(),
-                e => e.MeetingId,
-                m => m.Id,
-                (e, m) => new { e.Id, e.BoardCaseId, m.MeetingDate, e.OfficialNotes, e.DecisionText, e.FollowUpText })
-            .Where(x => x.MeetingDate < meeting.MeetingDate)
-            .ToListAsync(ct);
+        // Previous minutes entries — find most recent MeetingEventLink for each case before this meeting
+        var previousMinutesCandidates = caseIds.Count == 0
+            ? new List<(int CaseEventId, int BoardCaseId, DateOnly MeetingDate, string? OfficialNotes, string? DecisionText, string? FollowUpText)>()
+            : await _db.MeetingEventLinks.AsNoTracking()
+                .Include(x => x.Meeting)
+                .Include(x => x.CaseEvent)
+                    .ThenInclude(ce => ce.Cases)
+                .Where(x => x.Meeting.MeetingDate < meeting.MeetingDate)
+                .ToListAsync(ct)
+                .ContinueWith(t => t.Result
+                    .SelectMany(mel => mel.CaseEvent.Cases
+                        .Where(cec => caseIds.Contains(cec.BoardCaseId))
+                        .Select(cec => (
+                            CaseEventId: mel.CaseEventId,
+                            BoardCaseId: cec.BoardCaseId,
+                            MeetingDate: mel.Meeting.MeetingDate,
+                            OfficialNotes: mel.OfficialNotes,
+                            DecisionText: mel.DecisionText,
+                            FollowUpText: mel.FollowUpText)))
+                    .ToList(), TaskScheduler.Default);
 
         var previousByCaseId = previousMinutesCandidates
             .GroupBy(x => x.BoardCaseId)
             .ToDictionary(
                 g => g.Key,
-                g => g.OrderByDescending(x => x.MeetingDate).ThenByDescending(x => x.Id).First());
+                g => g.OrderByDescending(x => x.MeetingDate).ThenByDescending(x => x.CaseEventId).First());
 
-        // Attachments for previous minutes entries
-        var prevEntryIds = previousByCaseId.Values.Select(x => x.Id).Distinct().ToList();
-        var prevMinutesAttachmentsFull = prevEntryIds.Count == 0
-            ? new List<(int EntryId, string FileName, string ContentType, byte[] Content)>()
-            : await _db.MeetingMinutesCaseEntryAttachments.AsNoTracking()
-                .Where(x => prevEntryIds.Contains(x.MeetingMinutesCaseEntryId))
+        // Attachments for previous minutes entries (via CaseEventAttachments)
+        var prevCaseEventIds = previousByCaseId.Values.Select(x => x.CaseEventId).Distinct().ToList();
+        var prevMinutesAttachmentsFull = prevCaseEventIds.Count == 0
+            ? new List<(int CaseEventId, string FileName, string ContentType, byte[] Content)>()
+            : await _db.CaseEventAttachments.AsNoTracking()
+                .Where(x => prevCaseEventIds.Contains(x.CaseEventId))
                 .Join(_db.Attachments.AsNoTracking(),
                     link => link.AttachmentId,
                     att => att.Id,
-                    (link, att) => new { link.MeetingMinutesCaseEntryId, att.OriginalFileName, att.ContentType, att.Content })
-                .Select(x => new ValueTuple<int, string, string, byte[]>(x.MeetingMinutesCaseEntryId, x.OriginalFileName, x.ContentType, x.Content))
+                    (link, att) => new { link.CaseEventId, att.OriginalFileName, att.ContentType, att.Content })
+                .Select(x => new ValueTuple<int, string, string, byte[]>(x.CaseEventId, x.OriginalFileName, x.ContentType, x.Content))
                 .ToListAsync(ct);
 
-        var prevMinutesAttachmentsByEntryId = prevMinutesAttachmentsFull
+        var prevMinutesAttachmentsByCaseEventId = prevMinutesAttachmentsFull
             .GroupBy(x => x.Item1)
             .ToDictionary(g => g.Key, g => g.Select(x => new AgendaAttachmentRef(x.Item2, x.Item3, x.Item4)).ToList());
 
-        // All comments for these cases
-        var allComments = await _db.CaseComments.AsNoTracking()
+        // All comment CaseEvents for these cases
+        var allCommentEvents = await _db.CaseEventCases.AsNoTracking()
             .Where(x => caseIds.Contains(x.BoardCaseId))
+            .Include(x => x.CaseEvent)
+            .Where(x => x.CaseEvent.Category == "comment")
             .ToListAsync(ct);
 
-        var commentIds = allComments.Select(x => x.Id).Distinct().ToList();
-        var commentAttachmentsFull = commentIds.Count == 0
-            ? new List<(int CommentId, string FileName, string ContentType, byte[] Content)>()
-            : await _db.CaseCommentAttachments.AsNoTracking()
-                .Where(x => commentIds.Contains(x.CaseCommentId))
+        var commentCaseEventIds = allCommentEvents.Select(x => x.CaseEventId).Distinct().ToList();
+        var commentAttachmentsFull = commentCaseEventIds.Count == 0
+            ? new List<(int CaseEventId, string FileName, string ContentType, byte[] Content)>()
+            : await _db.CaseEventAttachments.AsNoTracking()
+                .Where(x => commentCaseEventIds.Contains(x.CaseEventId))
                 .Join(_db.Attachments.AsNoTracking(),
                     link => link.AttachmentId,
                     att => att.Id,
-                    (link, att) => new { link.CaseCommentId, att.OriginalFileName, att.ContentType, att.Content })
-                .Select(x => new ValueTuple<int, string, string, byte[]>(x.CaseCommentId, x.OriginalFileName, x.ContentType, x.Content))
+                    (link, att) => new { link.CaseEventId, att.OriginalFileName, att.ContentType, att.Content })
+                .Select(x => new ValueTuple<int, string, string, byte[]>(x.CaseEventId, x.OriginalFileName, x.ContentType, x.Content))
                 .ToListAsync(ct);
 
-        var commentAttachmentsByCommentId = commentAttachmentsFull
+        var commentAttachmentsByCaseEventId = commentAttachmentsFull
             .GroupBy(x => x.Item1)
             .ToDictionary(g => g.Key, g => g.Select(x => new AgendaAttachmentRef(x.Item2, x.Item3, x.Item4)).ToList());
 
         // Collect referenced attachments in order (de-duplicated by filename)
         var referencedAttachments = new Dictionary<string, AgendaAttachmentRef>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var row in agenda)
+        foreach (var row in agendaRows)
         {
-            if (previousByCaseId.TryGetValue(row.c.Id, out var prev)
-                && prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var prevAtts))
+            if (previousByCaseId.TryGetValue(row.boardCase.Id, out var prev)
+                && prevMinutesAttachmentsByCaseEventId.TryGetValue(prev.CaseEventId, out var prevAtts))
             {
                 foreach (var att in prevAtts)
                     referencedAttachments.TryAdd(att.FileName, att);
             }
 
-            var windowStart = previousByCaseId.TryGetValue(row.c.Id, out var p2)
+            var windowStart = previousByCaseId.TryGetValue(row.boardCase.Id, out var p2)
                 ? new DateTimeOffset(p2.MeetingDate.Year, p2.MeetingDate.Month, p2.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero)
                 : DateTimeOffset.MinValue;
             var windowEnd = new DateTimeOffset(meeting.MeetingDate.Year, meeting.MeetingDate.Month, meeting.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero);
 
-            var between = allComments
-                .Where(c => c.BoardCaseId == row.c.Id && c.CreatedAt > windowStart && c.CreatedAt <= windowEnd)
+            var betweenEvents = allCommentEvents
+                .Where(cec => cec.BoardCaseId == row.boardCase.Id
+                    && cec.CaseEvent.CreatedAt > windowStart
+                    && cec.CaseEvent.CreatedAt <= windowEnd)
                 .ToList();
 
-            foreach (var com in between)
+            foreach (var cec in betweenEvents)
             {
-                if (commentAttachmentsByCommentId.TryGetValue(com.Id, out var atts))
+                if (commentAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var atts))
                     foreach (var att in atts)
                         referencedAttachments.TryAdd(att.FileName, att);
             }
@@ -165,14 +190,14 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
 
         // Assemble per-item data
         var items = new List<AgendaItemData>();
-        foreach (var row in agenda)
+        foreach (var row in agendaRows)
         {
-            var assigneeName = userDisplay.TryGetValue(row.c.AssigneeUserId ?? "", out var d) ? d : row.c.AssigneeUserId;
+            var assigneeName = userDisplay.TryGetValue(row.boardCase.AssigneeUserId ?? "", out var d) ? d : row.boardCase.AssigneeUserId;
 
             PreviousMinutesData? previousMinutes = null;
-            if (previousByCaseId.TryGetValue(row.c.Id, out var prev))
+            if (previousByCaseId.TryGetValue(row.boardCase.Id, out var prev))
             {
-                var prevAtts = prevMinutesAttachmentsByEntryId.TryGetValue(prev.Id, out var list) ? list : new List<AgendaAttachmentRef>();
+                var prevAtts = prevMinutesAttachmentsByCaseEventId.TryGetValue(prev.CaseEventId, out var list) ? list : new List<AgendaAttachmentRef>();
                 previousMinutes = new PreviousMinutesData(prev.MeetingDate, prev.OfficialNotes, prev.DecisionText, prev.FollowUpText, prevAtts);
             }
 
@@ -181,17 +206,19 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
                 : DateTimeOffset.MinValue;
             var windowEnd = new DateTimeOffset(meeting.MeetingDate.Year, meeting.MeetingDate.Month, meeting.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero);
 
-            var between = allComments
-                .Where(c => c.BoardCaseId == row.c.Id && c.CreatedAt > windowStart && c.CreatedAt <= windowEnd)
-                .OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id)
-                .Select(c =>
+            var between = allCommentEvents
+                .Where(cec => cec.BoardCaseId == row.boardCase.Id
+                    && cec.CaseEvent.CreatedAt > windowStart
+                    && cec.CaseEvent.CreatedAt <= windowEnd)
+                .OrderByDescending(cec => cec.CaseEvent.CreatedAt).ThenByDescending(cec => cec.CaseEventId)
+                .Select(cec =>
                 {
-                    var atts = commentAttachmentsByCommentId.TryGetValue(c.Id, out var al) ? al : new List<AgendaAttachmentRef>();
-                    return new AgendaCommentData(c.CreatedAt.DateTime, c.Text, atts);
+                    var atts = commentAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var al) ? al : new List<AgendaAttachmentRef>();
+                    return new AgendaCommentData(cec.CaseEvent.CreatedAt.DateTime, cec.CaseEvent.Content, atts);
                 })
                 .ToList();
 
-            items.Add(new AgendaItemData(row.mc, row.c, assigneeName, previousMinutes, between));
+            items.Add(new AgendaItemData(row.mel, row.boardCase, assigneeName, previousMinutes, between));
         }
 
         return new AgendaPdfData(

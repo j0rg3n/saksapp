@@ -27,7 +27,7 @@ public class MeetingMinutesVm
 
 public class MeetingMinutesCaseEntryVm
 {
-    public int MeetingCaseId { get; set; }
+    public int MeetingEventLinkId { get; set; }
     public int BoardCaseId { get; set; }
     public int CaseNumber { get; set; }
     public string Title { get; set; } = "";
@@ -39,7 +39,7 @@ public class MeetingMinutesCaseEntryVm
 
     public MeetingCaseOutcome Outcome { get; set; } = MeetingCaseOutcome.Continue;
 
-    public int? MinutesEntryId { get; set; }
+    public int? CaseEventId { get; set; }
 
     public List<MinutesEntryAttachmentVm> Attachments { get; set; } = new();
 }

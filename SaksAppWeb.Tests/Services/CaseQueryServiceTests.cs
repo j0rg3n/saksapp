@@ -155,18 +155,13 @@ public class CaseQueryServiceTests : IDisposable
         _db.BoardCases.Add(c);
         await _db.SaveChangesAsync();
 
-        _db.CaseComments.Add(new CaseComment
-        {
-            BoardCaseId = c.Id,
-            Text = "First comment",
-            CreatedAt = new DateTime(2026, 1, 1)
-        });
-        _db.CaseComments.Add(new CaseComment
-        {
-            BoardCaseId = c.Id,
-            Text = "Second comment",
-            CreatedAt = new DateTime(2026, 2, 1)
-        });
+        var ce1 = new CaseEvent { Category = "comment", Content = "First comment", CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero) };
+        var ce2 = new CaseEvent { Category = "comment", Content = "Second comment", CreatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero) };
+        _db.CaseEvents.AddRange(ce1, ce2);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce1.Id, BoardCaseId = c.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce2.Id, BoardCaseId = c.Id });
         await _db.SaveChangesAsync();
 
         var result = await _service.GetCaseDetailsAsync(c.Id, CancellationToken.None);
@@ -185,17 +180,19 @@ public class CaseQueryServiceTests : IDisposable
         _db.Meetings.Add(meeting);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        var ce = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(ce);
         await _db.SaveChangesAsync();
 
-        _db.MeetingMinutesCaseEntries.Add(new MeetingMinutesCaseEntry
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink
         {
             MeetingId = meeting.Id,
-            MeetingCaseId = mc.Id,
-            BoardCaseId = boardCase.Id,
-            Outcome = MeetingCaseOutcome.Continue,
-            OfficialNotes = "Discussed"
+            CaseEventId = ce.Id,
+            AgendaOrder = 1,
+            AgendaTextSnapshot = "",
+            OfficialNotes = "Discussed",
+            Outcome = MeetingCaseOutcome.Continue
         });
         await _db.SaveChangesAsync();
 
@@ -216,19 +213,22 @@ public class CaseQueryServiceTests : IDisposable
         _db.Meetings.Add(meeting);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        // Meeting event (January)
+        var ceMeeting = new CaseEvent { Category = "meeting", Content = "", CreatedAt = new DateTimeOffset(2026, 1, 10, 0, 0, 0, TimeSpan.Zero) };
+        // Comment event (March - later)
+        var ceComment = new CaseEvent { Category = "comment", Content = "Later comment", CreatedAt = new DateTimeOffset(2026, 3, 1, 0, 0, 0, TimeSpan.Zero) };
+        _db.CaseEvents.AddRange(ceMeeting, ceComment);
         await _db.SaveChangesAsync();
 
-        _db.MeetingMinutesCaseEntries.Add(new MeetingMinutesCaseEntry
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceMeeting.Id, BoardCaseId = boardCase.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceComment.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink
         {
-            MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id,
+            MeetingId = meeting.Id,
+            CaseEventId = ceMeeting.Id,
+            AgendaOrder = 1,
+            AgendaTextSnapshot = "",
             Outcome = MeetingCaseOutcome.Continue
-        });
-        _db.CaseComments.Add(new CaseComment
-        {
-            BoardCaseId = boardCase.Id, Text = "Later comment",
-            CreatedAt = new DateTime(2026, 3, 1)
         });
         await _db.SaveChangesAsync();
 

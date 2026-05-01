@@ -32,11 +32,6 @@
         </div>
     </div>
 
-    <div class="mb-3">
-        <label class="form-label">Follow-up draft (optional)</label>
-        <textarea class="form-control" asp-for="FollowUpTextDraft" rows="4"></textarea>
-    </div>
-
     <button class="btn btn-primary" type="submit">Save</button>
     <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.MeetingId">Cancel</a>
 </form>

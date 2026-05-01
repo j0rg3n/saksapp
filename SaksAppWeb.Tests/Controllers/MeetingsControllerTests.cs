@@ -236,7 +236,7 @@ public class MeetingsControllerTests : IDisposable
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
         var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
-        
+
         _db.Meetings.Add(meeting);
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
@@ -244,11 +244,14 @@ public class MeetingsControllerTests : IDisposable
         var result = await _controller.AddCase(meeting.Id, boardCase.Id, CancellationToken.None);
 
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
-        
-        var meetingCase = await _db.MeetingCases.FirstOrDefaultAsync();
-        Assert.NotNull(meetingCase);
-        Assert.Equal(meeting.Id, meetingCase.MeetingId);
-        Assert.Equal(boardCase.Id, meetingCase.BoardCaseId);
+
+        var mel = await _db.MeetingEventLinks.FirstOrDefaultAsync();
+        Assert.NotNull(mel);
+        Assert.Equal(meeting.Id, mel.MeetingId);
+
+        var cec = await _db.CaseEventCases.FirstOrDefaultAsync();
+        Assert.NotNull(cec);
+        Assert.Equal(boardCase.Id, cec.BoardCaseId);
     }
 
     [Fact]
@@ -267,18 +270,23 @@ public class MeetingsControllerTests : IDisposable
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
         var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
-        
+
         _db.Meetings.Add(meeting);
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
-        
-        var meetingCase = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(meetingCase);
+
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "Original" };
+        _db.MeetingEventLinks.Add(mel);
         await _db.SaveChangesAsync();
 
         var vm = new MeetingCaseEditVm
         {
-            Id = meetingCase.Id,
+            Id = mel.Id,
             AgendaTextSnapshot = "Updated agenda text",
             TidsfristOverrideDate = new DateOnly(2026, 6, 1)
         };
@@ -286,8 +294,8 @@ public class MeetingsControllerTests : IDisposable
         var result = await _controller.EditAgendaItem(vm, CancellationToken.None);
 
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
-        
-        var updated = await _db.MeetingCases.FindAsync(meetingCase.Id);
+
+        var updated = await _db.MeetingEventLinks.FindAsync(mel.Id);
         Assert.Equal("Updated agenda text", updated!.AgendaTextSnapshot);
     }
 
@@ -300,20 +308,25 @@ public class MeetingsControllerTests : IDisposable
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
         var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
-        
+
         _db.Meetings.Add(meeting);
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
-        
-        var meetingCase = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(meetingCase);
+
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.RemoveAgendaItem(meetingCase.Id, CancellationToken.None);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.Add(mel);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.RemoveAgendaItem(mel.Id, CancellationToken.None);
 
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
-        
-        var deleted = await _db.MeetingCases.FindAsync(meetingCase.Id);
+
+        var deleted = await _db.MeetingEventLinks.FindAsync(mel.Id);
         Assert.True(deleted!.IsDeleted);
     }
 
@@ -327,26 +340,32 @@ public class MeetingsControllerTests : IDisposable
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
         var boardCase1 = new BoardCase { CaseNumber = 1, Title = "Case 1", Status = CaseStatus.Open };
         var boardCase2 = new BoardCase { CaseNumber = 2, Title = "Case 2", Status = CaseStatus.Open };
-        
+
         _db.Meetings.Add(meeting);
         _db.BoardCases.Add(boardCase1);
         _db.BoardCases.Add(boardCase2);
         await _db.SaveChangesAsync();
-        
-        var mc1 = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase1.Id, AgendaOrder = 1 };
-        var mc2 = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase2.Id, AgendaOrder = 2 };
-        _db.MeetingCases.Add(mc1);
-        _db.MeetingCases.Add(mc2);
+
+        var ce1 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ce2 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.AddRange(ce1, ce2);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.MoveAgendaItem(mc2.Id, up: true, CancellationToken.None);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce1.Id, BoardCaseId = boardCase1.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce2.Id, BoardCaseId = boardCase2.Id });
+        var mel1 = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce1.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        var mel2 = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce2.Id, AgendaOrder = 2, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.AddRange(mel1, mel2);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.MoveAgendaItem(mel2.Id, up: true, CancellationToken.None);
 
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
-        
-        var updatedMc2 = await _db.MeetingCases.FindAsync(mc2.Id);
-        var updatedMc1 = await _db.MeetingCases.FindAsync(mc1.Id);
-        Assert.Equal(1, updatedMc2!.AgendaOrder);
-        Assert.Equal(2, updatedMc1!.AgendaOrder);
+
+        var updatedMel2 = await _db.MeetingEventLinks.FindAsync(mel2.Id);
+        var updatedMel1 = await _db.MeetingEventLinks.FindAsync(mel1.Id);
+        Assert.Equal(1, updatedMel2!.AgendaOrder);
+        Assert.Equal(2, updatedMel1!.AgendaOrder);
     }
 
     #endregion
@@ -364,19 +383,21 @@ public class MeetingsControllerTests : IDisposable
     public async Task Minutes_ReturnsMeetingWithCaseEntries()
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
-        var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
-        
         _db.Meetings.Add(meeting);
-        _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
-        
-        var meetingCase = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(meetingCase);
-        
-        var minutes = new MeetingMinutes { MeetingId = meeting.Id };
-        _db.MeetingMinutes.Add(minutes);
-        
-        await _db.SaveChangesAsync();
+
+        var minutesVm = new MeetingMinutesVm
+        {
+            MeetingId = meeting.Id,
+            MeetingDate = meeting.MeetingDate,
+            Year = meeting.Year,
+            YearSequenceNumber = meeting.YearSequenceNumber,
+            CaseEntries = new List<MeetingMinutesCaseEntryVm>
+            {
+                new() { MeetingEventLinkId = 1, BoardCaseId = 1, CaseNumber = 1, Title = "Test Case" }
+            }
+        };
+        _meetingQueryMock.Setup(x => x.GetMeetingWithMinutesAsync(meeting.Id, It.IsAny<CancellationToken>())).ReturnsAsync(minutesVm);
 
         var result = await _controller.Minutes(meeting.Id, CancellationToken.None);
 
@@ -497,15 +518,20 @@ public class MeetingsControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.UploadAgendaAttachment(mc.Id, MakePdfFile("agenda.pdf"), CancellationToken.None);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.Add(mel);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadAgendaAttachment(mel.Id, MakePdfFile("agenda.pdf"), CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(1, await _db.Attachments.CountAsync());
-        Assert.Equal(1, await _db.MeetingCaseAttachments.CountAsync(x => x.MeetingCaseId == mc.Id));
+        Assert.Equal(1, await _db.CaseEventAttachments.CountAsync(x => x.CaseEventId == caseEvent.Id));
     }
 
     [Fact]
@@ -525,8 +551,13 @@ public class MeetingsControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.Add(mel);
         await _db.SaveChangesAsync();
 
         var badFile = new Mock<IFormFile>();
@@ -534,7 +565,7 @@ public class MeetingsControllerTests : IDisposable
         badFile.Setup(f => f.ContentType).Returns("application/x-msdownload");
         badFile.Setup(f => f.Length).Returns(100);
 
-        var result = await _controller.UploadAgendaAttachment(mc.Id, badFile.Object, CancellationToken.None);
+        var result = await _controller.UploadAgendaAttachment(mel.Id, badFile.Object, CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
@@ -548,23 +579,20 @@ public class MeetingsControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync();
 
-        var entry = new MeetingMinutesCaseEntry
-        {
-            MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id,
-            Outcome = MeetingCaseOutcome.Continue
-        };
-        _db.MeetingMinutesCaseEntries.Add(entry);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.Add(mel);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.UploadMinutesEntryAttachment(entry.Id, MakePdfFile("note.pdf"), CancellationToken.None);
+        var result = await _controller.UploadMinutesEntryAttachment(caseEvent.Id, MakePdfFile("note.pdf"), CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(1, await _db.Attachments.CountAsync());
-        Assert.Equal(1, await _db.MeetingMinutesCaseEntryAttachments.CountAsync(x => x.MeetingMinutesCaseEntryId == entry.Id));
+        Assert.Equal(1, await _db.CaseEventAttachments.CountAsync(x => x.CaseEventId == caseEvent.Id));
     }
 
     [Fact]
@@ -584,28 +612,25 @@ public class MeetingsControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
-        await _db.SaveChangesAsync();
-
-        var entry = new MeetingMinutesCaseEntry
-        {
-            MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id,
-            Outcome = MeetingCaseOutcome.Continue
-        };
-        _db.MeetingMinutesCaseEntries.Add(entry);
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         var att = new Attachment { OriginalFileName = "f.pdf", ContentType = "application/pdf", SizeBytes = 10, Content = new byte[10], UploadedByUserId = "u" };
         _db.Attachments.Add(att);
         await _db.SaveChangesAsync();
 
-        var link = new MeetingMinutesCaseEntryAttachment { MeetingMinutesCaseEntryId = entry.Id, AttachmentId = att.Id };
-        _db.MeetingMinutesCaseEntryAttachments.Add(link);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.Add(mel);
+        await _db.SaveChangesAsync();
+
+        var link = new CaseEventAttachment { CaseEventId = caseEvent.Id, AttachmentId = att.Id };
+        _db.CaseEventAttachments.Add(link);
         await _db.SaveChangesAsync();
 
         var result = await _controller.RemoveMinutesEntryAttachment(link.Id, CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
-        var updated = await _db.MeetingMinutesCaseEntryAttachments.FindAsync(link.Id);
+        var updated = await _db.CaseEventAttachments.FindAsync(link.Id);
         Assert.True(updated!.IsDeleted);
     }
 

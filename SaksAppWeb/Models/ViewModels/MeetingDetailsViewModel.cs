@@ -15,7 +15,7 @@ public class MeetingDetailsVm
 
 public class MeetingAgendaRowVm
 {
-    public int MeetingCaseId { get; set; }
+    public int MeetingEventLinkId { get; set; }
     public int AgendaOrder { get; set; }
 
     public int CaseId { get; set; }
