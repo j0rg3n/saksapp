@@ -20,6 +20,9 @@ public class MeetingMinutesVm
 
     public string? EventueltText { get; set; }
 
+    public int CurrentIndex { get; set; }
+    public int TotalCount { get; set; }
+
     public List<MeetingMinutesCaseEntryVm> CaseEntries { get; set; } = new();
 
     public List<SignedMinutesVm> SignedMinutes { get; set; } = new();

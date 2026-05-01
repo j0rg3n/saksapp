@@ -2,25 +2,31 @@
 @using SaksAppWeb.Models
 
 @{
-    ViewData["Title"] = $"Minutes {Model.Year}/{Model.YearSequenceNumber}";
+    ViewData["Title"] = $"Referat {Model.Year}/{Model.YearSequenceNumber}";
+    var entry = Model.CaseEntries.Count > 0 ? Model.CaseEntries[0] : null;
+    var hasPrev = Model.CurrentIndex > 0;
+    var hasNext = Model.CurrentIndex < Model.TotalCount - 1;
 }
 
-<div class="d-flex justify-content-between align-items-start">
+<div class="d-flex justify-content-between align-items-start mb-2">
     <div>
-        <h1>Minutes — Meeting @Model.Year/@Model.YearSequenceNumber — @Model.MeetingDate</h1>
-        <div class="text-muted">@Model.Location</div>
+        <h1 class="mb-0">Referat — @Model.Year/@Model.YearSequenceNumber — @Model.MeetingDate</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Location))
+        {
+            <div class="text-muted">@Model.Location</div>
+        }
     </div>
     <div class="text-end">
-        <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.MeetingId">Back to agenda</a>
-        <a class="btn btn-outline-primary" asp-action="DownloadMinutesPdf" asp-route-id="@Model.MeetingId">Download minutes PDF</a>
+        <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.MeetingId">Tilbake til dagsorden</a>
+        <a class="btn btn-outline-primary ms-1" asp-action="DownloadMinutesPdf" asp-route-id="@Model.MeetingId">Last ned PDF</a>
     </div>
 </div>
 
 <hr />
 
-<div class="card mb-4">
+<div class="card mb-3">
     <div class="card-header">
-        <strong>Signed/scanned minutes</strong>
+        <strong>Signert/skannet referat</strong>
     </div>
     <div class="card-body">
         <form asp-action="UploadSignedMinutes" method="post" enctype="multipart/form-data" class="mb-3">
@@ -28,22 +34,22 @@
             <input type="hidden" name="meetingId" value="@Model.MeetingId" />
             <div class="row g-2 align-items-end">
                 <div class="col-md-8">
-                    <label class="form-label">Upload signed PDF</label>
+                    <label class="form-label">Last opp signert PDF</label>
                     <input class="form-control" type="file" name="file" />
                 </div>
                 <div class="col-md-4">
-                    <button class="btn btn-outline-primary" type="submit">Upload</button>
+                    <button class="btn btn-outline-primary" type="submit">Last opp</button>
                 </div>
             </div>
         </form>
 
         @if (!Model.SignedMinutes.Any())
         {
-            <div class="text-muted">No signed scans uploaded.</div>
+            <div class="text-muted">Ingen signerte skann lastet opp.</div>
         }
         else
         {
-            <ul class="list-unstyled">
+            <ul class="list-unstyled mb-0">
                 @foreach (var s in Model.SignedMinutes)
                 {
                     <li class="mb-2">
@@ -59,145 +65,171 @@
 <form asp-action="Minutes" method="post" id="mainMinutesForm">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="MeetingId" />
+    <input type="hidden" asp-for="CurrentIndex" />
+    <input type="hidden" asp-for="TotalCount" />
 
-    <h3>Møtenotat</h3>
-
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <label class="form-label">Oppmøte</label>
-            <textarea class="form-control" asp-for="AttendanceText" rows="3"></textarea>
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Møtenotat</strong>
         </div>
-        <div class="col-md-6 mb-3">
-            <label class="form-label">Forfall</label>
-            <textarea class="form-control" asp-for="AbsenceText" rows="3"></textarea>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Oppmøte</label>
+                    <textarea class="form-control" asp-for="AttendanceText" rows="3"></textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Forfall</label>
+                    <textarea class="form-control" asp-for="AbsenceText" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Godkjenning av forrige referat</label>
+                <textarea class="form-control" asp-for="ApprovalOfPreviousMinutesText" rows="2"></textarea>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-0">
+                    <label class="form-label">Neste møtedato</label>
+                    <input class="form-control" asp-for="NextMeetingDate" type="date" />
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="mb-3">
-        <label class="form-label">Approval of previous minutes</label>
-        <textarea class="form-control" asp-for="ApprovalOfPreviousMinutesText" rows="2"></textarea>
-    </div>
-
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Next meeting date</label>
-            <input class="form-control" asp-for="NextMeetingDate" type="date" />
-        </div>
-    </div>
-
-    <div class="mb-4">
-        <label class="form-label">Eventuelt</label>
-        <textarea class="form-control" asp-for="EventueltText" rows="3"></textarea>
-    </div>
-
-    <h3>Case minutes</h3>
-
-    @for (var i = 0; i < Model.CaseEntries.Count; i++)
+    @if (Model.TotalCount == 0)
     {
-        <input type="hidden" asp-for="CaseEntries[i].MeetingEventLinkId" />
-        <input type="hidden" asp-for="CaseEntries[i].BoardCaseId" />
-        <input type="hidden" asp-for="CaseEntries[i].CaseNumber" />
-        <input type="hidden" asp-for="CaseEntries[i].Title" />
-        <input type="hidden" asp-for="CaseEntries[i].AssigneeDisplay" />
-        <input type="hidden" asp-for="CaseEntries[i].CaseEventId" />
+        <div class="text-muted mb-3">Ingen saker på agendaen.</div>
+    }
+    else if (entry is not null)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span class="text-muted">Sak</span>
+                <strong>@(Model.CurrentIndex + 1)</strong>
+                <span class="text-muted">av @Model.TotalCount</span>
+                <span class="ms-2 fw-semibold">#@entry.CaseNumber — @entry.Title</span>
+                @if (!string.IsNullOrWhiteSpace(entry.AssigneeDisplay))
+                {
+                    <span class="text-muted ms-1">(@entry.AssigneeDisplay)</span>
+                }
+            </div>
+            <div class="d-flex gap-2">
+                @if (hasPrev)
+                {
+                    <a class="btn btn-outline-secondary btn-sm"
+                       asp-action="Minutes" asp-route-id="@Model.MeetingId" asp-route-index="@(Model.CurrentIndex - 1)">← Forrige</a>
+                }
+                @if (hasNext)
+                {
+                    <a class="btn btn-outline-secondary btn-sm"
+                       asp-action="Minutes" asp-route-id="@Model.MeetingId" asp-route-index="@(Model.CurrentIndex + 1)">Neste →</a>
+                }
+            </div>
+        </div>
+
+        <input type="hidden" asp-for="CaseEntries[0].MeetingEventLinkId" />
+        <input type="hidden" asp-for="CaseEntries[0].BoardCaseId" />
+        <input type="hidden" asp-for="CaseEntries[0].CaseNumber" />
+        <input type="hidden" asp-for="CaseEntries[0].Title" />
+        <input type="hidden" asp-for="CaseEntries[0].AssigneeDisplay" />
+        <input type="hidden" asp-for="CaseEntries[0].CaseEventId" />
 
         <div class="card mb-3">
-            <div class="card-header">
-                <strong>#@Model.CaseEntries[i].CaseNumber — @Model.CaseEntries[i].Title (@Model.CaseEntries[i].AssigneeDisplay)</strong>
-            </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Utfall</label>
-                        <select class="form-select" asp-for="CaseEntries[i].Outcome"
+                        <select class="form-select" asp-for="CaseEntries[0].Outcome"
                                 asp-items="Html.GetEnumSelectList<MeetingCaseOutcome>()"></select>
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Referat</label>
-                    <textarea class="form-control" asp-for="CaseEntries[i].OfficialNotes" rows="4"></textarea>
+                    <textarea class="form-control" asp-for="CaseEntries[0].OfficialNotes" rows="5"></textarea>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Vedtak</label>
-                    <textarea class="form-control" asp-for="CaseEntries[i].DecisionText" rows="2"></textarea>
+                    <textarea class="form-control" asp-for="CaseEntries[0].DecisionText" rows="2"></textarea>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Oppfølging</label>
-                    <textarea class="form-control" asp-for="CaseEntries[i].FollowUpText" rows="3"></textarea>
+                    <textarea class="form-control" asp-for="CaseEntries[0].FollowUpText" rows="3"></textarea>
                 </div>
 
                 <hr />
 
-                <h6>Minutes attachments (PDF/images)</h6>
+                <h6>Vedlegg (PDF/bilder)</h6>
 
-                @if (!Model.CaseEntries[i].Attachments.Any())
+                @if (!entry.Attachments.Any())
                 {
-                    <div class="text-muted">No attachments</div>
+                    <div class="text-muted">Ingen vedlegg</div>
                 }
                 else
                 {
                     <ul class="list-unstyled">
-                        @foreach (var a in Model.CaseEntries[i].Attachments)
+                        @foreach (var a in entry.Attachments)
                         {
                             <li class="mb-2">
                                 <a asp-controller="Cases" asp-action="DownloadAttachment" asp-route-id="@a.AttachmentId">
                                     @a.OriginalFileName
                                 </a>
                                 <span class="text-muted">(@a.ContentType, @a.SizeBytes bytes)</span>
-
                                 <button class="btn btn-sm btn-outline-danger d-inline ms-2" type="submit"
                                         form="removeAttachmentForm-@a.LinkId"
-                                        onclick="return confirm('Remove this attachment from the minutes entry?')">
-                                    Remove
+                                        onclick="return confirm('Fjern dette vedlegget fra referatposten?')">
+                                    Fjern
                                 </button>
                             </li>
                         }
                     </ul>
                 }
 
-                @if (Model.CaseEntries[i].CaseEventId is not null)
+                @if (entry.CaseEventId is not null)
                 {
                     <div class="mt-3">
                         <div class="row g-2 align-items-end">
                             <div class="col-md-8">
-                                <label class="form-label">Add attachment</label>
-                                <input class="form-control" type="file" name="file" form="uploadAttachmentForm-@Model.CaseEntries[i].CaseEventId" />
+                                <label class="form-label">Legg til vedlegg</label>
+                                <input class="form-control" type="file" name="file" form="uploadAttachmentForm-@entry.CaseEventId" />
                             </div>
                             <div class="col-md-4">
-                                <button class="btn btn-outline-primary" type="submit" form="uploadAttachmentForm-@Model.CaseEntries[i].CaseEventId">Upload</button>
+                                <button class="btn btn-outline-primary" type="submit" form="uploadAttachmentForm-@entry.CaseEventId">Last opp</button>
                             </div>
                         </div>
                     </div>
                 }
-                else
-                {
-                    <div class="text-muted mt-2">Minutes entry id not available. Reload the page.</div>
-                }
             </div>
         </div>
-    }
 
-    <button class="btn btn-primary" type="submit">Save minutes</button>
+        <div class="d-flex gap-2 mb-4">
+            <button class="btn btn-secondary" type="submit" name="action" value="save">Lagre</button>
+            @if (hasNext)
+            {
+                <button class="btn btn-primary" type="submit" name="action" value="next">Lagre og neste →</button>
+            }
+            else
+            {
+                <button class="btn btn-success" type="submit" name="action" value="next">Lagre og fullfør ✓</button>
+            }
+        </div>
+    }
 </form>
 
-@for (var i = 0; i < Model.CaseEntries.Count; i++)
+@if (entry?.CaseEventId is not null)
 {
-    @if (Model.CaseEntries[i].CaseEventId is not null)
+    <form id="uploadAttachmentForm-@entry.CaseEventId" asp-action="UploadMinutesEntryAttachment" method="post" enctype="multipart/form-data" style="display:none;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="meetingMinutesCaseEntryId" value="@entry.CaseEventId" />
+    </form>
+    @foreach (var a in entry.Attachments)
     {
-        <form id="uploadAttachmentForm-@Model.CaseEntries[i].CaseEventId" asp-action="UploadMinutesEntryAttachment" method="post" enctype="multipart/form-data" style="display:none;">
+        <form id="removeAttachmentForm-@a.LinkId" asp-action="RemoveMinutesEntryAttachment" method="post" style="display:none;">
             @Html.AntiForgeryToken()
-            <input type="hidden" name="meetingMinutesCaseEntryId" value="@Model.CaseEntries[i].CaseEventId" />
+            <input type="hidden" name="linkId" value="@a.LinkId" />
         </form>
-        @foreach (var a in Model.CaseEntries[i].Attachments)
-        {
-            <form id="removeAttachmentForm-@a.LinkId" asp-action="RemoveMinutesEntryAttachment" method="post" style="display:none;">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="linkId" value="@a.LinkId" />
-            </form>
-        }
     }
 }
 
