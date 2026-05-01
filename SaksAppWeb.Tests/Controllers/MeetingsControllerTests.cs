@@ -176,6 +176,20 @@ public class MeetingsControllerTests : IDisposable
     #region Edit Tests
 
     [Fact]
+    public async Task Edit_Get_ReturnsViewWithMeeting()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Edit(meeting.Id, CancellationToken.None);
+
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<MeetingEditVm>(viewResult.Model);
+        Assert.Equal("Oslo", vm.Location);
+    }
+
+    [Fact]
     public async Task Edit_Get_ReturnsNotFound_WhenMeetingNotExists()
     {
         var result = await _controller.Edit(999, CancellationToken.None);
