@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.IO;
 using Microsoft.AspNetCore.Http;
 using SaksAppWeb.Models.ViewModels;
+using SaksAppWeb.Tests;
 
 namespace SaksAppWeb.Tests.Controllers;
 
@@ -21,6 +22,9 @@ public class MeetingsControllerTests : IDisposable
     private readonly TestUserManager _userManager;
     private readonly Mock<IPdfSequenceService> _pdfSequenceMock;
     private readonly Mock<IMeetingQueryService> _meetingQueryMock;
+    private readonly Mock<IAgendaPdfDataService> _agendaPdfDataMock;
+    private readonly Mock<IMinutesPdfDataService> _minutesPdfDataMock;
+    private readonly Mock<IMinutesSaveService> _minutesSaveMock;
     private readonly MeetingsController _controller;
 
     private readonly string _dbPath;
@@ -31,30 +35,33 @@ public class MeetingsControllerTests : IDisposable
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlite($"Data Source={_dbPath}")
             .Options;
-        
+
         _db = new ApplicationDbContext(options);
         _db.Database.EnsureCreated();
-        
+
         using var cmd = _db.Database.GetDbConnection().CreateCommand();
         cmd.CommandText = "PRAGMA foreign_keys=OFF;";
         _db.Database.OpenConnection();
         cmd.ExecuteNonQuery();
-        
+
         _auditMock = new Mock<IAuditService>();
-        
         _userManager = new TestUserManager();
-        
         _pdfSequenceMock = new Mock<IPdfSequenceService>();
-        
         _meetingQueryMock = new Mock<IMeetingQueryService>();
-        
+        _agendaPdfDataMock = new Mock<IAgendaPdfDataService>();
+        _minutesPdfDataMock = new Mock<IMinutesPdfDataService>();
+        _minutesSaveMock = new Mock<IMinutesSaveService>();
+
         _controller = new MeetingsController(
             _db,
             _auditMock.Object,
             _userManager,
             _pdfSequenceMock.Object,
             _meetingQueryMock.Object,
-            new Mock<ISimplePdfWriterFactory>().Object);
+            new Mock<ISimplePdfWriterFactory>().Object,
+            _agendaPdfDataMock.Object,
+            _minutesPdfDataMock.Object,
+            _minutesSaveMock.Object);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user-123") };
         _controller.ControllerContext = new ControllerContext
@@ -379,48 +386,31 @@ public class MeetingsControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task Minutes_Save_UpdatesMeetingMinutes()
+    public async Task Minutes_Post_RedirectsOnSuccess()
     {
-        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
-        var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
-        
-        _db.Meetings.Add(meeting);
-        _db.BoardCases.Add(boardCase);
-        await _db.SaveChangesAsync();
-        
-        var meetingCase = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(meetingCase);
-        
-        var minutes = new MeetingMinutes { MeetingId = meeting.Id, AttendanceText = "" };
-        _db.MeetingMinutes.Add(minutes);
-        
-        var minutesEntry = new MeetingMinutesCaseEntry 
-        { 
-            MeetingId = meeting.Id, 
-            MeetingCaseId = meetingCase.Id,
-            BoardCaseId = boardCase.Id
-        };
-        _db.MeetingMinutesCaseEntries.Add(minutesEntry);
-        await _db.SaveChangesAsync();
+        _minutesSaveMock.Setup(x => x.SaveMinutesAsync(It.IsAny<MeetingMinutesVm>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
-        var vm = new MeetingMinutesVm
-        {
-            MeetingId = meeting.Id,
-            AttendanceText = "Hansen, Johansen",
-            AbsenceText = "Olsen",
-            ApprovalOfPreviousMinutesText = "Godkjent",
-            NextMeetingDate = new DateOnly(2026, 5, 1),
-            CaseEntries = new List<MeetingMinutesCaseEntryVm>
-            {
-                new() { MeetingCaseId = meetingCase.Id, BoardCaseId = boardCase.Id, CaseNumber = 1, Title = "Test", OfficialNotes = "Note", Outcome = MeetingCaseOutcome.Continue }
-            }
-        };
+        var vm = new MeetingMinutesVm { MeetingId = 42, CaseEntries = new List<MeetingMinutesCaseEntryVm>() };
 
-        await _controller.Minutes(vm, CancellationToken.None);
+        var result = await _controller.Minutes(vm, CancellationToken.None);
 
-        var updated = await _db.MeetingMinutes.FirstOrDefaultAsync();
-        Assert.Equal("Hansen, Johansen", updated!.AttendanceText);
-        Assert.Equal("Olsen", updated.AbsenceText);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Minutes", redirect.ActionName);
+        Assert.Equal(42, redirect.RouteValues!["id"]);
+    }
+
+    [Fact]
+    public async Task Minutes_Post_ReturnsNotFound_WhenSaveReturnsFalse()
+    {
+        _minutesSaveMock.Setup(x => x.SaveMinutesAsync(It.IsAny<MeetingMinutesVm>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var vm = new MeetingMinutesVm { MeetingId = 999, CaseEntries = new List<MeetingMinutesCaseEntryVm>() };
+
+        var result = await _controller.Minutes(vm, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
     }
 
     #endregion
@@ -625,6 +615,90 @@ public class MeetingsControllerTests : IDisposable
         var result = await _controller.RemoveMinutesEntryAttachment(999, CancellationToken.None);
 
         Assert.IsType<NotFoundResult>(result);
+    }
+
+    #endregion
+
+    #region PDF Download Tests
+
+    [Fact]
+    public async Task DownloadAgendaPdf_ReturnsNotFound_WhenDataServiceReturnsNull()
+    {
+        _agendaPdfDataMock.Setup(x => x.GetAgendaDataAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AgendaPdfData?)null);
+
+        var result = await _controller.DownloadAgendaPdf(42, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task DownloadAgendaPdf_ReturnsFileResult_WhenDataExists()
+    {
+        var meeting = new Meeting { Id = 1, MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1, Location = "Oslo" };
+        var data = new AgendaPdfData(
+            meeting,
+            Sequence: 1,
+            Items: Array.Empty<AgendaItemData>(),
+            AttachmentNumberByFileName: new Dictionary<string, int>(),
+            AttachmentsInOrder: Array.Empty<AgendaAttachmentRef>());
+
+        _agendaPdfDataMock.Setup(x => x.GetAgendaDataAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(data);
+
+        var capturingFactory = new CapturingPdfWriterFactory();
+        var controller = new MeetingsController(
+            _db, _auditMock.Object, _userManager, _pdfSequenceMock.Object,
+            _meetingQueryMock.Object, capturingFactory,
+            _agendaPdfDataMock.Object, _minutesPdfDataMock.Object, _minutesSaveMock.Object);
+        controller.ControllerContext = _controller.ControllerContext;
+
+        var result = await controller.DownloadAgendaPdf(1, CancellationToken.None);
+
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("application/pdf", fileResult.ContentType);
+        Assert.NotNull(capturingFactory.Last);
+        Assert.Contains(capturingFactory.Last!.Calls, c => c.StartsWith("Title:"));
+    }
+
+    [Fact]
+    public async Task DownloadMinutesPdf_ReturnsNotFound_WhenDataServiceReturnsNull()
+    {
+        _minutesPdfDataMock.Setup(x => x.GetMinutesDataAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MinutesPdfData?)null);
+
+        var result = await _controller.DownloadMinutesPdf(42, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task DownloadMinutesPdf_ReturnsFileResult_WhenDataExists()
+    {
+        var meeting = new Meeting { Id = 2, MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        var minutes = new MeetingMinutes { Id = 1, MeetingId = 2 };
+        var data = new MinutesPdfData(
+            meeting, minutes,
+            Sequence: 1,
+            Entries: Array.Empty<MinutesCaseEntryData>(),
+            AllAttachments: Array.Empty<MinutesAttachmentRef>());
+
+        _minutesPdfDataMock.Setup(x => x.GetMinutesDataAsync(2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(data);
+
+        var capturingFactory = new CapturingPdfWriterFactory();
+        var controller = new MeetingsController(
+            _db, _auditMock.Object, _userManager, _pdfSequenceMock.Object,
+            _meetingQueryMock.Object, capturingFactory,
+            _agendaPdfDataMock.Object, _minutesPdfDataMock.Object, _minutesSaveMock.Object);
+        controller.ControllerContext = _controller.ControllerContext;
+
+        var result = await controller.DownloadMinutesPdf(2, CancellationToken.None);
+
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("application/pdf", fileResult.ContentType);
+        Assert.NotNull(capturingFactory.Last);
+        Assert.Contains(capturingFactory.Last!.Calls, c => c.StartsWith("Title:"));
     }
 
     #endregion

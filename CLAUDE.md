@@ -1,4 +1,4 @@
-# AGENTS.md - AI Assistant Guidelines
+# CLAUDE.md - AI Assistant Guidelines
 
 ## Building the Project
 
@@ -39,6 +39,6 @@ dotnet ef database update
 
 ## Planning
 
-- PLAN.md should be lean - reference content in SPEC.md rather than duplicating
-- PLAN.md should contain ordered groups of tasks
+- TODO.md should be lean - reference content in SPEC.md rather than duplicating
+- TODO.md should contain ordered groups of tasks
 - Tasks within each group can be done in parallel

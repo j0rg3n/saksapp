@@ -139,6 +139,48 @@ CaseEvent is the unified model replacing CaseComment, MeetingMinutesCaseEntry, a
 - CaseComment → CaseEvent (Category = "comment")
 - MeetingMinutesCaseEntry → Up to 3 CaseEvents (one per non-empty field), linked via MeetingEventLink
 
+### WhatsApp Integration
+
+A bot is added to one or more WhatsApp groups. Incoming messages are ingested and stored as CaseEvents.
+
+**Message ingestion rules:**
+
+- Each text message creates a new CaseEvent with `Category = "whatsapp"`.
+- Attached images and files (media messages) are stored as Attachments on the most recent CaseEvent from the same sender in the same group, provided it was created within the configured grouping window.
+- If no such event exists yet in the window, a new CaseEvent is created (with empty content) to host the attachment.
+- **Grouping window** (default: 5 minutes, configurable per group): consecutive messages and media from the same sender within the window are merged into the same CaseEvent. Each subsequent message's text is appended (newline-separated) and each media item is added as an attachment.
+- The CaseEvent timestamp is the time of the **first** message in the group.
+
+**Case linking:**
+
+- Any message containing `#<number>` (e.g. `#46`) causes the resulting CaseEvent to be linked to that case via `CaseEventCase`. Multiple hashtags in one message link to multiple cases.
+- The raw hashtag text is preserved in the CaseEvent content.
+
+**Configuration:**
+
+- Grouping window duration (minutes) — per group or global default (5 min).
+- Which groups the bot is active in is controlled by the group's WhatsApp ID being present in the bot configuration.
+
+**Data model:**
+
+- CaseEvent: `Source = "whatsapp"`, `SourceGroupId = <WhatsApp group JID>`, `SourceSenderId = <sender JID>`
+- Existing Attachment model is reused; `UploadedByUserId` is set to a system user or left null for bot-ingested files.
+
+**Technical approach:**
+
+- WhatsApp connectivity via **whatsmeow** (Go library) or **Baileys** (Node.js), running as a sidecar process.
+- Sidecar calls an internal HTTP endpoint on SaksAppWeb (`POST /api/whatsapp/ingest`) with a JSON payload.
+- The ingest endpoint is authenticated with a shared secret (configurable).
+- Ingest endpoint logic:
+  1. Look up or create the grouping buffer (keyed by group + sender + open window).
+  2. Append text / attach media.
+  3. Flush buffer to CaseEvent + Attachments when window expires (background timer) or when a new message arrives outside the window.
+
+**UI:**
+
+- CaseEvents with `Source = "whatsapp"` are displayed in the case timeline with a WhatsApp icon and the sender's display name (mapped from `SourceSenderId` via a configurable name map or left as phone number).
+- No separate admin UI for bot management in initial version; configuration is in appsettings.
+
 ### HMS Deviation and Measures Log
 
 **Overview**
@@ -230,6 +272,7 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 
 ### Background Services
 - Database backup service - hourly backups using SQLite Online Backup API
+- WhatsApp ingest buffer flush service - background timer that flushes pending message groups when the grouping window expires
 
 ### Testing
 
@@ -311,4 +354,4 @@ All services are registered in Program.cs and injected via constructor:
 ### Phase 0.1: Testability Refactoring (NEXT)
 Extract query logic and abstract external dependencies to enable effective mocking.
 
-See PLAN.md for detailed tasks.
+See TODO.md for detailed tasks.

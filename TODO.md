@@ -1,4 +1,4 @@
-# PLAN.md - Implementeringsplan
+# TODO.md - Implementeringsplan
 
 > Se SPEC.md for detaljert spesifikasjon. Denne filen holder oversikt over fremdrift og gjenværende oppgaver.
 
@@ -61,8 +61,23 @@
 ### 0.1.7 Verifiser Coverage (IN PROGRESS)
 - [x] Kjør test suite med coverage
 - [x] Lagt til CaseQueryServiceTests (8 tester), MeetingQueryServiceTests (6 nye), controllertest utvidelser (16 nye)
-- [x] Coverage: 14% line, 15% branch, 54% method (opp fra 9%/7%/44%) — 116 tester, 112 bestått
-- [ ] Fortsett mot 75%-mål — fortsatt avstand på ca. 60 prosentpoeng line coverage
+- [x] Coverage: 19.25% line, 26.8% branch, 63.88% method — 157 tester, 153 bestått (etter 0.1.8+0.1.9)
+- [ ] Fortsett mot 75%-mål — fortsatt avstand på ca. 56 prosentpoeng line coverage
+
+### 0.1.8 Ekstraher PDF Data-tjenester ✅ KOMPLETT
+- [x] Opprett `IAgendaPdfDataService` / `AgendaPdfDataService` — ekstraher data-henting fra `DownloadAgendaPdf`
+- [x] Opprett `IMinutesPdfDataService` / `MinutesPdfDataService` — ekstraher data-henting fra `DownloadMinutesPdf`
+- [x] Legg til `CapturingPdfWriter` test-dobbel (implementerer `ISimplePdfWriter`, logger kall uten PDF-infrastruktur)
+- [x] Tester: `AgendaPdfDataServiceTests` (6 tester), `MinutesPdfDataServiceTests` (6 tester), controller PDF-tester (4 nye)
+- [x] Oppdater `MeetingsController` til å bruke de nye tjenestene
+- [x] Registrer i `Program.cs`
+
+### 0.1.9 Ekstraher Minutes Save Service ✅ KOMPLETT
+- [x] Opprett `IMinutesSaveService` / `MinutesSaveService` — ekstraher POST-logikk fra `Minutes`-action
+- [x] Tester: `MinutesSaveServiceTests` (6 tester)
+- [x] Oppdater `MeetingsController.Minutes` (POST) til å delegere til tjenesten
+
+**Coverage etter 0.1.8+0.1.9**: 19.25% line, 26.8% branch, 63.88% method — 157 tester (153 bestått, 4 hoppet over)
 
 **Test**: Kjør `docker compose --profile test run --rm test` og verifiser coverage
 
@@ -249,6 +264,41 @@ public class MeetingEventLink
 - [ ] **Task 5.3.2**: Definer fargekart: Blå=Fortsetter, Grønn=Avsluttet, Grå=Utsatt, Lilla=Orientering
 
 **Test**: Generer begge PDF-er og verifiser layout.
+
+---
+
+### Phase 7: WhatsApp Bot
+
+**Mål**: Automatisk inntak av WhatsApp-meldinger som CaseEvents, med vedlegg og sak-kobling via hashtags.
+
+#### 7.1 Ingest API (SaksAppWeb)
+- [ ] **Task 7.1.1**: Legg til `POST /api/whatsapp/ingest` endpoint (autentisert med delt hemmelighet)
+- [ ] **Task 7.1.2**: Definer `WhatsAppIngestPayload` DTO: `GroupId`, `SenderId`, `SenderName`, `Text`, `MediaContentType`, `MediaBytes`, `Timestamp`
+- [ ] **Task 7.1.3**: Implementer `IWhatsAppIngestService` / `WhatsAppIngestService`:
+  - Finn eller opprett grupperingsbuffer (nøkkel: GroupId + SenderId + åpent vindu)
+  - Legg til tekst (newline-separert) og/eller vedlegg
+- [ ] **Task 7.1.4**: Implementer `WhatsAppBufferFlushService` (BackgroundService): flush buffere som har passert grupperingsvinduet
+- [ ] **Task 7.1.5**: Legg til konfigurasjon: `WhatsApp:SharedSecret`, `WhatsApp:GroupingWindowMinutes` (default 5)
+- [ ] **Task 7.1.6**: Flush til `CaseEvent` + `Attachment` ved timeout — `Source = "whatsapp"`, `SourceGroupId`, `SourceSenderId`
+
+#### 7.2 Sak-kobling via hashtag
+- [ ] **Task 7.2.1**: Parse `#<tall>` fra meldingens tekst ved ingest
+- [ ] **Task 7.2.2**: Opprett `CaseEventCase`-kobling for hvert funnet saksnummer (log ukjente saker som advarsel)
+
+#### 7.3 WhatsApp-sidecar
+- [ ] **Task 7.3.1**: Velg tilnærming: whatsmeow (Go) eller Baileys (Node.js) — anbefalt: whatsmeow for minimal avhengighet
+- [ ] **Task 7.3.2**: Implementer sidecar som kobler til WhatsApp, lytter på meldinger i konfigurerte grupper
+- [ ] **Task 7.3.3**: Sidecar poster til `/api/whatsapp/ingest` med shared secret
+- [ ] **Task 7.3.4**: Legg til sidecar i `docker-compose.yml`
+- [ ] **Task 7.3.5**: QR-kode-autentisering ved første oppstart (lagre session til volum)
+
+#### 7.4 UI — WhatsApp-merking i tidslinje
+- [ ] **Task 7.4.1**: Vis WhatsApp-ikon ved CaseEvents med `Source = "whatsapp"` i sakens tidslinje
+- [ ] **Task 7.4.2**: Vis avsendernavn (fra `SourceSenderId` eller konfigurerbar navne-map)
+
+**Avhengigheter**: Krever at CaseEvent-modellen er implementert (Phase 2+3).
+
+**Test**: Sett opp testgruppe i WhatsApp, send meldinger, verifiser at CaseEvents opprettes med riktig innhold og koblinger.
 
 ---
 
