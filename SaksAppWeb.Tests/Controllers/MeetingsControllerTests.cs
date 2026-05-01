@@ -53,7 +53,8 @@ public class MeetingsControllerTests : IDisposable
             _auditMock.Object,
             _userManager,
             _pdfSequenceMock.Object,
-            _meetingQueryMock.Object);
+            _meetingQueryMock.Object,
+            new Mock<ISimplePdfWriterFactory>().Object);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user-123") };
         _controller.ControllerContext = new ControllerContext
@@ -75,14 +76,17 @@ public class MeetingsControllerTests : IDisposable
     [Fact]
     public async Task Index_ReturnsMeetingsOrderedByDate()
     {
-        _db.Meetings.Add(new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1, Location = "Oslo" });
-        _db.Meetings.Add(new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Bergen" });
-        await _db.SaveChangesAsync();
+        var meetings = new List<Meeting>
+        {
+            new() { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Bergen" },
+            new() { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1, Location = "Oslo" },
+        };
+        _meetingQueryMock.Setup(x => x.GetAllMeetingsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(meetings);
 
         var result = await _controller.Index(CancellationToken.None);
 
         var viewResult = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsAssignableFrom<IList<Meeting>>(viewResult.Model);
+        var model = Assert.IsAssignableFrom<IReadOnlyList<Meeting>>(viewResult.Model);
         Assert.Equal(2, model.Count);
         Assert.Equal(new DateOnly(2026, 3, 1), model[0].MeetingDate);
     }
@@ -90,10 +94,12 @@ public class MeetingsControllerTests : IDisposable
     [Fact]
     public async Task Index_ReturnsEmptyList_WhenNoMeetings()
     {
+        _meetingQueryMock.Setup(x => x.GetAllMeetingsAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
         var result = await _controller.Index(CancellationToken.None);
 
         var viewResult = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsAssignableFrom<IList<Meeting>>(viewResult.Model);
+        var model = Assert.IsAssignableFrom<IReadOnlyList<Meeting>>(viewResult.Model);
         Assert.Empty(model);
     }
 
@@ -152,18 +158,14 @@ public class MeetingsControllerTests : IDisposable
     [Fact]
     public async Task Details_ReturnsMeetingWithAgenda()
     {
-        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" };
-        var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
-        
-        _db.Meetings.Add(meeting);
-        _db.BoardCases.Add(boardCase);
-        await _db.SaveChangesAsync();
-        
-        var meetingCase = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(meetingCase);
-        await _db.SaveChangesAsync();
+        var vm = new MeetingDetailsVm
+        {
+            Meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2, Location = "Oslo" },
+            Agenda = Array.Empty<MeetingAgendaRowVm>(),
+        };
+        _meetingQueryMock.Setup(x => x.GetMeetingWithAgendaAsync(42, It.IsAny<CancellationToken>())).ReturnsAsync(vm);
 
-        var result = await _controller.Details(meeting.Id, CancellationToken.None);
+        var result = await _controller.Details(42, CancellationToken.None);
 
         var viewResult = Assert.IsType<ViewResult>(result);
         Assert.NotNull(viewResult.Model);

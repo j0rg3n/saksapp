@@ -46,10 +46,11 @@
 - [x] `SimplePdfWriterFactory` registrert som singleton i DI
 - [x] `MeetingsController` injiserer `ISimplePdfWriterFactory`, bruker `_pdfFactory.Create()`
 
-### 0.1.5 Abstraher HTML Parser
-- [ ] Opprett `IHtmlCaseParser` interface med `Parse(html)` metode
-- [ ] Ekstraher parsing-logikk fra `HtmlCaseImporter`
-- [ ] Legg til tester for parser
+### 0.1.5 Abstraher HTML Parser ✅ KOMPLETT
+- [x] Opprett `IHtmlCaseImporter` interface med `ImportAsync(html, ct)` metode
+- [x] `HtmlCaseImporter` implementerer `IHtmlCaseImporter`
+- [x] `ImportController` bruker `IHtmlCaseImporter` via DI
+- [x] 3 tidligere skippede `ImportControllerTests` er nå aktivert og bestått med Moq
 
 ### 0.1.6 Abstraher Backup Service
 - [ ] Opprett `IBackupService` interface

@@ -8,7 +8,7 @@ using SaksAppWeb.Models;
 
 namespace SaksAppWeb.Services;
 
-public sealed class HtmlCaseImporter
+public sealed class HtmlCaseImporter : IHtmlCaseImporter
 {
     private static readonly Regex BracketRegex = new(@"^\s*\[(.*)\]\s*$", RegexOptions.Singleline);
 
