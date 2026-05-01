@@ -40,10 +40,11 @@
 - [x] Oppdater controllere til å bruke `IUserDisplayService`
 - [x] Legg til tester
 
-### 0.1.4 Abstraher PDF Generator
-- [ ] Opprett `IPdfGenerator` interface
-- [ ] Flyt PDF-genereringslogikk fra controller til service
-- [ ] Legg til interface-implementering som kan mockes
+### 0.1.4 Abstraher PDF Generator ✅ KOMPLETT
+- [x] Opprett `ISimplePdfWriter` interface + `ISimplePdfWriterFactory`
+- [x] `SimplePdfWriter` implementerer `ISimplePdfWriter`
+- [x] `SimplePdfWriterFactory` registrert som singleton i DI
+- [x] `MeetingsController` injiserer `ISimplePdfWriterFactory`, bruker `_pdfFactory.Create()`
 
 ### 0.1.5 Abstraher HTML Parser
 - [ ] Opprett `IHtmlCaseParser` interface med `Parse(html)` metode

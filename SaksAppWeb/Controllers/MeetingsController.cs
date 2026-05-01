@@ -18,14 +18,16 @@ public class MeetingsController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPdfSequenceService _pdfSequence;
     private readonly IMeetingQueryService _meetingQuery;
+    private readonly ISimplePdfWriterFactory _pdfFactory;
 
-    public MeetingsController(ApplicationDbContext db, IAuditService audit, UserManager<ApplicationUser> userManager, IPdfSequenceService pdfSequence, IMeetingQueryService meetingQuery)
+    public MeetingsController(ApplicationDbContext db, IAuditService audit, UserManager<ApplicationUser> userManager, IPdfSequenceService pdfSequence, IMeetingQueryService meetingQuery, ISimplePdfWriterFactory pdfFactory)
     {
         _db = db;
         _audit = audit;
         _userManager = userManager;
         _pdfSequence = pdfSequence;
         _meetingQuery = meetingQuery;
+        _pdfFactory = pdfFactory;
     }
 
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -423,7 +425,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
             g => g.Select(x => (x.Item2, x.Item3, x.Item4)).ToList());
 
     // --- Build PDF ---
-    var pdf = new SimplePdfWriter();
+    var pdf = _pdfFactory.Create();
     pdf.Title($"Innkalling styremøte #{meeting.YearSequenceNumber} {meeting.Year} — {meeting.MeetingDate:dd.MM.yyyy}");
     pdf.Paragraph($"(v{seq})");
     if (!string.IsNullOrWhiteSpace(meeting.Location))
@@ -710,7 +712,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
         var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.AssigneeReminder, ct);
 
-        var pdf = new SimplePdfWriter();
+        var pdf = _pdfFactory.Create();
         pdf.Title($"Påminnelse per ansvarlig — {meeting.MeetingDate:dd.MM.yyyy} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
         pdf.Paragraph("Kort liste per ansvarlig over saker til møtet.");
 
@@ -1068,7 +1070,7 @@ public async Task<IActionResult> DownloadAgendaPdf(int id, CancellationToken ct)
 
         var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.Minutes, ct);
 
-        var pdf = new SimplePdfWriter();
+        var pdf = _pdfFactory.Create();
         pdf.Title($"Referat — {meeting.MeetingDate:dd.MM.yyyy} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
         if (!string.IsNullOrWhiteSpace(meeting.Location))
             pdf.Paragraph($"Sted: {meeting.Location}");

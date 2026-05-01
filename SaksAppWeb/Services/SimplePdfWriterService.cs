@@ -6,7 +6,7 @@ using PdfSharpCore.Pdf.Annotations;
 
 namespace SaksAppWeb.Services;
 
-public sealed class SimplePdfWriter
+public sealed class SimplePdfWriter : ISimplePdfWriter
 {
     private readonly PdfDocument _doc = new();
     private PdfPage _page;
