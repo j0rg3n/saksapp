@@ -587,24 +587,36 @@ public class MeetingsController : Controller
         return File(bytes, "application/pdf", fileName);
     }
 
-    public async Task<IActionResult> Minutes(int id, CancellationToken ct)
+    public async Task<IActionResult> Minutes(int id, int index = 0, CancellationToken ct = default)
     {
-        var meeting = await _db.Meetings.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (meeting is null) return NotFound();
-
         var vm = await _meetingQuery.GetMeetingWithMinutesAsync(id, ct);
         if (vm is null) return NotFound();
+
+        vm.TotalCount = vm.CaseEntries.Count;
+        vm.CurrentIndex = Math.Clamp(index, 0, Math.Max(0, vm.CaseEntries.Count - 1));
+
+        if (vm.CaseEntries.Count > 0)
+            vm.CaseEntries = [vm.CaseEntries[vm.CurrentIndex]];
 
         return View(vm);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Minutes(SaksAppWeb.Models.ViewModels.MeetingMinutesVm vm, CancellationToken ct)
+    public async Task<IActionResult> Minutes(SaksAppWeb.Models.ViewModels.MeetingMinutesVm vm, string? action, CancellationToken ct)
     {
         var saved = await _minutesSave.SaveMinutesAsync(vm, ct);
         if (!saved) return NotFound();
-        return RedirectToAction(nameof(Minutes), new { id = vm.MeetingId });
+
+        if (action == "next")
+        {
+            var nextIndex = vm.CurrentIndex + 1;
+            if (nextIndex < vm.TotalCount)
+                return RedirectToAction(nameof(Minutes), new { id = vm.MeetingId, index = nextIndex });
+            return RedirectToAction(nameof(Details), new { id = vm.MeetingId });
+        }
+
+        return RedirectToAction(nameof(Minutes), new { id = vm.MeetingId, index = vm.CurrentIndex });
     }
 
     [HttpGet]

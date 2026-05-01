@@ -1,0 +1,88 @@
+@model SaksAppWeb.Models.ViewModels.CaseEventIndexVm
+@using SaksAppWeb.Controllers
+
+@{
+    ViewData["Title"] = "Hendelseslogg";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Hendelseslogg</h1>
+    <a class="btn btn-primary" asp-action="Create">Ny hendelse</a>
+</div>
+
+<div class="mb-3 d-flex gap-2">
+    <a class="btn btn-sm @(Model.CategoryFilter == null ? "btn-secondary" : "btn-outline-secondary")"
+       asp-action="Index">Alle</a>
+    <a class="btn btn-sm @(Model.CategoryFilter == "avvik" ? "btn-danger" : "btn-outline-danger")"
+       asp-action="Index" asp-route-category="avvik">Avvik</a>
+    <a class="btn btn-sm @(Model.CategoryFilter == "tiltak" ? "btn-warning" : "btn-outline-warning")"
+       asp-action="Index" asp-route-category="tiltak">Tiltak</a>
+    <a class="btn btn-sm @(Model.CategoryFilter == "general" ? "btn-info" : "btn-outline-info")"
+       asp-action="Index" asp-route-category="general">Generelt</a>
+</div>
+
+@if (!Model.Events.Any())
+{
+    <div class="text-muted">Ingen hendelser registrert.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Dato</th>
+                    <th>Kategori</th>
+                    <th>Innhold</th>
+                    <th>Saker</th>
+                    <th>Registrert av</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ev in Model.Events)
+                {
+                    <tr>
+                        <td class="text-nowrap">@ev.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            @{
+                                var badgeClass = ev.Category switch
+                                {
+                                    "avvik" => "bg-danger",
+                                    "tiltak" => "bg-warning text-dark",
+                                    _ => "bg-info text-dark"
+                                };
+                            }
+                            <span class="badge @badgeClass">@CaseEventsController.CategoryLabel(ev.Category)</span>
+                        </td>
+                        <td>
+                            @if (ev.Content.Length > 120)
+                            {
+                                @ev.Content[..120]<span class="text-muted">…</span>
+                            }
+                            else
+                            {
+                                @ev.Content
+                            }
+                        </td>
+                        <td>
+                            @foreach (var num in ev.LinkedCaseNumbers)
+                            {
+                                <span class="badge bg-secondary me-1">#@num</span>
+                            }
+                        </td>
+                        <td class="text-muted small">@(ev.AuthorDisplay ?? "-")</td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@ev.Id">Rediger</a>
+                            <form asp-action="SoftDelete" asp-route-id="@ev.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-outline-danger" type="submit"
+                                        onclick="return confirm('Slett denne hendelsen?')">Slett</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

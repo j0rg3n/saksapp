@@ -375,7 +375,7 @@ public class MeetingsControllerTests : IDisposable
     [Fact]
     public async Task Minutes_ReturnsNotFound_WhenMeetingNotExists()
     {
-        var result = await _controller.Minutes(999, CancellationToken.None);
+        var result = await _controller.Minutes(999, ct: CancellationToken.None);
         Assert.IsType<NotFoundResult>(result);
     }
 
@@ -399,11 +399,45 @@ public class MeetingsControllerTests : IDisposable
         };
         _meetingQueryMock.Setup(x => x.GetMeetingWithMinutesAsync(meeting.Id, It.IsAny<CancellationToken>())).ReturnsAsync(minutesVm);
 
-        var result = await _controller.Minutes(meeting.Id, CancellationToken.None);
+        var result = await _controller.Minutes(meeting.Id, ct: CancellationToken.None);
 
         var viewResult = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<MeetingMinutesVm>(viewResult.Model);
         Assert.Single(model.CaseEntries);
+        Assert.Equal(1, model.TotalCount);
+        Assert.Equal(0, model.CurrentIndex);
+    }
+
+    [Fact]
+    public async Task Minutes_Get_SetsCurrentIndexAndTotalCount()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2 };
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+
+        var minutesVm = new MeetingMinutesVm
+        {
+            MeetingId = meeting.Id,
+            MeetingDate = meeting.MeetingDate,
+            Year = meeting.Year,
+            YearSequenceNumber = meeting.YearSequenceNumber,
+            CaseEntries = new List<MeetingMinutesCaseEntryVm>
+            {
+                new() { MeetingEventLinkId = 1, CaseNumber = 1, Title = "First" },
+                new() { MeetingEventLinkId = 2, CaseNumber = 2, Title = "Second" },
+                new() { MeetingEventLinkId = 3, CaseNumber = 3, Title = "Third" }
+            }
+        };
+        _meetingQueryMock.Setup(x => x.GetMeetingWithMinutesAsync(meeting.Id, It.IsAny<CancellationToken>())).ReturnsAsync(minutesVm);
+
+        var result = await _controller.Minutes(meeting.Id, index: 1, ct: CancellationToken.None);
+
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<MeetingMinutesVm>(viewResult.Model);
+        Assert.Single(model.CaseEntries);
+        Assert.Equal(2, model.CaseEntries[0].CaseNumber);
+        Assert.Equal(1, model.CurrentIndex);
+        Assert.Equal(3, model.TotalCount);
     }
 
     [Fact]
@@ -412,13 +446,42 @@ public class MeetingsControllerTests : IDisposable
         _minutesSaveMock.Setup(x => x.SaveMinutesAsync(It.IsAny<MeetingMinutesVm>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var vm = new MeetingMinutesVm { MeetingId = 42, CaseEntries = new List<MeetingMinutesCaseEntryVm>() };
+        var vm = new MeetingMinutesVm { MeetingId = 42, CurrentIndex = 0, TotalCount = 1, CaseEntries = new List<MeetingMinutesCaseEntryVm>() };
 
-        var result = await _controller.Minutes(vm, CancellationToken.None);
+        var result = await _controller.Minutes(vm, null, CancellationToken.None);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Minutes", redirect.ActionName);
         Assert.Equal(42, redirect.RouteValues!["id"]);
+    }
+
+    [Fact]
+    public async Task Minutes_Post_NavigatesToNextOnActionNext()
+    {
+        _minutesSaveMock.Setup(x => x.SaveMinutesAsync(It.IsAny<MeetingMinutesVm>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var vm = new MeetingMinutesVm { MeetingId = 42, CurrentIndex = 0, TotalCount = 3, CaseEntries = new List<MeetingMinutesCaseEntryVm>() };
+
+        var result = await _controller.Minutes(vm, "next", CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Minutes", redirect.ActionName);
+        Assert.Equal(1, redirect.RouteValues!["index"]);
+    }
+
+    [Fact]
+    public async Task Minutes_Post_RedirectsToDetailsWhenLastEntry()
+    {
+        _minutesSaveMock.Setup(x => x.SaveMinutesAsync(It.IsAny<MeetingMinutesVm>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var vm = new MeetingMinutesVm { MeetingId = 42, CurrentIndex = 2, TotalCount = 3, CaseEntries = new List<MeetingMinutesCaseEntryVm>() };
+
+        var result = await _controller.Minutes(vm, "next", CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Details", redirect.ActionName);
     }
 
     [Fact]
@@ -429,7 +492,7 @@ public class MeetingsControllerTests : IDisposable
 
         var vm = new MeetingMinutesVm { MeetingId = 999, CaseEntries = new List<MeetingMinutesCaseEntryVm>() };
 
-        var result = await _controller.Minutes(vm, CancellationToken.None);
+        var result = await _controller.Minutes(vm, null, CancellationToken.None);
 
         Assert.IsType<NotFoundResult>(result);
     }
