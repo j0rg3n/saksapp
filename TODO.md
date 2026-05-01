@@ -83,7 +83,7 @@
 
 ---
 
-## Gjenværende Faser
+## 1. Gjenværende Faser
 
 Tabellen under viser nåværende engelske termer i kode og UI, og deres anbefalte norske (Borettslag) termer.
 
@@ -267,6 +267,21 @@ public class MeetingEventLink
 
 ---
 
+### Phase 6: Nye Features (Fremtidig)
+
+#### 6.1 Board Log (Styrelogg)
+- [ ] **Task 6.1.1**: Opprett Board Log controller og view
+- [ ] **Task 6.1.2**: Implementer filter (kategori, dato, sak)
+- [ ] **Task 6.1.3**: Vis kronologisk liste av CaseEvents uten MeetingEventLink
+
+#### 6.2 HMS Avvik og Tiltak
+- [ ] **Task 6.2.1**: Opprett HMS controller og view
+- [ ] **Task 6.2.2**: Vis sammendrag (tellere)
+- [ ] **Task 6.2.3**: Implementer auto-lukk av Avvik når relatert sak lukkes
+- [ ] **Task 6.2.4**: Tillat Avvik uten sak (null CaseId)
+
+---
+
 ### Phase 7: WhatsApp Bot
 
 **Mål**: Automatisk inntak av WhatsApp-meldinger som CaseEvents, med vedlegg og sak-kobling via hashtags.
@@ -302,21 +317,6 @@ public class MeetingEventLink
 
 ---
 
-### Phase 6: Nye Features (Fremtidig)
-
-#### 6.1 Board Log (Styrelogg)
-- [ ] **Task 6.1.1**: Opprett Board Log controller og view
-- [ ] **Task 6.1.2**: Implementer filter (kategori, dato, sak)
-- [ ] **Task 6.1.3**: Vis kronologisk liste av CaseEvents uten MeetingEventLink
-
-#### 6.2 HMS Avvik og Tiltak
-- [ ] **Task 6.2.1**: Opprett HMS controller og view
-- [ ] **Task 6.2.2**: Vis sammendrag (tellere)
-- [ ] **Task 6.2.3**: Implementer auto-lukk av Avvik når relatert sak lukkes
-- [ ] **Task 6.2.4**: Tillat Avvik uten sak (null CaseId)
-
----
-
 ## 4. Avhengigheter
 
 ```
@@ -328,9 +328,6 @@ Phase 1 (Terminologi)
 
 Phase 2 (Database)
   └─ Avhenger av: Phase 0 (tester på plass)
-
-Phase 3 (API/Controllers)
-  └─ Avhenger av: Phase 2
 
 Phase 3 (API/Controllers)
   └─ Avhenger av: Phase 2
@@ -350,6 +347,9 @@ Phase 5 (PDF)
 
 Phase 6 (Nye Features)
   └─ Kan startes etter: Phase 3
+
+Phase 7 (WhatsApp Bot)
+  └─ Avhenger av: Phase 2+3 (CaseEvent-modellen må være på plass)
 ```
 
 ---
@@ -378,8 +378,13 @@ Phase 6 (Nye Features)
 2. Task 5.2.x (vedlegg-nummerering)
 3. Task 5.3.x (utfall badge)
 
-**Til slutt Phase 6** (fremtidig):
+**Deretter Phase 6** (fremtidig features):
 - Når behov oppstår
+
+**Phase 7** (WhatsApp Bot) — etter Phase 3:
+- Task 7.1.x → 7.2.x (ingest API + hashtag-kobling)
+- Task 7.3.x (sidecar)
+- Task 7.4.x (UI)
 
 ---
 
