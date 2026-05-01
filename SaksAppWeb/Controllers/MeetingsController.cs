@@ -786,7 +786,7 @@ public class MeetingsController : Controller
                 MeetingCaseOutcome.Continue => "Fortsetter",
                 MeetingCaseOutcome.Closed => "Avsluttet",
                 MeetingCaseOutcome.Deferred => "Utsatt",
-                MeetingCaseOutcome.Info => "Orientering",
+                MeetingCaseOutcome.Orientering => "Orientering",
                 _ => entry.Entry.Outcome.ToString()
             };
 

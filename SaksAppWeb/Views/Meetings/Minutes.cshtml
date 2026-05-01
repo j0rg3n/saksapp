@@ -60,15 +60,15 @@
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="MeetingId" />
 
-    <h3>Meeting notes</h3>
+    <h3>Møtenotat</h3>
 
     <div class="row">
         <div class="col-md-6 mb-3">
-            <label class="form-label">Attendance</label>
+            <label class="form-label">Oppmøte</label>
             <textarea class="form-control" asp-for="AttendanceText" rows="3"></textarea>
         </div>
         <div class="col-md-6 mb-3">
-            <label class="form-label">Absence</label>
+            <label class="form-label">Forfall</label>
             <textarea class="form-control" asp-for="AbsenceText" rows="3"></textarea>
         </div>
     </div>
@@ -108,24 +108,24 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Outcome</label>
+                        <label class="form-label">Utfall</label>
                         <select class="form-select" asp-for="CaseEntries[i].Outcome"
                                 asp-items="Html.GetEnumSelectList<MeetingCaseOutcome>()"></select>
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Official notes</label>
+                    <label class="form-label">Referat</label>
                     <textarea class="form-control" asp-for="CaseEntries[i].OfficialNotes" rows="4"></textarea>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Decision</label>
+                    <label class="form-label">Vedtak</label>
                     <textarea class="form-control" asp-for="CaseEntries[i].DecisionText" rows="2"></textarea>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Follow-up</label>
+                    <label class="form-label">Oppfølging</label>
                     <textarea class="form-control" asp-for="CaseEntries[i].FollowUpText" rows="3"></textarea>
                 </div>
 
