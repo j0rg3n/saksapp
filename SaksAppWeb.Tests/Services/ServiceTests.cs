@@ -275,3 +275,65 @@ public class MeetingQueryServiceTests : IDisposable
         Assert.Single(result.Agenda);
     }
 }
+
+public class DatabaseBackupExecutorTests : IDisposable
+{
+    private readonly string _tmpDir = Path.Combine(Path.GetTempPath(), $"backup_test_{Guid.NewGuid()}");
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_tmpDir))
+            Directory.Delete(_tmpDir, recursive: true);
+    }
+
+    private DatabaseBackupExecutor BuildExecutor(string dbPath)
+    {
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<DatabaseBackupExecutor>>().Object;
+
+        var config = new Microsoft.Extensions.Configuration.ConfigurationManager();
+        config["ConnectionStrings:DefaultConnection"] = $"Data Source={dbPath}";
+
+        var env = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+        env.Setup(e => e.ContentRootPath).Returns(_tmpDir);
+
+        return new DatabaseBackupExecutor(logger, config, env.Object);
+    }
+
+    [Fact]
+    public async Task CreateBackupAsync_CreatesBackupFile()
+    {
+        Directory.CreateDirectory(_tmpDir);
+        var dbPath = Path.Combine(_tmpDir, "app.db");
+
+        // Create a real SQLite db file
+        await using (var conn = new SqliteConnection($"Data Source={dbPath}"))
+        {
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE test (id INTEGER PRIMARY KEY);";
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        var executor = BuildExecutor(dbPath);
+        await executor.CreateBackupAsync(CancellationToken.None);
+
+        // dbPath is absolute so backupDir is <db-dir>/Backups
+        var backupDir = Path.Combine(_tmpDir, "Backups");
+        var backups = Directory.GetFiles(backupDir, "app-*.sqlite");
+        Assert.Single(backups);
+    }
+
+    [Fact]
+    public async Task CreateBackupAsync_SkipsWhenDbMissing()
+    {
+        Directory.CreateDirectory(_tmpDir);
+        var dbPath = Path.Combine(_tmpDir, "nonexistent.db");
+
+        var executor = BuildExecutor(dbPath);
+        // Should not throw even if file doesn't exist
+        await executor.CreateBackupAsync(CancellationToken.None);
+
+        var backupDir = Path.Combine(_tmpDir, "db", "Backups");
+        Assert.False(Directory.Exists(backupDir) && Directory.GetFiles(backupDir).Length > 0);
+    }
+}
