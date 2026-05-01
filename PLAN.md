@@ -52,10 +52,11 @@
 - [x] `ImportController` bruker `IHtmlCaseImporter` via DI
 - [x] 3 tidligere skippede `ImportControllerTests` er nå aktivert og bestått med Moq
 
-### 0.1.6 Abstraher Backup Service
-- [ ] Opprett `IBackupService` interface
-- [ ] Ekstraher backup-logikk fra `DatabaseBackupService`
-- [ ] Legg til tester
+### 0.1.6 Abstraher Backup Service ✅ KOMPLETT
+- [x] Opprett `IDatabaseBackupExecutor` interface
+- [x] Ekstraher backup-logikk fra `DatabaseBackupService` til `DatabaseBackupExecutor`
+- [x] `DatabaseBackupService` er nå en tynn timer som injiserer `IDatabaseBackupExecutor`
+- [x] Lagt til 2 tester: CreateBackupAsync oppretter fil, hopper over når DB mangler
 
 ### 0.1.7 Verifiser Coverage
 - [ ] Kjør test suite med coverage

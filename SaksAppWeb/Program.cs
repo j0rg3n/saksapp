@@ -40,6 +40,7 @@ builder.Services.AddSingleton<ISimplePdfWriterFactory, SimplePdfWriterFactory>()
 builder.Services.AddControllersWithViews();
 
 // Hourly SQLite database backups (see Services/DatabaseBackupService)
+builder.Services.AddSingleton<IDatabaseBackupExecutor, DatabaseBackupExecutor>();
 builder.Services.AddHostedService<DatabaseBackupService>();
 
 var app = builder.Build();
