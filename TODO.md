@@ -167,21 +167,21 @@ public class MeetingEventLink
 
 ## 3. Oppgaver (Task Tree)
 
-### Phase 1: Terminologi-oppdateringer (Enkle tekstoppdateringer)
+### Phase 1: Terminologi-oppdateringer (Enkle tekstoppdateringer) ✅ KOMPLETT
 
 #### 1.1 Oppdater Enum-verdier
-- [ ] **Task 1.1.1**: Endre `MeetingCaseOutcome.Info` → `Orientering` i modellen
+- [x] **Task 1.1.1**: Endre `MeetingCaseOutcome.Info` → `Orientering` i modellen
 
 #### 1.2 Oppdater View Labels
-- [ ] **Task 1.2.1**: Endre "Outcome" → "Utfall" i Minutes.cshtml
-- [ ] **Task 1.2.2**: Endre "Official notes" → "Referat" i Minutes.cshtml
-- [ ] **Task 1.2.3**: Endre "Decision" → "Vedtak" i Minutes.cshtml
-- [ ] **Task 1.2.4**: Endre "Follow-up" → "Oppfølging" i Minutes.cshtml
-- [ ] **Task 1.2.5**: Endre "Attendance" → "Oppmøte" i Minutes.cshtml
-- [ ] **Task 1.2.6**: Endre "Absence" → "Forfall" i Minutes.cshtml
-- [ ] **Task 1.2.7**: Endre "Outcome" → "Utfall" i EditAgendaItem.cshtml
+- [x] **Task 1.2.1**: Endre "Outcome" → "Utfall" i Minutes.cshtml
+- [x] **Task 1.2.2**: Endre "Official notes" → "Referat" i Minutes.cshtml
+- [x] **Task 1.2.3**: Endre "Decision" → "Vedtak" i Minutes.cshtml
+- [x] **Task 1.2.4**: Endre "Follow-up" → "Oppfølging" i Minutes.cshtml
+- [x] **Task 1.2.5**: Endre "Attendance" → "Oppmøte" i Minutes.cshtml
+- [x] **Task 1.2.6**: Endre "Absence" → "Forfall" i Minutes.cshtml
+- [x] **Task 1.2.7**: N/A — "Outcome" finnes ikke i EditAgendaItem.cshtml
 
-**Test**: Bygg og verifiser at appen kjører.
+**Test**: Bygg og verifiser at appen kjører. ✅ 157 tester passerer.
 
 ---
 

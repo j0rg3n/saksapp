@@ -257,7 +257,7 @@ public class MeetingCaseOutcomeEnumTests
     [InlineData(MeetingCaseOutcome.Continue)]
     [InlineData(MeetingCaseOutcome.Closed)]
     [InlineData(MeetingCaseOutcome.Deferred)]
-    [InlineData(MeetingCaseOutcome.Info)]
+    [InlineData(MeetingCaseOutcome.Orientering)]
     public void MeetingCaseOutcome_AllValuesWork(MeetingCaseOutcome outcome)
     {
         var vm = new MeetingMinutesCaseEntryVm { Outcome = outcome };
