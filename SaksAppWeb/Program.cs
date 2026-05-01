@@ -36,6 +36,9 @@ builder.Services.AddScoped<IUserDisplayService, UserDisplayService>();
 builder.Services.AddScoped<ICaseQueryService, CaseQueryService>();
 builder.Services.AddScoped<IMeetingQueryService, MeetingQueryService>();
 builder.Services.AddSingleton<ISimplePdfWriterFactory, SimplePdfWriterFactory>();
+builder.Services.AddScoped<IAgendaPdfDataService, AgendaPdfDataService>();
+builder.Services.AddScoped<IMinutesPdfDataService, MinutesPdfDataService>();
+builder.Services.AddScoped<IMinutesSaveService, MinutesSaveService>();
 
 builder.Services.AddControllersWithViews();
 
