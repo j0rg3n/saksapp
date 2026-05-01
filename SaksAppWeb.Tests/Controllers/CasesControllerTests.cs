@@ -162,4 +162,161 @@ public class CasesControllerTests : IDisposable
         Assert.NotNull(savedComment);
         Assert.Equal("New comment", savedComment.Text);
     }
+
+    [Fact]
+    public async Task Edit_Get_ReturnsViewWithCase()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Edit Me", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Edit(boardCase.Id, CancellationToken.None);
+
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<CaseEditVm>(viewResult.Model);
+        Assert.Equal("Edit Me", vm.Title);
+    }
+
+    [Fact]
+    public async Task Edit_Get_ReturnsNotFound_WhenCaseNotExists()
+    {
+        var result = await _controller.Edit(999, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task Edit_Post_UpdatesCase()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Old Title", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var vm = new CaseEditVm
+        {
+            Id = boardCase.Id,
+            Title = "New Title",
+            Priority = CasePriority.P1,
+            Status = CaseStatus.Open
+        };
+
+        var result = await _controller.Edit(boardCase.Id, vm, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var updated = await _db.BoardCases.FindAsync(boardCase.Id);
+        Assert.Equal("New Title", updated!.Title);
+    }
+
+    [Fact]
+    public async Task Edit_Post_LogsStateChange_WhenStatusChanges()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "T", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var vm = new CaseEditVm { Id = boardCase.Id, Title = "T", Status = CaseStatus.Closed };
+
+        await _controller.Edit(boardCase.Id, vm, CancellationToken.None);
+
+        _auditMock.Verify(x => x.LogAsync(
+            AuditAction.StateChange,
+            nameof(BoardCase),
+            It.IsAny<string>(),
+            It.IsAny<object>(),
+            It.IsAny<object>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Edit_Post_ReturnsNotFound_WhenCaseNotExists()
+    {
+        var vm = new CaseEditVm { Id = 999, Title = "X", Status = CaseStatus.Open };
+
+        var result = await _controller.Edit(999, vm, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task SoftDeleteComment_SetsIsDeleted()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "T", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Delete me", CreatedAt = DateTime.UtcNow };
+        _db.CaseComments.Add(comment);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.SoftDeleteComment(comment.Id, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var updated = await _db.CaseComments.FindAsync(comment.Id);
+        Assert.True(updated!.IsDeleted);
+    }
+
+    [Fact]
+    public async Task SoftDeleteComment_ReturnsNotFound_WhenNotExists()
+    {
+        var result = await _controller.SoftDeleteComment(999, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task EditComment_Get_ReturnsView()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "T", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Existing text", CreatedAt = DateTime.UtcNow };
+        _db.CaseComments.Add(comment);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.EditComment(comment.Id, CancellationToken.None);
+
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<CommentEditVm>(viewResult.Model);
+        Assert.Equal("Existing text", vm.Text);
+    }
+
+    [Fact]
+    public async Task EditComment_Get_ReturnsNotFound_WhenNotExists()
+    {
+        var result = await _controller.EditComment(999, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task EditComment_Post_UpdatesComment()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "T", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Old text", CreatedAt = DateTime.UtcNow };
+        _db.CaseComments.Add(comment);
+        await _db.SaveChangesAsync();
+
+        var vm = new CommentEditVm { Id = comment.Id, CaseId = boardCase.Id, Text = "Updated text" };
+
+        var result = await _controller.EditComment(vm, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var updated = await _db.CaseComments.FindAsync(comment.Id);
+        Assert.Equal("Updated text", updated!.Text);
+    }
+
+    [Fact]
+    public async Task EditComment_Post_ReturnsNotFound_WhenNotExists()
+    {
+        var vm = new CommentEditVm { Id = 999, CaseId = 1, Text = "X" };
+
+        var result = await _controller.EditComment(vm, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
 }
