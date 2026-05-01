@@ -1,11 +1,15 @@
 #!/bin/bash
 set -e
 
-VM_HOST="root@212.147.235.100"
+source auth/secret.env
+
+VM_HOST="root@${UPCLOUD__HOST}"
 VM_PATH="/root"
 DB_PATH="SaksAppWeb/db"
 
 echo "=== Deploying SaksApp ==="
+
+echo "Target: ${VM_HOST}:${VM_PATH}[${DB_PATH}]"
 
 # 1. Save and transfer Docker image
 echo "Saving Docker image..."
@@ -22,6 +26,10 @@ scp docker-compose.yml ${VM_HOST}:${VM_PATH}/
 #echo "Transferring database..."
 #ssh ${VM_HOST} mkdir -p ${VM_PATH}/${DB_PATH}/
 #scp ${DB_PATH}/app.db* ${VM_HOST}:${VM_PATH}/${DB_PATH}/
+
+# Give access
+# cd SaksAppWeb
+# chown -R 1654:1654 db dp_keys
 
 # 4. Transfer auth config
 #echo "Transferring auth config..."

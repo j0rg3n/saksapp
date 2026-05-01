@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-VM_HOST="root@212.147.235.100"
+source auth/secret.env
+
+VM_HOST="root@${UPCLOUD__HOST}"
 VM_PATH="/root/SaksAppWeb/db/Backups"
 LOCAL_PATH="../SaksApp_backups"
 KEEP_REMOTE=5
@@ -29,3 +31,6 @@ ssh "$VM_HOST" "cd $VM_PATH && ls -1t | tail -n +$((KEEP_REMOTE + 1)) | xargs -r
 echo ""
 echo "Remote backups remaining:"
 ssh "$VM_HOST" "ls -1t $VM_PATH/"
+
+ssh "$VM_HOST" "sudo apt update"
+ssh "$VM_HOST" "sudo apt upgrade"

@@ -186,3 +186,92 @@ public class AuditServiceTests : IDisposable
         Assert.Equal(action, savedEvent!.Action);
     }
 }
+
+public class MeetingQueryServiceTests : IDisposable
+{
+    private ApplicationDbContext _db;
+    private Mock<IAuditService> _auditMock;
+    private TestUserManager _userManager;
+    private MeetingQueryService _service;
+    private string _dbPath;
+
+    private void ResetDatabase()
+    {
+        _db?.Database.CloseConnection();
+        _db?.Dispose();
+        if (_dbPath != null && File.Exists(_dbPath))
+            File.Delete(_dbPath);
+        
+        _dbPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.db");
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite($"Data Source={_dbPath}")
+            .Options;
+        
+        _db = new ApplicationDbContext(options);
+        _db.Database.EnsureCreated();
+        
+        using var cmd = _db.Database.GetDbConnection().CreateCommand();
+        cmd.CommandText = "PRAGMA foreign_keys=OFF;";
+        _db.Database.OpenConnection();
+        cmd.ExecuteNonQuery();
+        
+        _auditMock = new Mock<IAuditService>();
+        _auditMock.Setup(x => x.GetActorUserId()).Returns("test-user");
+        _userManager = new TestUserManager();
+        _service = new MeetingQueryService(_db, _userManager, _auditMock.Object);
+    }
+
+    public MeetingQueryServiceTests()
+    {
+        ResetDatabase();
+    }
+
+    public void Dispose()
+    {
+        _db?.Database.CloseConnection();
+        _db?.Dispose();
+        if (_dbPath != null && File.Exists(_dbPath))
+            File.Delete(_dbPath);
+    }
+
+    [Fact]
+    public async Task GetAllMeetingsAsync_ReturnsMeetingsOrderedByDate()
+    {
+        _db.Meetings.Add(new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 });
+        _db.Meetings.Add(new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 2 });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.GetAllMeetingsAsync(CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        Assert.True(result[0].MeetingDate > result[1].MeetingDate);
+    }
+
+    [Fact]
+    public async Task GetMeetingWithAgendaAsync_ReturnsNotFound_WhenMeetingNotExists()
+    {
+        var result = await _service.GetMeetingWithAgendaAsync(999, CancellationToken.None);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetMeetingWithAgendaAsync_ReturnsMeetingWithAgenda()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+        
+        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
+        _db.MeetingCases.Add(mc);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.GetMeetingWithAgendaAsync(meeting.Id, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(meeting.Id, result.Meeting.Id);
+        Assert.Single(result.Agenda);
+    }
+}

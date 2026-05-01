@@ -20,6 +20,7 @@ public class MeetingsControllerTests : IDisposable
     private readonly Mock<IAuditService> _auditMock;
     private readonly TestUserManager _userManager;
     private readonly Mock<IPdfSequenceService> _pdfSequenceMock;
+    private readonly Mock<IMeetingQueryService> _meetingQueryMock;
     private readonly MeetingsController _controller;
 
     private readonly string _dbPath;
@@ -45,11 +46,14 @@ public class MeetingsControllerTests : IDisposable
         
         _pdfSequenceMock = new Mock<IPdfSequenceService>();
         
+        _meetingQueryMock = new Mock<IMeetingQueryService>();
+        
         _controller = new MeetingsController(
             _db,
             _auditMock.Object,
             _userManager,
-            _pdfSequenceMock.Object);
+            _pdfSequenceMock.Object,
+            _meetingQueryMock.Object);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user-123") };
         _controller.ControllerContext = new ControllerContext

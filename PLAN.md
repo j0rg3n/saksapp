@@ -17,28 +17,28 @@
 
 **Mål**: Ekstraher query-logikk og-abstrahere eksterne avhengigheter for å muliggjøre effektiv mocking og øke testbarhet.
 
-### 0.1.1 Ekstraher Case Query Service
-- [ ] Opprett `ICaseQueryService` interface
-- [ ] Implementer `CaseQueryService` med metoder:
+### 0.1.1 Ekstraher Case Query Service ✅ KOMPLETT
+- [x] Opprett `ICaseQueryService` interface
+- [x] Implementer `CaseQueryService` med metoder:
   - `GetFilteredCasesAsync(status, assigneeUserId, showClosed)`
   - `GetCaseDetailsAsync(id)`
-- [ ] Oppdater `CasesController` til å bruke `ICaseQueryService`
-- [ ] Legg til tester for CaseQueryService
+- [x] Oppdater `CasesController` til å bruke `ICaseQueryService`
+- [x] Legg til tester for CaseQueryService
 
-### 0.1.2 Ekstraher Meeting Query Service
-- [ ] Opprett `IMeetingQueryService` interface
-- [ ] Implementer `MeetingQueryService` med metoder:
+### 0.1.2 Ekstraher Meeting Query Service ✅ KOMPLETT
+- [x] Opprett `IMeetingQueryService` interface
+- [x] Implementer `MeetingQueryService` med metoder:
   - `GetAllMeetingsAsync()`
   - `GetMeetingWithAgendaAsync(id)`
   - `GetMeetingWithMinutesAsync(id)`
-- [ ] Oppdater `MeetingsController` til å bruke `IMeetingQueryService`
-- [ ] Legg til tester for MeetingQueryService
+- [x] Oppdater `MeetingsController` til å bruke `IMeetingQueryService`
+- [x] Legg til tester for MeetingQueryService
 
-### 0.1.3 Ekstraher User Display Service
-- [ ] Opprett `IUserDisplayService` interface
-- [ ] Implementer `UserDisplayService.GetDisplayNamesAsync(userIds)`
-- [ ] Oppdater controllere til å bruke `IUserDisplayService`
-- [ ] Legg til tester
+### 0.1.3 Ekstraher User Display Service ✅ KOMPLETT
+- [x] Opprett `IUserDisplayService` interface
+- [x] Implementer `UserDisplayService.GetDisplayNamesAsync(userIds)`
+- [x] Oppdater controllere til å bruke `IUserDisplayService`
+- [x] Legg til tester
 
 ### 0.1.4 Abstraher PDF Generator
 - [ ] Opprett `IPdfGenerator` interface

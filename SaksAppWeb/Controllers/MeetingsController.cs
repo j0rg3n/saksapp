@@ -17,20 +17,20 @@ public class MeetingsController : Controller
     private readonly IAuditService _audit;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPdfSequenceService _pdfSequence;
+    private readonly IMeetingQueryService _meetingQuery;
 
-    public MeetingsController(ApplicationDbContext db, IAuditService audit, UserManager<ApplicationUser> userManager, IPdfSequenceService pdfSequence)
+    public MeetingsController(ApplicationDbContext db, IAuditService audit, UserManager<ApplicationUser> userManager, IPdfSequenceService pdfSequence, IMeetingQueryService meetingQuery)
     {
         _db = db;
         _audit = audit;
         _userManager = userManager;
         _pdfSequence = pdfSequence;
+        _meetingQuery = meetingQuery;
     }
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var meetings = await _db.Meetings.AsNoTracking()
-            .OrderByDescending(x => x.MeetingDate)
-            .ToListAsync(ct);
+        var meetings = await _meetingQuery.GetAllMeetingsAsync(ct);
 
         return View(meetings);
     }
@@ -117,61 +117,8 @@ public class MeetingsController : Controller
 
     public async Task<IActionResult> Details(int id, CancellationToken ct)
     {
-        var meeting = await _db.Meetings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (meeting is null) return NotFound();
-
-        var agendaEntities = await _db.MeetingCases.AsNoTracking()
-            .Where(x => x.MeetingId == id)
-            .Join(_db.BoardCases.AsNoTracking(),
-                mc => mc.BoardCaseId,
-                c => c.Id,
-                (mc, c) => new { mc, c })
-            .OrderBy(x => x.mc.AgendaOrder)
-            .ToListAsync(ct);
-
-        var assigneeIds = agendaEntities
-            .Select(x => x.c.AssigneeUserId)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct()
-            .ToList();
-
-        var userDisplay = await _userManager.Users
-            .Where(u => assigneeIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
-            .ToDictionaryAsync(x => x.Id, x => x.FullName ?? x.Email ?? x.UserName ?? x.Id, ct);
-
-        var agenda = agendaEntities.Select(x => new MeetingAgendaRowVm
-            {
-                MeetingCaseId = x.mc.Id,
-                AgendaOrder = x.mc.AgendaOrder,
-                CaseId = x.c.Id,
-                CaseNumber = x.c.CaseNumber,
-                Title = x.c.Title,
-                AssigneeDisplay = userDisplay.TryGetValue(x.c.AssigneeUserId, out var d) ? d : x.c.AssigneeUserId,
-                AgendaTextSnapshot = x.mc.AgendaTextSnapshot,
-                TidsfristOverrideDate = x.mc.TidsfristOverrideDate,
-                TidsfristOverrideText = x.mc.TidsfristOverrideText
-            })
-            .ToList();
-
-        var alreadyScheduledCaseIds = agendaEntities.Select(x => x.c.Id).Distinct().ToList();
-
-        var openCases = await _db.BoardCases.AsNoTracking()
-            .Where(x => x.Status != CaseStatus.Closed)
-            .Where(x => !alreadyScheduledCaseIds.Contains(x.Id))
-            .OrderByDescending(x => x.Priority)
-            .ThenBy(x => x.CaseNumber)
-            .Select(x => new { x.Id, x.CaseNumber, x.Title })
-            .ToListAsync(ct);
-
-        var vm = new MeetingDetailsVm
-        {
-            Meeting = meeting,
-            Agenda = agenda,
-            OpenCasesToAdd = openCases
-                .Select(c => new SelectListItem($"#{c.CaseNumber} — {c.Title}", c.Id.ToString()))
-                .ToList()
-        };
+        var vm = await _meetingQuery.GetMeetingWithAgendaAsync(id, ct);
+        if (vm is null) return NotFound();
 
         return View(vm);
     }

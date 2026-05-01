@@ -20,6 +20,7 @@ public class CasesController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAuditService _audit;
     private readonly ICaseNumberAllocator _caseNumberAllocator;
+    private readonly ICaseQueryService _caseQuery;
     private readonly ILogger<CasesController> _logger;
 
     public CasesController(
@@ -27,262 +28,29 @@ public class CasesController : Controller
         UserManager<ApplicationUser> userManager,
         IAuditService audit,
         ICaseNumberAllocator caseNumberAllocator,
+        ICaseQueryService caseQuery,
         ILogger<CasesController> logger)
     {
         _db = db;
         _userManager = userManager;
         _audit = audit;
         _caseNumberAllocator = caseNumberAllocator;
+        _caseQuery = caseQuery;
         _logger = logger;
     }
 
     public async Task<IActionResult> Index(CaseStatus? status, string? assigneeUserId, bool showClosed, CancellationToken ct)
     {
-        var q = _db.BoardCases.AsNoTracking();
-
-        if (status is not null)
-            q = q.Where(x => x.Status == status);
-        
-        if (!showClosed)
-            q = q.Where(x => x.Status != CaseStatus.Closed);
-
-        if (!string.IsNullOrWhiteSpace(assigneeUserId))
-            q = q.Where(x => x.AssigneeUserId == assigneeUserId);
-
-        var cases = await q
-            .OrderByDescending(x => x.CaseNumber)
-            .ToListAsync(ct);
-
-        var assigneeIds = cases
-            .Select(x => x.AssigneeUserId)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct()
-            .ToList();
-
-        var users = await _userManager.Users
-            .Where(u => assigneeIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
-            .ToListAsync(ct);
-
-        var displayById = users.ToDictionary(
-            x => x.Id,
-            x => x.FullName ?? x.Email ?? x.UserName ?? x.Id);
-
-        var vm = cases.Select(c => new SaksAppWeb.Models.ViewModels.CaseIndexRowVm
-            {
-                Id = c.Id,
-                CaseNumber = c.CaseNumber,
-                Title = c.Title,
-                Priority = c.Priority,
-                Status = c.Status,
-                AssigneeUserId = c.AssigneeUserId,
-                AssigneeDisplay = displayById.TryGetValue(c.AssigneeUserId, out var d) ? d : c.AssigneeUserId,
-                CustomTidsfristDate = c.CustomTidsfristDate,
-                CustomTidsfristText = c.CustomTidsfristText,
-                Theme = c.Theme
-            })
-            .ToList();
-
+        var vm = await _caseQuery.GetFilteredCasesAsync(status, assigneeUserId, showClosed, ct);
         return View(vm);
     }
 
     public async Task<IActionResult> Details(int id, CancellationToken ct)
     {
-        var c = await _db.BoardCases.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (c is null) return NotFound();
-
-    // 1) Unofficial comments (no SQL ordering due to DateTimeOffset limitation; we sort in memory)
-    var comments = await _db.CaseComments.AsNoTracking()
-        .Where(x => x.BoardCaseId == id)
-        .ToListAsync(ct);
-
-    // minutesRows query: include MeetingCaseId so we can fetch agenda attachments
-var minutesRows = await _db.MeetingMinutesCaseEntries.AsNoTracking()
-    .Where(x => x.BoardCaseId == id)
-    .Join(_db.Meetings.AsNoTracking(),
-        e => e.MeetingId,
-        m => m.Id,
-        (e, m) => new
-        {
-            MinutesEntryId = e.Id,
-            e.MeetingId,
-            m.MeetingDate,
-            m.Year,
-            m.YearSequenceNumber,
-            e.Outcome,
-            e.OfficialNotes,
-            e.DecisionText,
-            e.FollowUpText
-        })
-    .ToListAsync(ct);
-
-// Minutes entry attachments (by MeetingMinutesCaseEntryId)
-var minutesEntryIds = minutesRows.Select(x => x.MinutesEntryId).Distinct().ToList();
-
-var minutesAtts = minutesEntryIds.Count == 0
-    ? new List<(int EntryId, SaksAppWeb.Models.ViewModels.CaseAttachmentVm Att)>()
-    : await _db.MeetingMinutesCaseEntryAttachments.AsNoTracking()
-        .Where(x => minutesEntryIds.Contains(x.MeetingMinutesCaseEntryId))
-        .Join(_db.Attachments.AsNoTracking(),
-            link => link.AttachmentId,
-            att => att.Id,
-            (link, att) => new
-            {
-                link.MeetingMinutesCaseEntryId,
-                LinkId = link.Id,
-                AttachmentId = att.Id,
-                att.OriginalFileName,
-                att.ContentType,
-                att.SizeBytes
-            })
-        .OrderByDescending(x => x.AttachmentId)
-        .Select(x => new ValueTuple<int, SaksAppWeb.Models.ViewModels.CaseAttachmentVm>(
-            x.MeetingMinutesCaseEntryId,
-            new SaksAppWeb.Models.ViewModels.CaseAttachmentVm
-            {
-                LinkKind = SaksAppWeb.Models.ViewModels.CaseAttachmentLinkKind.MinutesEntryAttachment,
-                LinkId = x.LinkId,
-                AttachmentId = x.AttachmentId,
-                OriginalFileName = x.OriginalFileName,
-                ContentType = x.ContentType,
-                SizeBytes = x.SizeBytes
-            }))
-        .ToListAsync(ct);
-
-var minutesAttByEntryId = minutesAtts
-    .GroupBy(x => x.Item1)
-    .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
-
-// comment attachments
-var commentIds = comments.Select(x => x.Id).ToList();
-var commentAtts = commentIds.Count == 0
-    ? new List<(int CommentId, SaksAppWeb.Models.ViewModels.CaseAttachmentVm Att)>()
-    : await _db.CaseCommentAttachments.AsNoTracking()
-        .Where(x => commentIds.Contains(x.CaseCommentId))
-        .Join(_db.Attachments.AsNoTracking(),
-            link => link.AttachmentId,
-            att => att.Id,
-            (link, att) => new
-            {
-                link.CaseCommentId,
-                LinkId = link.Id,
-                AttachmentId = att.Id,
-                att.OriginalFileName,
-                att.ContentType,
-                att.SizeBytes
-            })
-        .Select(x => new ValueTuple<int, SaksAppWeb.Models.ViewModels.CaseAttachmentVm>(
-            x.CaseCommentId,
-            new SaksAppWeb.Models.ViewModels.CaseAttachmentVm
-            {
-                LinkKind = SaksAppWeb.Models.ViewModels.CaseAttachmentLinkKind.CommentAttachment,
-                LinkId = x.LinkId,
-                AttachmentId = x.AttachmentId,
-                OriginalFileName = x.OriginalFileName,
-                ContentType = x.ContentType,
-                SizeBytes = x.SizeBytes
-            }))
-        .ToListAsync(ct);
-
-var commentAttByCommentId = commentAtts
-    .GroupBy(x => x.Item1)
-    .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
-
-// Collect user IDs to show friendly display names
-    var userIds = comments
-        .Select(x => x.CreatedByUserId)
-        .Append(c.AssigneeUserId)
-        .Where(x => !string.IsNullOrWhiteSpace(x))
-        .Distinct()
-        .ToList();
-
-    var users = await _userManager.Users
-        .Where(u => userIds.Contains(u.Id))
-        .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
-        .ToListAsync(ct);
-
-    var userDisplayById = users.ToDictionary(
-        x => x.Id,
-        x => x.FullName ?? x.Email ?? x.UserName ?? x.Id);
-
-    // Build timeline items
-    var timeline = new List<SaksAppWeb.Models.ViewModels.CaseTimelineItemVm>();
-
-    foreach (var com in comments)
-    {
-        timeline.Add(new SaksAppWeb.Models.ViewModels.CaseTimelineItemVm
-        {
-            Kind = SaksAppWeb.Models.ViewModels.CaseTimelineItemKind.Comment,
-            OccurredAt = com.CreatedAt,
-            SortId = com.Id,
-            CommentId = com.Id,
-            CommentText = com.Text,
-            CommentAuthorUserId = com.CreatedByUserId
-        });
+        var vm = await _caseQuery.GetCaseDetailsAsync(id, ct);
+        if (vm is null) return NotFound();
+        return View(vm);
     }
-
-foreach (var mr in minutesRows)
-{
-    // Use meeting date for chronology. Put it at noon UTC to avoid “midnight” confusion in display.
-    var occurredAt = new DateTimeOffset(
-        year: mr.MeetingDate.Year,
-        month: mr.MeetingDate.Month,
-        day: mr.MeetingDate.Day,
-        hour: 12, minute: 0, second: 0,
-        offset: TimeSpan.Zero);
-
-    timeline.Add(new SaksAppWeb.Models.ViewModels.CaseTimelineItemVm
-    {
-        Kind = SaksAppWeb.Models.ViewModels.CaseTimelineItemKind.Minutes,
-        OccurredAt = occurredAt,
-        SortId = mr.MinutesEntryId,
-        MeetingMinutesCaseEntryId = mr.MinutesEntryId,
-        MeetingId = mr.MeetingId,
-        MeetingDate = mr.MeetingDate,
-        MeetingYear = mr.Year,
-        MeetingYearSequenceNumber = mr.YearSequenceNumber,
-        Outcome = mr.Outcome,
-        OfficialNotes = mr.OfficialNotes,
-        DecisionText = mr.DecisionText,
-        FollowUpText = mr.FollowUpText
-    });
-}
-
-foreach (var item in timeline)
-{
-    if (item.Kind == SaksAppWeb.Models.ViewModels.CaseTimelineItemKind.Minutes)
-    {
-        if (item.MeetingMinutesCaseEntryId is int meid && minutesAttByEntryId.TryGetValue(meid, out var minutesList))
-            item.Attachments.AddRange(minutesList);
-    }
-
-    if (item.Kind == SaksAppWeb.Models.ViewModels.CaseTimelineItemKind.Comment)
-    {
-        if (item.CommentId is int comId && commentAttByCommentId.TryGetValue(comId, out var commentList))
-            item.Attachments.AddRange(commentList);
-    }
-}
-
-    // Reverse chronological:
-    // - primarily by OccurredAt
-    // - tie-breaker by Kind (Minutes after Comments on same day, or vice versa—pick one)
-    // - tie-breaker by SortId
-    var ordered = timeline
-        .OrderByDescending(x => x.OccurredAt)
-        .ThenByDescending(x => x.Kind)   // Minutes (2) before Comment (1) on same timestamp
-        .ThenByDescending(x => x.SortId)
-        .ToList();
-
-    var vm = new SaksAppWeb.Models.ViewModels.CaseDetailsVm
-    {
-        Case = c,
-        UserDisplayById = userDisplayById,
-        AssigneeDisplay = userDisplayById.TryGetValue(c.AssigneeUserId, out var d) ? d : c.AssigneeUserId,
-        Timeline = ordered
-    };
-
-    return View(vm);
-}
 
     public async Task<IActionResult> Create(CancellationToken ct)
     {
@@ -336,7 +104,7 @@ foreach (var item in timeline)
             },
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = entity.Id });
+return RedirectToAction(nameof(Details), new { id = entity.Id });
     }
 
     public async Task<IActionResult> Edit(int id, CancellationToken ct)
