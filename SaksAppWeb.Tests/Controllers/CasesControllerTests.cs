@@ -21,6 +21,7 @@ public class CasesControllerTests : IDisposable
     private readonly TestUserManager _userManager;
     private readonly Mock<IAuditService> _auditMock;
     private readonly Mock<ICaseNumberAllocator> _caseAllocatorMock;
+    private readonly Mock<ICaseQueryService> _caseQueryMock;
     private readonly Mock<ILogger<CasesController>> _loggerMock;
     private readonly CasesController _controller;
 
@@ -40,6 +41,7 @@ public class CasesControllerTests : IDisposable
         
         _auditMock = new Mock<IAuditService>();
         _caseAllocatorMock = new Mock<ICaseNumberAllocator>();
+        _caseQueryMock = new Mock<ICaseQueryService>();
         _loggerMock = new Mock<ILogger<CasesController>>();
         
         _caseAllocatorMock.Setup(x => x.AllocateNextAsync(It.IsAny<CancellationToken>()))
@@ -50,6 +52,7 @@ public class CasesControllerTests : IDisposable
             _userManager,
             _auditMock.Object,
             _caseAllocatorMock.Object,
+            _caseQueryMock.Object,
             _loggerMock.Object);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user-123") };

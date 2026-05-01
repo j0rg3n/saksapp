@@ -32,6 +32,9 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<ICaseNumberAllocator, CaseNumberAllocator>();
 builder.Services.AddScoped<IPdfSequenceService, PdfSequenceService>();
 builder.Services.AddScoped<HtmlCaseImporter>();
+builder.Services.AddScoped<IUserDisplayService, UserDisplayService>();
+builder.Services.AddScoped<ICaseQueryService, CaseQueryService>();
+builder.Services.AddScoped<IMeetingQueryService, MeetingQueryService>();
 
 builder.Services.AddControllersWithViews();
 
