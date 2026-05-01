@@ -319,4 +319,107 @@ public class CasesControllerTests : IDisposable
 
         Assert.IsType<NotFoundResult>(result);
     }
+
+    // ── Upload / Attachment ────────────────────────────────────────────────
+
+    private static IFormFile MakePdfFile(string name = "test.pdf", long sizeBytes = 100)
+    {
+        var bytes = new byte[sizeBytes];
+        var file = new Mock<IFormFile>();
+        file.Setup(f => f.FileName).Returns(name);
+        file.Setup(f => f.ContentType).Returns("application/pdf");
+        file.Setup(f => f.Length).Returns(sizeBytes);
+        file.Setup(f => f.CopyToAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Callback<Stream, CancellationToken>((s, _) => s.Write(bytes));
+        return file.Object;
+    }
+
+    [Fact]
+    public async Task UploadCommentAttachment_StoresAttachmentAndLink()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "T", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Hi", CreatedAt = DateTime.UtcNow };
+        _db.CaseComments.Add(comment);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadCommentAttachment(comment.Id, MakePdfFile("doc.pdf"), CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(1, await _db.Attachments.CountAsync());
+        Assert.Equal(1, await _db.CaseCommentAttachments.CountAsync(x => x.CaseCommentId == comment.Id));
+    }
+
+    [Fact]
+    public async Task UploadCommentAttachment_ReturnsNotFound_WhenCommentNotExists()
+    {
+        var result = await _controller.UploadCommentAttachment(999, MakePdfFile(), CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task UploadCommentAttachment_ReturnsBadRequest_WhenInvalidContentType()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "T", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Hi", CreatedAt = DateTime.UtcNow };
+        _db.CaseComments.Add(comment);
+        await _db.SaveChangesAsync();
+
+        var badFile = new Mock<IFormFile>();
+        badFile.Setup(f => f.FileName).Returns("script.js");
+        badFile.Setup(f => f.ContentType).Returns("text/javascript");
+        badFile.Setup(f => f.Length).Returns(100);
+
+        var result = await _controller.UploadCommentAttachment(comment.Id, badFile.Object, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task RemoveCommentAttachment_SoftDeletesLink()
+    {
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "T", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var comment = new CaseComment { BoardCaseId = boardCase.Id, Text = "Hi", CreatedAt = DateTime.UtcNow };
+        _db.CaseComments.Add(comment);
+        var att = new Attachment { OriginalFileName = "f.pdf", ContentType = "application/pdf", SizeBytes = 10, Content = new byte[10], UploadedByUserId = "u" };
+        _db.Attachments.Add(att);
+        await _db.SaveChangesAsync();
+
+        var link = new CaseCommentAttachment { CaseCommentId = comment.Id, AttachmentId = att.Id };
+        _db.CaseCommentAttachments.Add(link);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.RemoveCommentAttachment(link.Id, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var updated = await _db.CaseCommentAttachments.FindAsync(link.Id);
+        Assert.True(updated!.IsDeleted);
+    }
+
+    [Fact]
+    public async Task RemoveCommentAttachment_ReturnsNotFound_WhenNotExists()
+    {
+        var result = await _controller.RemoveCommentAttachment(999, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public static void IsAllowedContentType_AcceptsPdfAndImages()
+    {
+        Assert.True(CasesController.IsAllowedContentType("application/pdf"));
+        Assert.True(CasesController.IsAllowedContentType("image/jpeg"));
+        Assert.True(CasesController.IsAllowedContentType("image/png"));
+        Assert.False(CasesController.IsAllowedContentType("text/javascript"));
+        Assert.False(CasesController.IsAllowedContentType("application/x-msdownload"));
+    }
 }
