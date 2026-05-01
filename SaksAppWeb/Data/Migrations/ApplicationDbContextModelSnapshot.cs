@@ -431,6 +431,119 @@ namespace SaksAppWeb.Data.Migrations
                     b.ToTable("CaseCommentAttachments");
                 });
 
+            modelBuilder.Entity("SaksAppWeb.Models.CaseEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceGroupId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceSenderId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CaseEvents");
+                });
+
+            modelBuilder.Entity("SaksAppWeb.Models.CaseEventAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AttachmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CaseEventId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttachmentId");
+
+                    b.HasIndex("CaseEventId", "AttachmentId")
+                        .IsUnique();
+
+                    b.ToTable("CaseEventAttachments");
+                });
+
+            modelBuilder.Entity("SaksAppWeb.Models.CaseEventCase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BoardCaseId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CaseEventId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardCaseId");
+
+                    b.HasIndex("CaseEventId", "BoardCaseId")
+                        .IsUnique();
+
+                    b.ToTable("CaseEventCases");
+                });
+
             modelBuilder.Entity("SaksAppWeb.Models.Meeting", b =>
                 {
                     b.Property<int>("Id")
@@ -549,6 +662,68 @@ namespace SaksAppWeb.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("MeetingCaseAttachments");
+                });
+
+            modelBuilder.Entity("SaksAppWeb.Models.MeetingEventLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AgendaOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AgendaTextSnapshot")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CaseEventId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DecisionText")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FollowUpText")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEventuelt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MeetingId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OfficialNotes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Outcome")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly?>("TidsfristOverrideDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TidsfristOverrideText")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaseEventId")
+                        .IsUnique();
+
+                    b.HasIndex("MeetingId", "CaseEventId")
+                        .IsUnique();
+
+                    b.ToTable("MeetingEventLinks");
                 });
 
             modelBuilder.Entity("SaksAppWeb.Models.MeetingMinutes", b =>
@@ -819,6 +994,44 @@ namespace SaksAppWeb.Data.Migrations
                     b.Navigation("CaseComment");
                 });
 
+            modelBuilder.Entity("SaksAppWeb.Models.CaseEventAttachment", b =>
+                {
+                    b.HasOne("SaksAppWeb.Models.Attachment", "Attachment")
+                        .WithMany()
+                        .HasForeignKey("AttachmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaksAppWeb.Models.CaseEvent", "CaseEvent")
+                        .WithMany("Attachments")
+                        .HasForeignKey("CaseEventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Attachment");
+
+                    b.Navigation("CaseEvent");
+                });
+
+            modelBuilder.Entity("SaksAppWeb.Models.CaseEventCase", b =>
+                {
+                    b.HasOne("SaksAppWeb.Models.BoardCase", "BoardCase")
+                        .WithMany()
+                        .HasForeignKey("BoardCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaksAppWeb.Models.CaseEvent", "CaseEvent")
+                        .WithMany("Cases")
+                        .HasForeignKey("CaseEventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BoardCase");
+
+                    b.Navigation("CaseEvent");
+                });
+
             modelBuilder.Entity("SaksAppWeb.Models.MeetingCase", b =>
                 {
                     b.HasOne("SaksAppWeb.Models.BoardCase", "BoardCase")
@@ -855,6 +1068,25 @@ namespace SaksAppWeb.Data.Migrations
                     b.Navigation("Attachment");
 
                     b.Navigation("MeetingCase");
+                });
+
+            modelBuilder.Entity("SaksAppWeb.Models.MeetingEventLink", b =>
+                {
+                    b.HasOne("SaksAppWeb.Models.CaseEvent", "CaseEvent")
+                        .WithOne("MeetingLink")
+                        .HasForeignKey("SaksAppWeb.Models.MeetingEventLink", "CaseEventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaksAppWeb.Models.Meeting", "Meeting")
+                        .WithMany()
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CaseEvent");
+
+                    b.Navigation("Meeting");
                 });
 
             modelBuilder.Entity("SaksAppWeb.Models.MeetingMinutes", b =>
@@ -942,6 +1174,15 @@ namespace SaksAppWeb.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Meeting");
+                });
+
+            modelBuilder.Entity("SaksAppWeb.Models.CaseEvent", b =>
+                {
+                    b.Navigation("Attachments");
+
+                    b.Navigation("Cases");
+
+                    b.Navigation("MeetingLink");
                 });
 #pragma warning restore 612, 618
         }

@@ -40,6 +40,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<MeetingCaseAttachment> MeetingCaseAttachments => Set<MeetingCaseAttachment>();
 
+    public DbSet<CaseEvent> CaseEvents => Set<CaseEvent>();
+    public DbSet<CaseEventCase> CaseEventCases => Set<CaseEventCase>();
+    public DbSet<CaseEventAttachment> CaseEventAttachments => Set<CaseEventAttachment>();
+    public DbSet<MeetingEventLink> MeetingEventLinks => Set<MeetingEventLink>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -56,6 +61,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<MeetingMinutesAttachment>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<MeetingMinutesCaseEntryAttachment>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<MeetingCaseAttachment>().HasQueryFilter(x => !x.IsDeleted);
+        builder.Entity<CaseEvent>().HasQueryFilter(x => !x.IsDeleted);
+        builder.Entity<CaseEventCase>().HasQueryFilter(x => !x.IsDeleted);
+        builder.Entity<CaseEventAttachment>().HasQueryFilter(x => !x.IsDeleted);
+        builder.Entity<MeetingEventLink>().HasQueryFilter(x => !x.IsDeleted);
 
         builder.Entity<PdfGeneration>(b =>
         {
@@ -140,6 +149,51 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             b.HasOne(x => x.Attachment)
                 .WithMany()
                 .HasForeignKey(x => x.AttachmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CaseEventCase>(b =>
+        {
+            b.HasIndex(x => new { x.CaseEventId, x.BoardCaseId }).IsUnique();
+
+            b.HasOne(x => x.CaseEvent)
+                .WithMany(x => x.Cases)
+                .HasForeignKey(x => x.CaseEventId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.BoardCase)
+                .WithMany()
+                .HasForeignKey(x => x.BoardCaseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CaseEventAttachment>(b =>
+        {
+            b.HasIndex(x => new { x.CaseEventId, x.AttachmentId }).IsUnique();
+
+            b.HasOne(x => x.CaseEvent)
+                .WithMany(x => x.Attachments)
+                .HasForeignKey(x => x.CaseEventId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.Attachment)
+                .WithMany()
+                .HasForeignKey(x => x.AttachmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<MeetingEventLink>(b =>
+        {
+            b.HasIndex(x => new { x.MeetingId, x.CaseEventId }).IsUnique();
+
+            b.HasOne(x => x.Meeting)
+                .WithMany()
+                .HasForeignKey(x => x.MeetingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.CaseEvent)
+                .WithOne(x => x.MeetingLink)
+                .HasForeignKey<MeetingEventLink>(x => x.CaseEventId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }
