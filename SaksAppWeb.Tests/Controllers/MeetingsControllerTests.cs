@@ -424,4 +424,208 @@ public class MeetingsControllerTests : IDisposable
     }
 
     #endregion
+
+    #region Upload / Attachment Tests
+
+    private static IFormFile MakePdfFile(string name = "test.pdf", long sizeBytes = 100)
+    {
+        var bytes = new byte[sizeBytes];
+        var file = new Mock<IFormFile>();
+        file.Setup(f => f.FileName).Returns(name);
+        file.Setup(f => f.ContentType).Returns("application/pdf");
+        file.Setup(f => f.Length).Returns(sizeBytes);
+        file.Setup(f => f.CopyToAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Callback<Stream, CancellationToken>((s, _) => s.Write(bytes));
+        return file.Object;
+    }
+
+    private static IFormFile MakeImageFile(string name = "photo.jpg", long sizeBytes = 100)
+    {
+        var bytes = new byte[sizeBytes];
+        var file = new Mock<IFormFile>();
+        file.Setup(f => f.FileName).Returns(name);
+        file.Setup(f => f.ContentType).Returns("image/jpeg");
+        file.Setup(f => f.Length).Returns(sizeBytes);
+        file.Setup(f => f.CopyToAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Callback<Stream, CancellationToken>((s, _) => s.Write(bytes));
+        return file.Object;
+    }
+
+    [Fact]
+    public async Task UploadSignedMinutes_StoresPdfAndCreatesLink()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadSignedMinutes(meeting.Id, MakePdfFile("minutes.pdf"), CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(1, await _db.Attachments.CountAsync());
+        Assert.Equal(1, await _db.MeetingMinutesAttachments.CountAsync(x => x.MeetingId == meeting.Id));
+    }
+
+    [Fact]
+    public async Task UploadSignedMinutes_ReturnsNotFound_WhenMeetingNotExists()
+    {
+        var result = await _controller.UploadSignedMinutes(999, MakePdfFile(), CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task UploadSignedMinutes_RedirectsWhenFileIsEmpty()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadSignedMinutes(meeting.Id, null!, CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Minutes", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task UploadSignedMinutes_ReturnsBadRequest_WhenNotPdf()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadSignedMinutes(meeting.Id, MakeImageFile(), CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task UploadAgendaAttachment_StoresAttachmentAndLink()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Case", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
+        _db.MeetingCases.Add(mc);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadAgendaAttachment(mc.Id, MakePdfFile("agenda.pdf"), CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(1, await _db.Attachments.CountAsync());
+        Assert.Equal(1, await _db.MeetingCaseAttachments.CountAsync(x => x.MeetingCaseId == mc.Id));
+    }
+
+    [Fact]
+    public async Task UploadAgendaAttachment_ReturnsNotFound_WhenMeetingCaseNotExists()
+    {
+        var result = await _controller.UploadAgendaAttachment(999, MakePdfFile(), CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task UploadAgendaAttachment_ReturnsBadRequest_WhenInvalidContentType()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Case", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
+        _db.MeetingCases.Add(mc);
+        await _db.SaveChangesAsync();
+
+        var badFile = new Mock<IFormFile>();
+        badFile.Setup(f => f.FileName).Returns("virus.exe");
+        badFile.Setup(f => f.ContentType).Returns("application/x-msdownload");
+        badFile.Setup(f => f.Length).Returns(100);
+
+        var result = await _controller.UploadAgendaAttachment(mc.Id, badFile.Object, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task UploadMinutesEntryAttachment_StoresAttachment()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Case", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
+        _db.MeetingCases.Add(mc);
+        await _db.SaveChangesAsync();
+
+        var entry = new MeetingMinutesCaseEntry
+        {
+            MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id,
+            Outcome = MeetingCaseOutcome.Continue
+        };
+        _db.MeetingMinutesCaseEntries.Add(entry);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.UploadMinutesEntryAttachment(entry.Id, MakePdfFile("note.pdf"), CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(1, await _db.Attachments.CountAsync());
+        Assert.Equal(1, await _db.MeetingMinutesCaseEntryAttachments.CountAsync(x => x.MeetingMinutesCaseEntryId == entry.Id));
+    }
+
+    [Fact]
+    public async Task UploadMinutesEntryAttachment_ReturnsNotFound_WhenEntryNotExists()
+    {
+        var result = await _controller.UploadMinutesEntryAttachment(999, MakePdfFile(), CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task RemoveMinutesEntryAttachment_SoftDeletesLink()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 1, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Case", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
+        _db.MeetingCases.Add(mc);
+        await _db.SaveChangesAsync();
+
+        var entry = new MeetingMinutesCaseEntry
+        {
+            MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id,
+            Outcome = MeetingCaseOutcome.Continue
+        };
+        _db.MeetingMinutesCaseEntries.Add(entry);
+        var att = new Attachment { OriginalFileName = "f.pdf", ContentType = "application/pdf", SizeBytes = 10, Content = new byte[10], UploadedByUserId = "u" };
+        _db.Attachments.Add(att);
+        await _db.SaveChangesAsync();
+
+        var link = new MeetingMinutesCaseEntryAttachment { MeetingMinutesCaseEntryId = entry.Id, AttachmentId = att.Id };
+        _db.MeetingMinutesCaseEntryAttachments.Add(link);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.RemoveMinutesEntryAttachment(link.Id, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var updated = await _db.MeetingMinutesCaseEntryAttachments.FindAsync(link.Id);
+        Assert.True(updated!.IsDeleted);
+    }
+
+    [Fact]
+    public async Task RemoveMinutesEntryAttachment_ReturnsNotFound_WhenNotExists()
+    {
+        var result = await _controller.RemoveMinutesEntryAttachment(999, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    #endregion
 }
