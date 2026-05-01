@@ -36,7 +36,7 @@ public class MinutesSaveServiceTests : IDisposable
         if (File.Exists(_dbPath)) File.Delete(_dbPath);
     }
 
-    private async Task<(Meeting meeting, MeetingMinutes minutes, MeetingCase mc, MeetingMinutesCaseEntry entry)> SeedAsync()
+    private async Task<(Meeting meeting, MeetingMinutes minutes, MeetingEventLink mel, int boardCaseId)> SeedAsync()
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1, Location = "Oslo" };
         _db.Meetings.Add(meeting);
@@ -44,17 +44,18 @@ public class MinutesSaveServiceTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
+        var caseEvent = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.Add(caseEvent);
         var minutes = new MeetingMinutes { MeetingId = meeting.Id };
         _db.MeetingMinutes.Add(minutes);
         await _db.SaveChangesAsync();
 
-        var entry = new MeetingMinutesCaseEntry { MeetingId = meeting.Id, MeetingCaseId = mc.Id, BoardCaseId = boardCase.Id };
-        _db.MeetingMinutesCaseEntries.Add(entry);
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = boardCase.Id });
+        var mel = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = caseEvent.Id, AgendaOrder = 1, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.Add(mel);
         await _db.SaveChangesAsync();
 
-        return (meeting, minutes, mc, entry);
+        return (meeting, minutes, mel, boardCase.Id);
     }
 
     [Fact]
@@ -111,14 +112,14 @@ public class MinutesSaveServiceTests : IDisposable
     [Fact]
     public async Task SaveMinutesAsync_UpdatesCaseEntryFields()
     {
-        var (meeting, _, mc, entry) = await SeedAsync();
+        var (meeting, _, mel, boardCaseId) = await SeedAsync();
 
         var vm = new MeetingMinutesVm
         {
             MeetingId = meeting.Id,
             CaseEntries = new List<MeetingMinutesCaseEntryVm>
             {
-                new() { MeetingCaseId = mc.Id, BoardCaseId = entry.BoardCaseId, CaseNumber = 1,
+                new() { MeetingEventLinkId = mel.Id, BoardCaseId = boardCaseId, CaseNumber = 1,
                     OfficialNotes = "Diskutert", DecisionText = "Vedtatt", FollowUpText = "Sjekk neste møte",
                     Outcome = MeetingCaseOutcome.Continue }
             }
@@ -126,7 +127,7 @@ public class MinutesSaveServiceTests : IDisposable
 
         await _service.SaveMinutesAsync(vm);
 
-        var updated = await _db.MeetingMinutesCaseEntries.FirstAsync();
+        var updated = await _db.MeetingEventLinks.FirstAsync();
         Assert.Equal("Diskutert", updated.OfficialNotes);
         Assert.Equal("Vedtatt", updated.DecisionText);
         Assert.Equal("Sjekk neste møte", updated.FollowUpText);
@@ -160,14 +161,14 @@ public class MinutesSaveServiceTests : IDisposable
     [Fact]
     public async Task SaveMinutesAsync_CallsAuditLog_ForEachCaseEntry()
     {
-        var (meeting, _, mc, entry) = await SeedAsync();
+        var (meeting, _, mel, boardCaseId) = await SeedAsync();
 
         var vm = new MeetingMinutesVm
         {
             MeetingId = meeting.Id,
             CaseEntries = new List<MeetingMinutesCaseEntryVm>
             {
-                new() { MeetingCaseId = mc.Id, BoardCaseId = entry.BoardCaseId, CaseNumber = 1, Outcome = MeetingCaseOutcome.Closed }
+                new() { MeetingEventLinkId = mel.Id, BoardCaseId = boardCaseId, CaseNumber = 1, Outcome = MeetingCaseOutcome.Closed }
             }
         };
 
@@ -175,7 +176,7 @@ public class MinutesSaveServiceTests : IDisposable
 
         _auditMock.Verify(x => x.LogAsync(
             AuditAction.Update,
-            nameof(MeetingMinutesCaseEntry),
+            nameof(MeetingEventLink),
             It.IsAny<string>(),
             It.IsAny<object>(),
             It.IsAny<object>(),

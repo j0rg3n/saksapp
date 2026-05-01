@@ -73,9 +73,16 @@ public class AgendaPdfDataServiceTests : IDisposable
         _db.BoardCases.AddRange(c1, c2);
         await _db.SaveChangesAsync();
 
-        _db.MeetingCases.AddRange(
-            new MeetingCase { MeetingId = meeting.Id, BoardCaseId = c1.Id, AgendaOrder = 2 },
-            new MeetingCase { MeetingId = meeting.Id, BoardCaseId = c2.Id, AgendaOrder = 1 });
+        var ce1 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ce2 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.AddRange(ce1, ce2);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce1.Id, BoardCaseId = c1.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce2.Id, BoardCaseId = c2.Id });
+        _db.MeetingEventLinks.AddRange(
+            new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce1.Id, AgendaOrder = 2, AgendaTextSnapshot = "" },
+            new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce2.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
         await _db.SaveChangesAsync();
 
         var result = await _service.GetAgendaDataAsync(meeting.Id);
@@ -96,19 +103,20 @@ public class AgendaPdfDataServiceTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = currMeeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
-        var prevMc = new MeetingCase { MeetingId = prevMeeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(prevMc);
+        // Current meeting agenda
+        var ceCurr = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        // Previous meeting event with notes
+        var cePrev = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.AddRange(ceCurr, cePrev);
         await _db.SaveChangesAsync();
 
-        _db.MeetingMinutesCaseEntries.Add(new MeetingMinutesCaseEntry
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceCurr.Id, BoardCaseId = boardCase.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = cePrev.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = currMeeting.Id, CaseEventId = ceCurr.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
+        _db.MeetingEventLinks.Add(new MeetingEventLink
         {
-            MeetingId = prevMeeting.Id,
-            MeetingCaseId = prevMc.Id,
-            BoardCaseId = boardCase.Id,
-            OfficialNotes = "Previous note",
-            Outcome = MeetingCaseOutcome.Continue
+            MeetingId = prevMeeting.Id, CaseEventId = cePrev.Id, AgendaOrder = 1, AgendaTextSnapshot = "",
+            OfficialNotes = "Previous note", Outcome = MeetingCaseOutcome.Continue
         });
         await _db.SaveChangesAsync();
 
@@ -129,14 +137,19 @@ public class AgendaPdfDataServiceTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var mc = new MeetingCase { MeetingId = meeting.Id, BoardCaseId = boardCase.Id, AgendaOrder = 1 };
-        _db.MeetingCases.Add(mc);
-        _db.CaseComments.Add(new CaseComment
+        var ceMeeting = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ceComment = new CaseEvent
         {
-            BoardCaseId = boardCase.Id,
-            Text = "Hello",
+            Category = "comment",
+            Content = "Hello",
             CreatedAt = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero)
-        });
+        };
+        _db.CaseEvents.AddRange(ceMeeting, ceComment);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceMeeting.Id, BoardCaseId = boardCase.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceComment.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ceMeeting.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
         await _db.SaveChangesAsync();
 
         var result = await _service.GetAgendaDataAsync(meeting.Id);

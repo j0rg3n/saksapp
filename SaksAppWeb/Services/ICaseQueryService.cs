@@ -82,41 +82,27 @@ public class CaseQueryService : ICaseQueryService
         var c = await _db.BoardCases.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (c is null) return null;
 
-        var comments = await _db.CaseComments.AsNoTracking()
+        // Load all CaseEventCases for this board case, including the CaseEvent and its MeetingLink (with Meeting)
+        var caseEventCases = await _db.CaseEventCases.AsNoTracking()
             .Where(x => x.BoardCaseId == id)
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.MeetingLink)
+                    .ThenInclude(mel => mel!.Meeting)
             .ToListAsync(ct);
 
-        var minutesRows = await _db.MeetingMinutesCaseEntries.AsNoTracking()
-            .Where(x => x.BoardCaseId == id)
-            .Join(_db.Meetings.AsNoTracking(),
-                e => e.MeetingId,
-                m => m.Id,
-                (e, m) => new
-                {
-                    MinutesEntryId = e.Id,
-                    e.MeetingId,
-                    m.MeetingDate,
-                    m.Year,
-                    m.YearSequenceNumber,
-                    e.Outcome,
-                    e.OfficialNotes,
-                    e.DecisionText,
-                    e.FollowUpText
-                })
-            .ToListAsync(ct);
+        var caseEventIds = caseEventCases.Select(x => x.CaseEventId).Distinct().ToList();
 
-        var minutesEntryIds = minutesRows.Select(x => x.MinutesEntryId).Distinct().ToList();
-
-        var minutesAtts = minutesEntryIds.Count == 0
-            ? new List<(int EntryId, CaseAttachmentVm Att)>()
-            : await _db.MeetingMinutesCaseEntryAttachments.AsNoTracking()
-                .Where(x => minutesEntryIds.Contains(x.MeetingMinutesCaseEntryId))
+        // Load attachments for all case events
+        var eventAtts = caseEventIds.Count == 0
+            ? new List<(int CaseEventId, int LinkId, int AttachmentId, string OriginalFileName, string ContentType, long SizeBytes)>()
+            : await _db.CaseEventAttachments.AsNoTracking()
+                .Where(x => caseEventIds.Contains(x.CaseEventId))
                 .Join(_db.Attachments.AsNoTracking(),
                     link => link.AttachmentId,
                     att => att.Id,
                     (link, att) => new
                     {
-                        link.MeetingMinutesCaseEntryId,
+                        link.CaseEventId,
                         LinkId = link.Id,
                         AttachmentId = att.Id,
                         att.OriginalFileName,
@@ -124,59 +110,17 @@ public class CaseQueryService : ICaseQueryService
                         att.SizeBytes
                     })
                 .OrderByDescending(x => x.AttachmentId)
-                .Select(x => new ValueTuple<int, CaseAttachmentVm>(
-                    x.MeetingMinutesCaseEntryId,
-                    new CaseAttachmentVm
-                    {
-                        LinkKind = CaseAttachmentLinkKind.MinutesEntryAttachment,
-                        LinkId = x.LinkId,
-                        AttachmentId = x.AttachmentId,
-                        OriginalFileName = x.OriginalFileName,
-                        ContentType = x.ContentType,
-                        SizeBytes = x.SizeBytes
-                    }))
+                .Select(x => new ValueTuple<int, int, int, string, string, long>(
+                    x.CaseEventId, x.LinkId, x.AttachmentId, x.OriginalFileName, x.ContentType, x.SizeBytes))
                 .ToListAsync(ct);
 
-        var minutesAttByEntryId = minutesAtts
+        var eventAttsByCaseEventId = eventAtts
             .GroupBy(x => x.Item1)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-        var commentIds = comments.Select(x => x.Id).ToList();
-        var commentAtts = commentIds.Count == 0
-            ? new List<(int CommentId, CaseAttachmentVm Att)>()
-            : await _db.CaseCommentAttachments.AsNoTracking()
-                .Where(x => commentIds.Contains(x.CaseCommentId))
-                .Join(_db.Attachments.AsNoTracking(),
-                    link => link.AttachmentId,
-                    att => att.Id,
-                    (link, att) => new
-                    {
-                        link.CaseCommentId,
-                        LinkId = link.Id,
-                        AttachmentId = att.Id,
-                        att.OriginalFileName,
-                        att.ContentType,
-                        att.SizeBytes
-                    })
-                .Select(x => new ValueTuple<int, CaseAttachmentVm>(
-                    x.CaseCommentId,
-                    new CaseAttachmentVm
-                    {
-                        LinkKind = CaseAttachmentLinkKind.CommentAttachment,
-                        LinkId = x.LinkId,
-                        AttachmentId = x.AttachmentId,
-                        OriginalFileName = x.OriginalFileName,
-                        ContentType = x.ContentType,
-                        SizeBytes = x.SizeBytes
-                    }))
-                .ToListAsync(ct);
-
-        var commentAttByCommentId = commentAtts
-            .GroupBy(x => x.Item1)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
-
-        var userIds = comments
-            .Select(x => x.CreatedByUserId)
+        var userIds = caseEventCases
+            .Where(x => x.CaseEvent.Category == "comment")
+            .Select(x => x.CaseEvent.CreatedByUserId)
             .Append(c.AssigneeUserId)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct()
@@ -186,38 +130,63 @@ public class CaseQueryService : ICaseQueryService
 
         var timeline = new List<CaseTimelineItemVm>();
 
-        foreach (var com in comments)
+        foreach (var cec in caseEventCases)
         {
-            timeline.Add(new CaseTimelineItemVm
-            {
-                Kind = CaseTimelineItemKind.Comment,
-                OccurredAt = com.CreatedAt,
-                SortId = com.Id,
-                CommentId = com.Id,
-                CommentText = com.Text,
-                CommentAuthorUserId = com.CreatedByUserId,
-                Attachments = commentAttByCommentId.TryGetValue(com.Id, out var cat) ? cat : new()
-            });
-        }
+            var ce = cec.CaseEvent;
+            var atts = eventAttsByCaseEventId.TryGetValue(ce.Id, out var rawAtts) ? rawAtts : new();
 
-        foreach (var row in minutesRows.OrderBy(x => x.MeetingDate).ThenBy(x => x.YearSequenceNumber))
-        {
-            timeline.Add(new CaseTimelineItemVm
+            if (ce.Category == "comment")
             {
-                Kind = CaseTimelineItemKind.Minutes,
-                OccurredAt = row.MeetingDate.ToDateTime(TimeOnly.MinValue),
-                SortId = row.MinutesEntryId,
-                MeetingMinutesCaseEntryId = row.MinutesEntryId,
-                MeetingId = row.MeetingId,
-                MeetingDate = row.MeetingDate,
-                MeetingYear = row.Year,
-                MeetingYearSequenceNumber = row.YearSequenceNumber,
-                Outcome = row.Outcome,
-                OfficialNotes = row.OfficialNotes,
-                DecisionText = row.DecisionText,
-                FollowUpText = row.FollowUpText,
-                Attachments = minutesAttByEntryId.TryGetValue(row.MinutesEntryId, out var mat) ? mat : new()
-            });
+                var attachments = atts.Select(a => new CaseAttachmentVm
+                {
+                    LinkKind = CaseAttachmentLinkKind.CommentAttachment,
+                    LinkId = a.Item2,
+                    AttachmentId = a.Item3,
+                    OriginalFileName = a.Item4,
+                    ContentType = a.Item5,
+                    SizeBytes = a.Item6
+                }).ToList();
+
+                timeline.Add(new CaseTimelineItemVm
+                {
+                    Kind = CaseTimelineItemKind.Comment,
+                    OccurredAt = ce.CreatedAt,
+                    SortId = ce.Id,
+                    CaseEventId = ce.Id,
+                    CommentText = ce.Content,
+                    CommentAuthorUserId = ce.CreatedByUserId,
+                    Attachments = attachments
+                });
+            }
+            else if (ce.Category == "meeting" && ce.MeetingLink is { } mel)
+            {
+                var attachments = atts.Select(a => new CaseAttachmentVm
+                {
+                    LinkKind = CaseAttachmentLinkKind.MinutesEntryAttachment,
+                    LinkId = a.Item2,
+                    AttachmentId = a.Item3,
+                    OriginalFileName = a.Item4,
+                    ContentType = a.Item5,
+                    SizeBytes = a.Item6
+                }).ToList();
+
+                timeline.Add(new CaseTimelineItemVm
+                {
+                    Kind = CaseTimelineItemKind.Minutes,
+                    OccurredAt = mel.Meeting.MeetingDate.ToDateTime(TimeOnly.MinValue),
+                    SortId = mel.Id,
+                    MeetingEventLinkId = mel.Id,
+                    MeetingId = mel.MeetingId,
+                    MeetingDate = mel.Meeting.MeetingDate,
+                    MeetingYear = mel.Meeting.Year,
+                    MeetingYearSequenceNumber = mel.Meeting.YearSequenceNumber,
+                    Outcome = mel.Outcome,
+                    OfficialNotes = mel.OfficialNotes,
+                    DecisionText = mel.DecisionText,
+                    FollowUpText = mel.FollowUpText,
+                    Attachments = attachments
+                });
+            }
         }
 
         return new CaseDetailsVm

@@ -150,10 +150,13 @@ public class MeetingsController : Controller
         var boardCase = await _db.BoardCases.FirstOrDefaultAsync(x => x.Id == caseId, ct);
         if (boardCase is null) return NotFound();
 
-        var exists = await _db.MeetingCases.AnyAsync(x => x.MeetingId == meetingId && x.BoardCaseId == caseId, ct);
+        // Check existence via MeetingEventLinks joined to CaseEventCases
+        var exists = await _db.MeetingEventLinks
+            .AnyAsync(x => x.MeetingId == meetingId
+                && x.CaseEvent.Cases.Any(cec => cec.BoardCaseId == caseId), ct);
         if (exists) return RedirectToAction(nameof(Details), new { id = meetingId });
 
-        var maxOrder = await _db.MeetingCases
+        var maxOrder = await _db.MeetingEventLinks
             .Where(x => x.MeetingId == meetingId)
             .MaxAsync(x => (int?)x.AgendaOrder, ct);
 
@@ -161,31 +164,52 @@ public class MeetingsController : Controller
             ? boardCase.Description!
             : boardCase.Title;
 
-        var mc = new MeetingCase
+        // Create CaseEvent (Category="meeting")
+        var caseEvent = new CaseEvent
+        {
+            Category = "meeting",
+            Content = "",
+            CreatedAt = new DateTimeOffset(meeting.MeetingDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+            CreatedByUserId = _audit.GetActorUserId()
+        };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync(ct);
+
+        // Create MeetingEventLink
+        var mel = new MeetingEventLink
         {
             MeetingId = meetingId,
-            BoardCaseId = caseId,
+            CaseEventId = caseEvent.Id,
             AgendaOrder = (maxOrder ?? 0) + 1,
-            AgendaTextSnapshot = agendaText
+            AgendaTextSnapshot = agendaText,
+            IsEventuelt = false
         };
+        _db.MeetingEventLinks.Add(mel);
 
-        _db.MeetingCases.Add(mc);
+        // Create CaseEventCase
+        var caseEventCase = new CaseEventCase
+        {
+            CaseEventId = caseEvent.Id,
+            BoardCaseId = caseId
+        };
+        _db.CaseEventCases.Add(caseEventCase);
+
         await _db.SaveChangesAsync(ct);
 
         await _audit.LogAsync(
             AuditAction.Create,
-            nameof(MeetingCase),
-            mc.Id.ToString(),
+            nameof(MeetingEventLink),
+            mel.Id.ToString(),
             before: null,
             after: new
             {
-                mc.Id,
-                mc.MeetingId,
-                mc.BoardCaseId,
-                mc.AgendaOrder,
-                mc.AgendaTextSnapshot,
-                mc.TidsfristOverrideDate,
-                mc.TidsfristOverrideText
+                mel.Id,
+                mel.MeetingId,
+                BoardCaseId = caseId,
+                mel.AgendaOrder,
+                mel.AgendaTextSnapshot,
+                mel.TidsfristOverrideDate,
+                mel.TidsfristOverrideText
             },
             reason: "Added case to meeting agenda",
             ct: ct);
@@ -195,25 +219,27 @@ public class MeetingsController : Controller
 
     public async Task<IActionResult> EditAgendaItem(int id, CancellationToken ct)
     {
-        var mc = await _db.MeetingCases.AsNoTracking()
-            .Join(_db.BoardCases.AsNoTracking(),
-                x => x.BoardCaseId,
-                c => c.Id,
-                (x, c) => new { x, c })
-            .FirstOrDefaultAsync(z => z.x.Id == id, ct);
+        // id is MeetingEventLinkId
+        var mel = await _db.MeetingEventLinks.AsNoTracking()
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.Cases)
+                    .ThenInclude(cec => cec.BoardCase)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
 
-        if (mc is null) return NotFound();
+        if (mel is null) return NotFound();
+
+        var boardCase = mel.CaseEvent.Cases.FirstOrDefault()?.BoardCase;
+        if (boardCase is null) return NotFound();
 
         var vm = new MeetingCaseEditVm
         {
-            Id = mc.x.Id,
-            MeetingId = mc.x.MeetingId,
-            CaseNumber = mc.c.CaseNumber,
-            CaseTitle = mc.c.Title,
-            AgendaTextSnapshot = mc.x.AgendaTextSnapshot,
-            TidsfristOverrideDate = mc.x.TidsfristOverrideDate,
-            TidsfristOverrideText = mc.x.TidsfristOverrideText,
-            FollowUpTextDraft = mc.x.FollowUpTextDraft
+            Id = mel.Id,
+            MeetingId = mel.MeetingId,
+            CaseNumber = boardCase.CaseNumber,
+            CaseTitle = boardCase.Title,
+            AgendaTextSnapshot = mel.AgendaTextSnapshot,
+            TidsfristOverrideDate = mel.TidsfristOverrideDate,
+            TidsfristOverrideText = mel.TidsfristOverrideText
         };
 
         return View(vm);
@@ -226,83 +252,83 @@ public class MeetingsController : Controller
         if (!ModelState.IsValid)
             return View(vm);
 
-        var mc = await _db.MeetingCases.FirstOrDefaultAsync(x => x.Id == vm.Id, ct);
-        if (mc is null) return NotFound();
+        // vm.Id is MeetingEventLinkId
+        var mel = await _db.MeetingEventLinks.FirstOrDefaultAsync(x => x.Id == vm.Id, ct);
+        if (mel is null) return NotFound();
 
         var before = new
         {
-            mc.AgendaTextSnapshot,
-            mc.TidsfristOverrideDate,
-            mc.TidsfristOverrideText,
-            mc.FollowUpTextDraft
+            mel.AgendaTextSnapshot,
+            mel.TidsfristOverrideDate,
+            mel.TidsfristOverrideText
         };
 
-        mc.AgendaTextSnapshot = vm.AgendaTextSnapshot;
-        mc.TidsfristOverrideDate = vm.TidsfristOverrideDate;
-        mc.TidsfristOverrideText = vm.TidsfristOverrideText;
-        mc.FollowUpTextDraft = vm.FollowUpTextDraft;
+        mel.AgendaTextSnapshot = vm.AgendaTextSnapshot;
+        mel.TidsfristOverrideDate = vm.TidsfristOverrideDate;
+        mel.TidsfristOverrideText = vm.TidsfristOverrideText;
 
         await _db.SaveChangesAsync(ct);
 
         var after = new
         {
-            mc.AgendaTextSnapshot,
-            mc.TidsfristOverrideDate,
-            mc.TidsfristOverrideText,
-            mc.FollowUpTextDraft
+            mel.AgendaTextSnapshot,
+            mel.TidsfristOverrideDate,
+            mel.TidsfristOverrideText
         };
 
         await _audit.LogAsync(
             AuditAction.Update,
-            nameof(MeetingCase),
-            mc.Id.ToString(),
+            nameof(MeetingEventLink),
+            mel.Id.ToString(),
             before,
             after,
             reason: "Edited agenda item",
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = mc.MeetingId });
+        return RedirectToAction(nameof(Details), new { id = mel.MeetingId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveAgendaItem(int id, CancellationToken ct)
     {
-        var mc = await _db.MeetingCases.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (mc is null) return NotFound();
+        // id is MeetingEventLinkId
+        var mel = await _db.MeetingEventLinks.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (mel is null) return NotFound();
 
-        var before = new { mc.Id, mc.MeetingId, mc.BoardCaseId, mc.IsDeleted, mc.DeletedAt, mc.DeletedByUserId };
+        var before = new { mel.Id, mel.MeetingId, mel.CaseEventId, mel.IsDeleted, mel.DeletedAt, mel.DeletedByUserId };
 
-        mc.IsDeleted = true;
-        mc.DeletedAt = DateTimeOffset.UtcNow;
-        mc.DeletedByUserId = _audit.GetActorUserId();
+        mel.IsDeleted = true;
+        mel.DeletedAt = DateTimeOffset.UtcNow;
+        mel.DeletedByUserId = _audit.GetActorUserId();
 
         await _db.SaveChangesAsync(ct);
 
-        var after = new { mc.Id, mc.MeetingId, mc.BoardCaseId, mc.IsDeleted, mc.DeletedAt, mc.DeletedByUserId };
+        var after = new { mel.Id, mel.MeetingId, mel.CaseEventId, mel.IsDeleted, mel.DeletedAt, mel.DeletedByUserId };
 
         await _audit.LogAsync(
             AuditAction.SoftDelete,
-            nameof(MeetingCase),
-            mc.Id.ToString(),
+            nameof(MeetingEventLink),
+            mel.Id.ToString(),
             before,
             after,
             reason: "Removed agenda item (soft delete)",
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = mc.MeetingId });
+        return RedirectToAction(nameof(Details), new { id = mel.MeetingId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveAgendaItem(int id, bool up, CancellationToken ct)
     {
-        var mc = await _db.MeetingCases.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (mc is null) return NotFound();
+        // id is MeetingEventLinkId
+        var mel = await _db.MeetingEventLinks.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (mel is null) return NotFound();
 
-        var meetingId = mc.MeetingId;
+        var meetingId = mel.MeetingId;
 
-        var neighbor = await _db.MeetingCases
+        var neighbor = await _db.MeetingEventLinks
             .Where(x => x.MeetingId == meetingId)
             .OrderBy(x => x.AgendaOrder)
             .ToListAsync(ct);
@@ -335,7 +361,7 @@ public class MeetingsController : Controller
 
         await _audit.LogAsync(
             AuditAction.Update,
-            nameof(MeetingCase),
+            nameof(MeetingEventLink),
             entityId: $"{a.Id},{b.Id}",
             before,
             after,
@@ -402,9 +428,7 @@ public class MeetingsController : Controller
                 if (!string.IsNullOrWhiteSpace(tidsfrist)) pdf.HeadingInline("Tidsfrist: ", tidsfrist);
             }
 
-            var tilMotet = !string.IsNullOrWhiteSpace(item.MeetingCase.FollowUpTextDraft)
-                ? item.MeetingCase.FollowUpTextDraft
-                : item.MeetingCase.AgendaTextSnapshot;
+            var tilMotet = item.MeetingCase.AgendaTextSnapshot;
             if (!string.IsNullOrWhiteSpace(tilMotet) && !tilMotet.Equals(item.Case.Description, StringComparison.OrdinalIgnoreCase))
             {
                 pdf.Heading3("Til møtet:");
@@ -493,16 +517,25 @@ public class MeetingsController : Controller
         var meeting = await _db.Meetings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (meeting is null) return NotFound();
 
-        var agenda = await _db.MeetingCases.AsNoTracking()
+        var agendaLinks = await _db.MeetingEventLinks.AsNoTracking()
             .Where(x => x.MeetingId == id)
-            .Join(_db.BoardCases.AsNoTracking(),
-                mc => mc.BoardCaseId,
-                c => c.Id,
-                (mc, c) => new { mc, c })
-            .OrderBy(x => x.mc.AgendaOrder)
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.Cases)
+                    .ThenInclude(cec => cec.BoardCase)
+            .OrderBy(x => x.AgendaOrder)
             .ToListAsync(ct);
 
-        var assigneeIds = agenda.Select(x => x.c.AssigneeUserId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        var agendaRows = agendaLinks
+            .Select(mel =>
+            {
+                var cec = mel.CaseEvent.Cases.FirstOrDefault();
+                return cec is null ? null : new { mel, boardCase = cec.BoardCase };
+            })
+            .Where(x => x is not null)
+            .Select(x => x!)
+            .ToList();
+
+        var assigneeIds = agendaRows.Select(x => x.boardCase.AssigneeUserId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var userDisplay = await _userManager.Users
             .Where(u => assigneeIds.Contains(u.Id))
             .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
@@ -516,24 +549,24 @@ public class MeetingsController : Controller
 
         pdf.Blank();
 
-        var grouped = agenda
-            .GroupBy(x => x.c.AssigneeUserId)
-            .OrderBy(g => userDisplay.TryGetValue(g.Key, out var d) ? d : g.Key);
+        var grouped = agendaRows
+            .GroupBy(x => x.boardCase.AssigneeUserId)
+            .OrderBy(g => userDisplay.TryGetValue(g.Key ?? "", out var d) ? d : g.Key);
 
         foreach (var g in grouped)
         {
-            var assignee = userDisplay.TryGetValue(g.Key, out var d) ? d : g.Key;
+            var assignee = userDisplay.TryGetValue(g.Key ?? "", out var d) ? d : g.Key;
             pdf.Heading(assignee);
 
-            foreach (var row in g.OrderBy(x => x.mc.AgendaOrder))
+            foreach (var row in g.OrderBy(x => x.mel.AgendaOrder))
             {
-                var tidsfrist = (row.mc.TidsfristOverrideDate is not null || !string.IsNullOrWhiteSpace(row.mc.TidsfristOverrideText))
-                    ? $"{row.mc.TidsfristOverrideDate?.ToString() ?? ""} {row.mc.TidsfristOverrideText ?? ""}".Trim()
-                    : (row.c.CustomTidsfristDate is not null || !string.IsNullOrWhiteSpace(row.c.CustomTidsfristText))
-                        ? $"{row.c.CustomTidsfristDate?.ToString() ?? ""} {row.c.CustomTidsfristText ?? ""}".Trim()
+                var tidsfrist = (row.mel.TidsfristOverrideDate is not null || !string.IsNullOrWhiteSpace(row.mel.TidsfristOverrideText))
+                    ? $"{row.mel.TidsfristOverrideDate?.ToString() ?? ""} {row.mel.TidsfristOverrideText ?? ""}".Trim()
+                    : (row.boardCase.CustomTidsfristDate is not null || !string.IsNullOrWhiteSpace(row.boardCase.CustomTidsfristText))
+                        ? $"{row.boardCase.CustomTidsfristDate?.ToString() ?? ""} {row.boardCase.CustomTidsfristText ?? ""}".Trim()
                         : "Innen neste møte";
 
-                pdf.Paragraph($"- #{row.c.CaseNumber} {row.c.Title} — Tidsfrist: {tidsfrist}");
+                pdf.Paragraph($"- #{row.boardCase.CaseNumber} {row.boardCase.Title} — Tidsfrist: {tidsfrist}");
             }
 
             pdf.Blank(8);
@@ -559,176 +592,8 @@ public class MeetingsController : Controller
         var meeting = await _db.Meetings.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (meeting is null) return NotFound();
 
-        var minutes = await _db.MeetingMinutes.FirstOrDefaultAsync(x => x.MeetingId == id, ct);
-        if (minutes is null)
-        {
-            minutes = new MeetingMinutes { MeetingId = id };
-            _db.MeetingMinutes.Add(minutes);
-            await _db.SaveChangesAsync(ct);
-
-            await _audit.LogAsync(
-                AuditAction.Create,
-                nameof(MeetingMinutes),
-                minutes.Id.ToString(),
-                before: null,
-                after: new { minutes.Id, minutes.MeetingId },
-                reason: "Created minutes record",
-                ct: ct);
-        }
-
-        var agenda = await _db.MeetingCases.AsNoTracking()
-            .Where(x => x.MeetingId == id)
-            .OrderBy(x => x.AgendaOrder)
-            .ToListAsync(ct);
-
-        var agendaCaseIds = agenda.Select(x => x.Id).ToList();
-
-        var existingEntries = await _db.MeetingMinutesCaseEntries
-            .Where(x => x.MeetingId == id)
-            .ToListAsync(ct);
-
-        var existingByMeetingCaseId = existingEntries.ToDictionary(x => x.MeetingCaseId, x => x);
-
-        // Ensure there is an entry per agenda item
-        foreach (var mc in agenda)
-        {
-            if (existingByMeetingCaseId.ContainsKey(mc.Id))
-                continue;
-
-            var entry = new MeetingMinutesCaseEntry
-            {
-                MeetingId = id,
-                MeetingCaseId = mc.Id,
-                BoardCaseId = mc.BoardCaseId,
-                Outcome = MeetingCaseOutcome.Continue
-            };
-
-            _db.MeetingMinutesCaseEntries.Add(entry);
-        }
-
-        if (_db.ChangeTracker.HasChanges())
-        {
-            await _db.SaveChangesAsync(ct);
-            await _audit.LogAsync(
-                AuditAction.Update,
-                nameof(Meeting),
-                meeting.Id.ToString(),
-                before: null,
-                after: new { AddedMinutesEntries = true },
-                reason: "Ensured minutes entries for agenda",
-                ct: ct);
-        }
-
-        var entries = await _db.MeetingMinutesCaseEntries.AsNoTracking()
-            .Where(x => x.MeetingId == id)
-            .Join(_db.MeetingCases.AsNoTracking(), e => e.MeetingCaseId, mc => mc.Id, (e, mc) => new { e, mc })
-            .Join(_db.BoardCases.AsNoTracking(), x => x.e.BoardCaseId, c => c.Id, (x, c) => new { x.e, x.mc, c })
-            .OrderBy(x => x.mc.AgendaOrder)
-            .ToListAsync(ct);
-
-        var assigneeIds = entries.Select(x => x.c.AssigneeUserId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
-        var userDisplay = await _userManager.Users
-            .Where(u => assigneeIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.FullName, u.Email, u.UserName })
-            .ToDictionaryAsync(x => x.Id, x => x.FullName ?? x.Email ?? x.UserName ?? x.Id, ct);
-
-        var vm = new SaksAppWeb.Models.ViewModels.MeetingMinutesVm
-        {
-            MeetingId = meeting.Id,
-            MeetingDate = meeting.MeetingDate,
-            Year = meeting.Year,
-            YearSequenceNumber = meeting.YearSequenceNumber,
-            Location = meeting.Location,
-
-            AttendanceText = minutes.AttendanceText,
-            AbsenceText = minutes.AbsenceText,
-            ApprovalOfPreviousMinutesText = minutes.ApprovalOfPreviousMinutesText,
-            NextMeetingDate = minutes.NextMeetingDate,
-            EventueltText = minutes.EventueltText,
-
-            CaseEntries = entries.Select(x => new SaksAppWeb.Models.ViewModels.MeetingMinutesCaseEntryVm
-            {
-                MeetingCaseId = x.mc.Id,
-                BoardCaseId = x.c.Id,
-                CaseNumber = x.c.CaseNumber,
-                Title = x.c.Title,
-                AssigneeDisplay = userDisplay.TryGetValue(x.c.AssigneeUserId, out var d) ? d : x.c.AssigneeUserId,
-                OfficialNotes = x.e.OfficialNotes,
-                DecisionText = x.e.DecisionText,
-                FollowUpText = x.e.FollowUpText,
-                Outcome = x.e.Outcome,
-                MinutesEntryId = x.e.Id
-            }).ToList()
-        };
-
-        var signed = await _db.MeetingMinutesAttachments.AsNoTracking()
-            .Where(x => x.MeetingId == id)
-            .Join(_db.Attachments.AsNoTracking(),
-                link => link.AttachmentId,
-                att => att.Id,
-                (link, att) => new SaksAppWeb.Models.ViewModels.SignedMinutesVm
-                {
-                    AttachmentId = att.Id,
-                    OriginalFileName = att.OriginalFileName,
-                    SizeBytes = att.SizeBytes
-                })
-            .OrderByDescending(x => x.AttachmentId)
-            .ToListAsync(ct);
-
-        vm.SignedMinutes = signed;
-
-        var minutesEntryEntities = await _db.MeetingMinutesCaseEntries.AsNoTracking()
-            .Where(x => x.MeetingId == id)
-            .ToListAsync(ct);
-
-        var minutesEntryIdByMeetingCaseId = minutesEntryEntities
-            .ToDictionary(x => x.MeetingCaseId, x => x.Id);
-
-        foreach (var ce in vm.CaseEntries)
-        {
-            ce.MinutesEntryId = minutesEntryIdByMeetingCaseId.TryGetValue(ce.MeetingCaseId, out var mid) ? mid : null;
-        }
-
-        var minutesEntryIds = minutesEntryEntities.Select(x => x.Id).ToList();
-
-        var attachmentRows = minutesEntryIds.Count == 0
-            ? new List<(int EntryId, SaksAppWeb.Models.ViewModels.MinutesEntryAttachmentVm Att)>()
-            : await _db.MeetingMinutesCaseEntryAttachments.AsNoTracking()
-                .Where(x => minutesEntryIds.Contains(x.MeetingMinutesCaseEntryId))
-                .Join(_db.Attachments.AsNoTracking(),
-                    link => link.AttachmentId,
-                    att => att.Id,
-                    (link, att) => new
-                    {
-                        link.MeetingMinutesCaseEntryId,
-                        LinkId = link.Id,
-                        AttachmentId = att.Id,
-                        att.OriginalFileName,
-                        att.ContentType,
-                        att.SizeBytes
-                    })
-                .OrderByDescending(x => x.AttachmentId)
-                .Select(x => new ValueTuple<int, SaksAppWeb.Models.ViewModels.MinutesEntryAttachmentVm>(
-                    x.MeetingMinutesCaseEntryId,
-                    new SaksAppWeb.Models.ViewModels.MinutesEntryAttachmentVm
-                    {
-                        LinkId = x.LinkId,
-                        AttachmentId = x.AttachmentId,
-                        OriginalFileName = x.OriginalFileName,
-                        ContentType = x.ContentType,
-                        SizeBytes = x.SizeBytes
-                    }))
-                .ToListAsync(ct);
-
-        var attachmentsByEntryId = attachmentRows
-            .GroupBy(x => x.Item1)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.Item2).ToList());
-
-        foreach (var ce in vm.CaseEntries)
-        {
-            if (ce.MinutesEntryId is int eid && attachmentsByEntryId.TryGetValue(eid, out var list))
-                ce.Attachments = list;
-        }
+        var vm = await _meetingQuery.GetMeetingWithMinutesAsync(id, ct);
+        if (vm is null) return NotFound();
 
         return View(vm);
     }
@@ -923,11 +788,12 @@ public class MeetingsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadAgendaAttachment(int meetingCaseId, IFormFile file, CancellationToken ct)
     {
-        var mc = await _db.MeetingCases.FirstOrDefaultAsync(x => x.Id == meetingCaseId, ct);
-        if (mc is null) return NotFound();
+        // meetingCaseId is now meetingEventLinkId
+        var mel = await _db.MeetingEventLinks.FirstOrDefaultAsync(x => x.Id == meetingCaseId, ct);
+        if (mel is null) return NotFound();
 
         if (file is null || file.Length <= 0)
-            return RedirectToAction(nameof(Details), new { id = mc.MeetingId });
+            return RedirectToAction(nameof(Details), new { id = mel.MeetingId });
 
         if (file.Length > CasesController.MaxUploadBytes)
             return BadRequest($"File too large. Max is {CasesController.MaxUploadBytes} bytes.");
@@ -956,36 +822,41 @@ public class MeetingsController : Controller
         _db.Attachments.Add(attachment);
         await _db.SaveChangesAsync(ct);
 
-        var link = new MeetingCaseAttachment
+        var link = new CaseEventAttachment
         {
-            MeetingCaseId = meetingCaseId,
+            CaseEventId = mel.CaseEventId,
             AttachmentId = attachment.Id
         };
 
-        _db.MeetingCaseAttachments.Add(link);
+        _db.CaseEventAttachments.Add(link);
         await _db.SaveChangesAsync(ct);
 
         await _audit.LogAsync(
             AuditAction.Create,
-            nameof(MeetingCaseAttachment),
+            nameof(CaseEventAttachment),
             link.Id.ToString(),
             before: null,
-            after: new { link.Id, link.MeetingCaseId, link.AttachmentId },
+            after: new { link.Id, MeetingEventLinkId = mel.Id, link.CaseEventId, link.AttachmentId },
             reason: "Uploaded agenda attachment",
             ct: ct);
 
-        return RedirectToAction(nameof(Details), new { id = mc.MeetingId });
+        return RedirectToAction(nameof(Details), new { id = mel.MeetingId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadMinutesEntryAttachment(int meetingMinutesCaseEntryId, IFormFile file, CancellationToken ct)
     {
-        var entry = await _db.MeetingMinutesCaseEntries.FirstOrDefaultAsync(x => x.Id == meetingMinutesCaseEntryId, ct);
-        if (entry is null) return NotFound();
+        // meetingMinutesCaseEntryId is now a CaseEventId
+        var caseEvent = await _db.CaseEvents
+            .Include(x => x.MeetingLink)
+            .FirstOrDefaultAsync(x => x.Id == meetingMinutesCaseEntryId, ct);
+        if (caseEvent is null) return NotFound();
+
+        var meetingId = caseEvent.MeetingLink?.MeetingId;
 
         if (file is null || file.Length <= 0)
-            return RedirectToAction(nameof(Minutes), new { id = entry.MeetingId });
+            return RedirectToAction(nameof(Minutes), new { id = meetingId });
 
         if (file.Length > CasesController.MaxUploadBytes)
             return BadRequest($"File too large. Max is {CasesController.MaxUploadBytes} bytes.");
@@ -1014,38 +885,39 @@ public class MeetingsController : Controller
         _db.Attachments.Add(attachment);
         await _db.SaveChangesAsync(ct);
 
-        var link = new MeetingMinutesCaseEntryAttachment
+        var link = new CaseEventAttachment
         {
-            MeetingMinutesCaseEntryId = meetingMinutesCaseEntryId,
+            CaseEventId = meetingMinutesCaseEntryId,
             AttachmentId = attachment.Id
         };
 
-        _db.MeetingMinutesCaseEntryAttachments.Add(link);
+        _db.CaseEventAttachments.Add(link);
         await _db.SaveChangesAsync(ct);
 
         await _audit.LogAsync(
             AuditAction.Create,
-            nameof(MeetingMinutesCaseEntryAttachment),
+            nameof(CaseEventAttachment),
             link.Id.ToString(),
             before: null,
-            after: new { link.Id, link.MeetingMinutesCaseEntryId, link.AttachmentId },
+            after: new { link.Id, link.CaseEventId, link.AttachmentId },
             reason: "Uploaded minutes entry attachment",
             ct: ct);
 
-        return RedirectToAction(nameof(Minutes), new { id = entry.MeetingId });
+        return RedirectToAction(nameof(Minutes), new { id = meetingId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMinutesEntryAttachment(int linkId, CancellationToken ct)
     {
-        var link = await _db.MeetingMinutesCaseEntryAttachments
-            .Include(x => x.MeetingMinutesCaseEntry)
+        var link = await _db.CaseEventAttachments
+            .Include(x => x.CaseEvent)
+                .ThenInclude(ce => ce.MeetingLink)
             .FirstOrDefaultAsync(x => x.Id == linkId, ct);
 
         if (link is null) return NotFound();
 
-        var before = new { link.Id, link.MeetingMinutesCaseEntryId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
+        var before = new { link.Id, link.CaseEventId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
 
         link.IsDeleted = true;
         link.DeletedAt = DateTimeOffset.UtcNow;
@@ -1053,17 +925,18 @@ public class MeetingsController : Controller
 
         await _db.SaveChangesAsync(ct);
 
-        var after = new { link.Id, link.MeetingMinutesCaseEntryId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
+        var after = new { link.Id, link.CaseEventId, link.AttachmentId, link.IsDeleted, link.DeletedAt, link.DeletedByUserId };
 
         await _audit.LogAsync(
             AuditAction.SoftDelete,
-            nameof(MeetingMinutesCaseEntryAttachment),
+            nameof(CaseEventAttachment),
             link.Id.ToString(),
             before,
             after,
             reason: "Unlinked minutes entry attachment",
             ct: ct);
 
-        return RedirectToAction(nameof(Minutes), new { id = link.MeetingMinutesCaseEntry.MeetingId });
+        var meetingId = link.CaseEvent.MeetingLink?.MeetingId;
+        return RedirectToAction(nameof(Minutes), new { id = meetingId });
     }
 }
