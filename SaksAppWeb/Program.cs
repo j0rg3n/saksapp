@@ -35,6 +35,7 @@ builder.Services.AddScoped<HtmlCaseImporter>();
 builder.Services.AddScoped<IUserDisplayService, UserDisplayService>();
 builder.Services.AddScoped<ICaseQueryService, CaseQueryService>();
 builder.Services.AddScoped<IMeetingQueryService, MeetingQueryService>();
+builder.Services.AddSingleton<ISimplePdfWriterFactory, SimplePdfWriterFactory>();
 
 builder.Services.AddControllersWithViews();
 
