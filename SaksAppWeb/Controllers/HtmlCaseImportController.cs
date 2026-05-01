@@ -7,9 +7,9 @@ namespace SaksAppWeb.Controllers;
 [Authorize]
 public class ImportController : Controller
 {
-    private readonly HtmlCaseImporter _importer;
+    private readonly IHtmlCaseImporter _importer;
 
-    public ImportController(HtmlCaseImporter importer)
+    public ImportController(IHtmlCaseImporter importer)
     {
         _importer = importer;
     }

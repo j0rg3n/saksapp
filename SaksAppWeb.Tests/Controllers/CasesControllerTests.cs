@@ -73,9 +73,9 @@ public class CasesControllerTests : IDisposable
     [Fact]
     public async Task Index_ReturnsOpenCasesByDefault()
     {
-        _db.BoardCases.Add(new BoardCase { CaseNumber = 1, Title = "Open Case", Status = CaseStatus.Open });
-        _db.BoardCases.Add(new BoardCase { CaseNumber = 2, Title = "Closed Case", Status = CaseStatus.Closed });
-        await _db.SaveChangesAsync();
+        var rows = new List<CaseIndexRowVm> { new() { Title = "Open Case", Status = CaseStatus.Open } };
+        _caseQueryMock.Setup(x => x.GetFilteredCasesAsync(null, null, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(rows);
 
         var result = await _controller.Index(status: null, assigneeUserId: null, showClosed: false, CancellationToken.None);
 
@@ -88,9 +88,13 @@ public class CasesControllerTests : IDisposable
     [Fact]
     public async Task Index_WithShowClosed_ReturnsAllCases()
     {
-        _db.BoardCases.Add(new BoardCase { CaseNumber = 1, Title = "Open Case", Status = CaseStatus.Open });
-        _db.BoardCases.Add(new BoardCase { CaseNumber = 2, Title = "Closed Case", Status = CaseStatus.Closed });
-        await _db.SaveChangesAsync();
+        var rows = new List<CaseIndexRowVm>
+        {
+            new() { Title = "Open Case", Status = CaseStatus.Open },
+            new() { Title = "Closed Case", Status = CaseStatus.Closed },
+        };
+        _caseQueryMock.Setup(x => x.GetFilteredCasesAsync(null, null, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(rows);
 
         var result = await _controller.Index(status: null, assigneeUserId: null, showClosed: true, CancellationToken.None);
 
