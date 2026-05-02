@@ -258,12 +258,18 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         _db.CaseEvents.Add(caseEvent);
         await _db.SaveChangesAsync(ct);
 
-        var caseEventCase = new CaseEventCase
+        var existingLink = await _db.CaseEventCases.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(x => x.CaseEventId == caseEvent.Id && x.BoardCaseId == caseId, ct);
+        if (existingLink is not null)
         {
-            CaseEventId = caseEvent.Id,
-            BoardCaseId = caseId
-        };
-        _db.CaseEventCases.Add(caseEventCase);
+            existingLink.IsDeleted = false;
+            existingLink.DeletedAt = null;
+            existingLink.DeletedByUserId = null;
+        }
+        else
+        {
+            _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = caseEvent.Id, BoardCaseId = caseId });
+        }
         await _db.SaveChangesAsync(ct);
 
         await _audit.LogAsync(
