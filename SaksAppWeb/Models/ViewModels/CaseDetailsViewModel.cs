@@ -14,13 +14,15 @@ public class CaseDetailsVm
 public enum CaseTimelineItemKind
 {
     Comment = 1,
-    Minutes = 2
+    Minutes = 2,
+    BoardEvent = 3
 }
 
 public enum CaseAttachmentLinkKind
 {
     CommentAttachment = 1,
-    MinutesEntryAttachment = 2
+    MinutesEntryAttachment = 2,
+    BoardEventAttachment = 3
 }
 
 public class CaseAttachmentVm
@@ -47,6 +49,9 @@ public class CaseTimelineItemVm
     public int? CaseEventId { get; set; }
     public string? CommentText { get; set; }
     public string? CommentAuthorUserId { get; set; }
+
+    // BoardEvent-specific
+    public string? EventCategory { get; set; }
 
     // Minutes-specific
     public int? MeetingEventLinkId { get; set; }

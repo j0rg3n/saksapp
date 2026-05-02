@@ -65,16 +65,23 @@ Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
 
 **View Case Details**
 - Full case information
-- List of comments
-- List of attachments
-- Meeting history (when case was discussed, decisions made)
+- Chronological timeline of all events linked to the case:
+  - Case events (general/avvik/tiltak/legacy comment) with category badge and author
+  - Meeting minutes entries with outcome, referat, vedtak, oppfølging
+  - Each event shows badges for other cases the event is linked to (with links)
+- Attachment list per event; upload/remove attachments on editable events
 
-**Add Comment**
-- Add text comment to a case
-- Optionally attach files
+**Add Case Event**
+- Form with category selector: Generelt (default), Avvik, Tiltak
+- Free text content
+- Created event is linked to the current case via CaseEventCase
+
+**Edit/Delete Case Event**
+- Available for general/avvik/tiltak events (and legacy comment)
+- Accessible from the case timeline
 
 **Add Attachment**
-- Upload files (max 10MB)
+- Upload files (max 10MB) to any editable case event
 - Files stored in database
 
 ### Meeting Management
@@ -116,11 +123,21 @@ CaseEvent is the unified model replacing CaseComment, MeetingMinutesCaseEntry, a
 
 **Structure:**
 - **CaseEvent** - The core event entity
-  - `CaseId` - Optional (can be null for standalone board events)
-  - `CreatedAt` - Timestamp (unique, single occurrence)
+  - `CreatedAt` - Timestamp
   - `Content` - Text content
-  - `Category` - Event category (comment, general, avvik, tiltak, etc.)
+  - `Category` - Event category: `general`, `avvik`, `tiltak`, `meeting`, `whatsapp`
+    - `general` — standard note or observation, the default for case-level events
+    - `avvik` — deviation (HMS)
+    - `tiltak` — measure/corrective action
+    - `meeting` — entry linked to a meeting agenda item (set automatically)
+    - `whatsapp` — ingested from WhatsApp bot (future)
+    - `comment` — **legacy only**, migrated from old CaseComment table; displayed as "Generelt"
   - `Attachments` - Associated files
+
+- **CaseEventCase** - Many-to-many: a CaseEvent can be linked to multiple cases
+  - An event created from a case is linked to that case
+  - An event from Hendelseslogg linked to one or more case numbers is linked to those cases
+  - The two are equivalent — linking an event to a case from Hendelseslogg is the same as creating it from the case
 
 - **MeetingEventLink** - Links CaseEvents to meetings with meeting-specific metadata
   - `MeetingId` - The meeting this event is associated with
@@ -129,6 +146,23 @@ CaseEvent is the unified model replacing CaseComment, MeetingMinutesCaseEntry, a
   - `OfficialNotes` - Referat (meeting minutes notes)
   - `DecisionText` - Vedtak (decision)
   - `FollowUpText` - Oppfølging (follow-up)
+  - `IsEventuelt` - Whether this is an Eventuelt item (no CaseEventCase link)
+
+**Category rules:**
+- Events created from a case view default to `general`; user can choose `avvik`, `tiltak`, or `general`
+- Events created from Hendelseslogg can be `avvik`, `tiltak`, or `general`
+- `meeting` is set automatically when a CaseEvent is created via MeetingEventLink
+- `comment` is a legacy category treated as `general` in display; no new events are created with this category
+
+**Multi-case linking:**
+- A CaseEvent can be linked to multiple cases simultaneously
+- When viewing a case timeline, events linked to other cases show badges for those other cases (with links)
+- Linking from Hendelseslogg (by case number) and from the case view are functionally equivalent
+
+**Attachments:**
+- All event categories support file attachments
+- Attachments can be uploaded and removed from the case timeline view for any event the user can edit
+- Editable categories: `general`, `avvik`, `tiltak` (and legacy `comment`)
 
 **Notes:**
 - A CaseEvent has a single timestamp and cannot appear in multiple meetings
@@ -136,8 +170,8 @@ CaseEvent is the unified model replacing CaseComment, MeetingMinutesCaseEntry, a
 - MeetingMinutes remains separate for meeting header information (date, approval status)
 
 **Migration:**
-- CaseComment → CaseEvent (Category = "comment")
-- MeetingMinutesCaseEntry → Up to 3 CaseEvents (one per non-empty field), linked via MeetingEventLink
+- CaseComment → CaseEvent (Category = "comment", legacy)
+- MeetingMinutesCaseEntry → CaseEvent (Category = "meeting") linked via MeetingEventLink
 
 ### WhatsApp Integration
 

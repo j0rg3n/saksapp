@@ -223,28 +223,53 @@ public class MeetingEventLink
 - [x] **Task 3.2.3**: `AddCase` oppretter `CaseEvent`+`MeetingEventLink`+`CaseEventCase`
 - [x] **Task 3.2.4**: Alle 162 tester passerer
 
-#### 3.3 Legg til CaseEvent-api
-- [ ] **Task 3.3.1**: Opprett `CaseEvents` controller for Board Log
-- [ ] **Task 3.3.2**: Legg til CRUD for CaseEvent (uten møtekobling)
+#### 3.3 Legg til CaseEvent-api ✅ KOMPLETT
+- [x] **Task 3.3.1**: Opprett `CaseEventsController` (Hendelseslogg)
+- [x] **Task 3.3.2**: CRUD for CaseEvent: Index, Create, Edit, SoftDelete
 
 **Test**: 162 tester passerer. ✅
 
 ---
 
-### Phase 4: UI - Minutes Fokusert Visning
+### Phase 4: UI - Minutes Fokusert Visning ✅ KOMPLETT
 
-#### 4.1 Endre Minutes-visning
-- [ ] **Task 4.1.1**: Oppdater `MeetingMinutesVm` med `CurrentIndex`, `TotalCount`
-- [ ] **Task 4.1.2**: Endre Minutes.cshtml til fokusert visning (én sak om gangen)
-- [ ] **Task 4.1.3**: Legg til Previous/Next navigering i Minutes.cshtml
-- [ ] **Task 4.1.4**: Legg til GET/POST actions for Previous/Next
+#### 4.1 Endre Minutes-visning ✅
+- [x] **Task 4.1.1**: Oppdater `MeetingMinutesVm` med `CurrentIndex`, `TotalCount`
+- [x] **Task 4.1.2**: Endre Minutes.cshtml til fokusert visning (én sak om gangen)
+- [x] **Task 4.1.3**: Legg til Previous/Next navigering i Minutes.cshtml
+- [x] **Task 4.1.4**: Legg til GET/POST actions for Previous/Next
 
-#### 4.2 Eventuelt som sak
-- [ ] **Task 4.2.1**: Endre Eventuelt tekstfelt til "Legg til eventuelt sak" knapp
-- [ ] **Task 4.2.2**: Opprett modal/form for å opprette ny sak som Eventuelt
-- [ ] **Task 4.2.3**: Lagre Eventuelt-status i `MeetingEventLink.IsEventuelt`
+#### 4.2 Eventuelt som sak ✅
+- [x] **Task 4.2.1**: Endre Eventuelt tekstfelt til "Legg til eventuelt-punkt" form
+- [x] **Task 4.2.2**: `AddEventueltItem` POST oppretter CaseEvent + MeetingEventLink med IsEventuelt=true
+- [x] **Task 4.2.3**: Lagre Eventuelt-status i `MeetingEventLink.IsEventuelt`
 
-**Test**: Verifiser fokusert visning og Eventuelt-funksjonalitet.
+---
+
+### Phase 4.5: Hendelsesmodell — Konsolidering
+
+**Mål**: Fjerne kunstig skille mellom "saksmerknad" (comment) og frittstående hendelser. Alle sakhendelser bruker samme kategorier (general/avvik/tiltak) og har samme funksjonalitet uavhengig av om de ble opprettet fra saken eller fra Hendelseslogg.
+
+#### 4.5.1 Kategorivalg i sakvisning
+- [ ] Erstatt "Add comment" form med "Legg til hendelse" form med kategorivalg (Generelt/Avvik/Tiltak, default: Generelt)
+- [ ] `CasesController.AddComment` → `AddEvent`, oppretter CaseEvent med valgt kategori (ikke hardkodet "comment")
+- [ ] Oppdater view og action-navn konsistent
+
+#### 4.5.2 Slett fra sakvisning for alle hendelsestyper
+- [ ] Legg til slett-knapp for avvik/tiltak/general events i sakens tidslinje
+- [ ] Bruk `CaseEventsController.SoftDelete` (redirect tilbake til saken etter sletting)
+
+#### 4.5.3 Multi-sak badges i tidslinje
+- [ ] Legg til `LinkedCases` (liste av `LinkedCaseSummary`) på `CaseTimelineItemVm`
+- [ ] Populer fra `CaseEventCases` i `GetCaseDetailsAsync` — filtrer ut gjeldende sak, vis de andre
+- [ ] Vis som klikkbare badges i sakens tidslinje
+
+#### 4.5.4 Vedlegg-opplasting for alle hendelsestyper fra sakvisning
+- [ ] Legg til upload-skjema for avvik/tiltak/general i sakens tidslinje (samme mønster som for comment)
+- [ ] Legg til `UploadBoardEventAttachment` og `RemoveBoardEventAttachment` actions i CasesController
+- [ ] Vis vedlegg med slett-knapp for redigerbare hendelser
+
+**Test**: Bygg og kjør manuelle tester. Legg til tester for nye actions.
 
 ---
 

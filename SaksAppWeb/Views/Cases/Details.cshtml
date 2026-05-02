@@ -1,5 +1,6 @@
 @model SaksAppWeb.Models.ViewModels.CaseDetailsVm
 @using SaksAppWeb.Models.ViewModels
+@using SaksAppWeb.Controllers
 
 @{
     ViewData["Title"] = $"Case #{Model.Case.CaseNumber}";
@@ -63,6 +64,21 @@ else
                             Meeting @item.MeetingYear/@item.MeetingYearSequenceNumber — @item.MeetingDate
                         </span>
                     }
+                    else if (item.Kind == CaseTimelineItemKind.BoardEvent)
+                    {
+                        var badgeClass = item.EventCategory switch
+                        {
+                            "avvik" => "bg-danger",
+                            "tiltak" => "bg-warning text-dark",
+                            _ => "bg-info text-dark"
+                        };
+                        var author = item.CommentAuthorUserId is not null
+                            && Model.UserDisplayById.TryGetValue(item.CommentAuthorUserId, out var evName)
+                            ? evName
+                            : item.CommentAuthorUserId ?? "-";
+                        <span class="badge @badgeClass ms-2">@CaseEventsController.CategoryLabel(item.EventCategory ?? "")</span>
+                        <span class="text-muted ms-2">av @author</span>
+                    }
                 </div>
 
                 <div class="d-flex gap-2">
@@ -78,6 +94,10 @@ else
                     @if (item.Kind == CaseTimelineItemKind.Minutes && item.MeetingId is not null)
                     {
                         <a class="btn btn-sm btn-outline-secondary" asp-controller="Meetings" asp-action="Minutes" asp-route-id="@item.MeetingId">Open minutes</a>
+                    }
+                    @if (item.Kind == CaseTimelineItemKind.BoardEvent && item.CaseEventId is not null)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-controller="CaseEvents" asp-action="Edit" asp-route-id="@item.CaseEventId">Rediger</a>
                     }
                 </div>
             </div>
@@ -173,6 +193,26 @@ else
                                         @a.OriginalFileName
                                     </a>
                                     <span class="text-muted">(@a.ContentType, @a.SizeBytes bytes)</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                }
+                else if (item.Kind == CaseTimelineItemKind.BoardEvent)
+                {
+                    <p style="white-space: pre-wrap">@item.CommentText</p>
+
+                    @if (item.Attachments.Any())
+                    {
+                        <h6>Vedlegg</h6>
+                        <ul class="list-unstyled">
+                            @foreach (var a in item.Attachments)
+                            {
+                                <li class="mb-2">
+                                    <a asp-controller="Cases" asp-action="DownloadAttachment" asp-route-id="@a.AttachmentId">
+                                        @a.OriginalFileName
+                                    </a>
+                                    <span class="text-muted small">(@a.SizeBytes bytes)</span>
                                 </li>
                             }
                         </ul>
