@@ -114,7 +114,9 @@
                 }
                 else
                 {
-                    <span class="ms-2 fw-semibold">#@entry.CaseNumber — @entry.Title</span>
+                    <a class="ms-2 fw-semibold text-decoration-none"
+                       asp-controller="Cases" asp-action="Details" asp-route-id="@entry.BoardCaseId"
+                       target="_blank">#@entry.CaseNumber — @entry.Title</a>
                     @if (!string.IsNullOrWhiteSpace(entry.AssigneeDisplay))
                     {
                         <span class="text-muted ms-1">(@entry.AssigneeDisplay)</span>
