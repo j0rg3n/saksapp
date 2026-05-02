@@ -142,12 +142,29 @@ public class CaseEventsController : Controller
             .Select(x => x.BoardCase.CaseNumber.ToString())
             .ToList();
 
+        var attachments = await _db.CaseEventAttachments.AsNoTracking()
+            .Where(x => x.CaseEventId == id)
+            .Join(_db.Attachments.AsNoTracking(),
+                link => link.AttachmentId,
+                att => att.Id,
+                (link, att) => new CaseEventAttachmentVm
+                {
+                    LinkId = link.Id,
+                    AttachmentId = att.Id,
+                    OriginalFileName = att.OriginalFileName,
+                    ContentType = att.ContentType,
+                    SizeBytes = att.SizeBytes
+                })
+            .OrderByDescending(x => x.AttachmentId)
+            .ToListAsync(ct);
+
         return View(new CaseEventEditVm
         {
             Id = ev.Id,
             Category = ev.Category,
             Content = ev.Content,
-            CaseNumbers = string.Join(", ", caseNumbers)
+            CaseNumbers = string.Join(", ", caseNumbers),
+            Attachments = attachments
         });
     }
 
@@ -259,4 +276,89 @@ public class CaseEventsController : Controller
 
     public static string CategoryLabel(string category) =>
         CategoryLabels.TryGetValue(category, out var label) ? label : category;
+
+    private static readonly long MaxUploadBytes = 10 * 1024 * 1024;
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadAttachment(int id, IFormFile file, CancellationToken ct)
+    {
+        var ev = await _db.CaseEvents.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (ev is null) return NotFound();
+
+        if (file is null || file.Length <= 0)
+            return RedirectToAction(nameof(Edit), new { id });
+
+        if (file.Length > MaxUploadBytes)
+            return BadRequest($"Filen er for stor. Maks {MaxUploadBytes} bytes.");
+
+        var contentType = file.ContentType ?? "application/octet-stream";
+        if (!IsAllowedContentType(contentType))
+            return BadRequest("Kun PDF og bildefiler er tillatt.");
+
+        byte[] bytes;
+        await using (var ms = new MemoryStream())
+        {
+            await file.CopyToAsync(ms, ct);
+            bytes = ms.ToArray();
+        }
+
+        var attachment = new Attachment
+        {
+            OriginalFileName = Path.GetFileName(file.FileName),
+            ContentType = contentType,
+            SizeBytes = bytes.LongLength,
+            Content = bytes,
+            UploadedAt = DateTimeOffset.UtcNow,
+            UploadedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ""
+        };
+
+        _db.Attachments.Add(attachment);
+        await _db.SaveChangesAsync(ct);
+
+        _db.CaseEventAttachments.Add(new CaseEventAttachment
+        {
+            CaseEventId = id,
+            AttachmentId = attachment.Id
+        });
+        await _db.SaveChangesAsync(ct);
+
+        await _audit.LogAsync(
+            AuditAction.Create,
+            nameof(Attachment),
+            attachment.Id.ToString(),
+            before: null,
+            after: new { attachment.Id, attachment.OriginalFileName, attachment.SizeBytes },
+            ct: ct);
+
+        return RedirectToAction(nameof(Edit), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveAttachment(int linkId, int eventId, CancellationToken ct)
+    {
+        var link = await _db.CaseEventAttachments.FirstOrDefaultAsync(x => x.Id == linkId, ct);
+        if (link is null) return NotFound();
+
+        link.IsDeleted = true;
+        link.DeletedAt = DateTimeOffset.UtcNow;
+        link.DeletedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        await _db.SaveChangesAsync(ct);
+
+        await _audit.LogAsync(
+            AuditAction.SoftDelete,
+            nameof(CaseEventAttachment),
+            link.Id.ToString(),
+            before: new { link.Id, link.CaseEventId, link.AttachmentId },
+            after: new { link.Id, link.IsDeleted, link.DeletedAt },
+            ct: ct);
+
+        return RedirectToAction(nameof(Edit), new { id = eventId });
+    }
+
+    private static bool IsAllowedContentType(string contentType) =>
+        contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+        || contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 }
