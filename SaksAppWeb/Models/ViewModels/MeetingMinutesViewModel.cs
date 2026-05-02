@@ -35,6 +35,7 @@ public class MeetingMinutesCaseEntryVm
     public int CaseNumber { get; set; }
     public string Title { get; set; } = "";
     public string? AssigneeDisplay { get; set; }
+    public bool IsEventuelt { get; set; }
 
     public string? OfficialNotes { get; set; }
     public string? DecisionText { get; set; }

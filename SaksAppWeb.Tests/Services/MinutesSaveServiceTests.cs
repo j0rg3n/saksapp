@@ -94,7 +94,6 @@ public class MinutesSaveServiceTests : IDisposable
             AbsenceText = "Person C",
             ApprovalOfPreviousMinutesText = "Godkjent",
             NextMeetingDate = new DateOnly(2026, 5, 1),
-            EventueltText = "Ingen",
             CaseEntries = new List<MeetingMinutesCaseEntryVm>()
         };
 
@@ -106,7 +105,6 @@ public class MinutesSaveServiceTests : IDisposable
         Assert.Equal("Person C", updated.AbsenceText);
         Assert.Equal("Godkjent", updated.ApprovalOfPreviousMinutesText);
         Assert.Equal(new DateOnly(2026, 5, 1), updated.NextMeetingDate);
-        Assert.Equal("Ingen", updated.EventueltText);
     }
 
     [Fact]

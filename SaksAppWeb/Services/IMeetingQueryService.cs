@@ -178,12 +178,7 @@ public class MeetingQueryService : IMeetingQueryService
         var caseEntries = new List<MeetingMinutesCaseEntryVm>();
         foreach (var mel in links)
         {
-            var cec = mel.CaseEvent.Cases.FirstOrDefault();
-            if (cec is null) continue;
-
-            var boardCase = cec.BoardCase;
             var atts = attachmentsByCaseEventId.TryGetValue(mel.CaseEventId, out var rawAtts) ? rawAtts : new();
-
             var attachmentVms = atts.Select(a => new MinutesEntryAttachmentVm
             {
                 LinkId = a.Item2,
@@ -193,6 +188,27 @@ public class MeetingQueryService : IMeetingQueryService
                 SizeBytes = a.Item6
             }).ToList();
 
+            if (mel.IsEventuelt)
+            {
+                caseEntries.Add(new MeetingMinutesCaseEntryVm
+                {
+                    MeetingEventLinkId = mel.Id,
+                    CaseEventId = mel.CaseEventId,
+                    IsEventuelt = true,
+                    Title = mel.CaseEvent.Content,
+                    OfficialNotes = mel.OfficialNotes,
+                    DecisionText = mel.DecisionText,
+                    FollowUpText = mel.FollowUpText,
+                    Outcome = mel.Outcome ?? MeetingCaseOutcome.Continue,
+                    Attachments = attachmentVms
+                });
+                continue;
+            }
+
+            var cec = mel.CaseEvent.Cases.FirstOrDefault();
+            if (cec is null) continue;
+
+            var boardCase = cec.BoardCase;
             caseEntries.Add(new MeetingMinutesCaseEntryVm
             {
                 MeetingEventLinkId = mel.Id,

@@ -217,6 +217,57 @@ public class MeetingsController : Controller
         return RedirectToAction(nameof(Details), new { id = meetingId });
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddEventueltItem(int meetingId, string? content, CancellationToken ct)
+    {
+        var meeting = await _db.Meetings.FirstOrDefaultAsync(x => x.Id == meetingId, ct);
+        if (meeting is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(content))
+            return RedirectToAction(nameof(Minutes), new { id = meetingId });
+
+        var maxOrder = await _db.MeetingEventLinks
+            .Where(x => x.MeetingId == meetingId)
+            .MaxAsync(x => (int?)x.AgendaOrder, ct);
+
+        var caseEvent = new CaseEvent
+        {
+            Category = "meeting",
+            Content = content.Trim(),
+            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedByUserId = _audit.GetActorUserId()
+        };
+        _db.CaseEvents.Add(caseEvent);
+        await _db.SaveChangesAsync(ct);
+
+        var mel = new MeetingEventLink
+        {
+            MeetingId = meetingId,
+            CaseEventId = caseEvent.Id,
+            AgendaOrder = (maxOrder ?? 0) + 1,
+            AgendaTextSnapshot = content.Trim(),
+            IsEventuelt = true
+        };
+        _db.MeetingEventLinks.Add(mel);
+        await _db.SaveChangesAsync(ct);
+
+        await _audit.LogAsync(
+            AuditAction.Create,
+            nameof(MeetingEventLink),
+            mel.Id.ToString(),
+            before: null,
+            after: new { mel.Id, meetingId, IsEventuelt = true, content = content.Trim() },
+            reason: "Added eventuelt item",
+            ct: ct);
+
+        var totalCount = await _db.MeetingEventLinks
+            .Where(x => x.MeetingId == meetingId)
+            .CountAsync(ct);
+
+        return RedirectToAction(nameof(Minutes), new { id = meetingId, index = totalCount - 1 });
+    }
+
     public async Task<IActionResult> EditAgendaItem(int id, CancellationToken ct)
     {
         // id is MeetingEventLinkId
