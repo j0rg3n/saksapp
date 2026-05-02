@@ -14,10 +14,12 @@ public class CaseEventRowVm
     public DateTimeOffset CreatedAt { get; set; }
     public string Category { get; set; } = "";
     public string Content { get; set; } = "";
-    public IReadOnlyList<int> LinkedCaseNumbers { get; set; } = new List<int>();
+    public IReadOnlyList<LinkedCaseSummary> LinkedCases { get; set; } = new List<LinkedCaseSummary>();
     public string? AuthorDisplay { get; set; }
     public bool IsEditable { get; set; }
 }
+
+public record LinkedCaseSummary(int CaseNumber, string Title, string? Theme);
 
 public class CaseEventCreateVm
 {
