@@ -68,9 +68,13 @@ else
                             }
                         </td>
                         <td>
-                            @foreach (var num in ev.LinkedCaseNumbers)
+                            @foreach (var c in ev.LinkedCases)
                             {
-                                <span class="badge bg-secondary me-1">#@num</span>
+                                <span class="badge bg-secondary me-1" title="@c.Title">#@c.CaseNumber</span>
+                                @if (!string.IsNullOrWhiteSpace(c.Theme))
+                                {
+                                    <span class="badge bg-light text-dark border me-1">@c.Theme</span>
+                                }
                             }
                         </td>
                         <td class="text-muted small">@(ev.AuthorDisplay ?? "-")</td>
