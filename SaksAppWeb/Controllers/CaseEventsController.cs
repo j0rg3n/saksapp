@@ -19,7 +19,8 @@ public class CaseEventsController : Controller
     {
         ["avvik"] = "Avvik",
         ["tiltak"] = "Tiltak",
-        ["general"] = "Generelt"
+        ["general"] = "Generelt",
+        ["comment"] = "Saksmerknad"
     };
 
     private readonly ApplicationDbContext _db;
@@ -41,9 +42,9 @@ public class CaseEventsController : Controller
     {
         var q = _db.CaseEvents.AsNoTracking()
             .Include(x => x.Cases).ThenInclude(x => x.BoardCase)
-            .Where(x => EditableCategories.Contains(x.Category));
+            .Where(x => x.Category != "meeting");
 
-        if (!string.IsNullOrWhiteSpace(category) && EditableCategories.Contains(category))
+        if (!string.IsNullOrWhiteSpace(category))
             q = q.Where(x => x.Category == category);
 
         var events = (await q.ToListAsync(ct))
@@ -69,7 +70,8 @@ public class CaseEventsController : Controller
                 .Select(x => x.BoardCase.CaseNumber)
                 .OrderBy(x => x)
                 .ToList(),
-            AuthorDisplay = e.CreatedByUserId is not null && displayById.TryGetValue(e.CreatedByUserId, out var d) ? d : e.CreatedByUserId
+            AuthorDisplay = e.CreatedByUserId is not null && displayById.TryGetValue(e.CreatedByUserId, out var d) ? d : e.CreatedByUserId,
+            IsEditable = EditableCategories.Contains(e.Category)
         }).ToList();
 
         return View(new CaseEventIndexVm { Events = rows, CategoryFilter = category });
