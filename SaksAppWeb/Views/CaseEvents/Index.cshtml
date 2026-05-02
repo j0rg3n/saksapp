@@ -10,9 +10,11 @@
     <a class="btn btn-primary" asp-action="Create">Ny hendelse</a>
 </div>
 
-<div class="mb-3 d-flex gap-2">
+<div class="mb-3 d-flex gap-2 flex-wrap">
     <a class="btn btn-sm @(Model.CategoryFilter == null ? "btn-secondary" : "btn-outline-secondary")"
        asp-action="Index">Alle</a>
+    <a class="btn btn-sm @(Model.CategoryFilter == "comment" ? "btn-secondary" : "btn-outline-secondary")"
+       asp-action="Index" asp-route-category="comment">Saksmerknad</a>
     <a class="btn btn-sm @(Model.CategoryFilter == "avvik" ? "btn-danger" : "btn-outline-danger")"
        asp-action="Index" asp-route-category="avvik">Avvik</a>
     <a class="btn btn-sm @(Model.CategoryFilter == "tiltak" ? "btn-warning" : "btn-outline-warning")"
@@ -73,12 +75,15 @@ else
                         </td>
                         <td class="text-muted small">@(ev.AuthorDisplay ?? "-")</td>
                         <td class="text-end text-nowrap">
-                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@ev.Id">Rediger</a>
-                            <form asp-action="SoftDelete" asp-route-id="@ev.Id" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button class="btn btn-sm btn-outline-danger" type="submit"
-                                        onclick="return confirm('Slett denne hendelsen?')">Slett</button>
-                            </form>
+                            @if (ev.IsEditable)
+                            {
+                                <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@ev.Id">Rediger</a>
+                                <form asp-action="SoftDelete" asp-route-id="@ev.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-sm btn-outline-danger" type="submit"
+                                            onclick="return confirm('Slett denne hendelsen?')">Slett</button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }

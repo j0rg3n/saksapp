@@ -16,6 +16,7 @@ public class CaseEventRowVm
     public string Content { get; set; } = "";
     public IReadOnlyList<int> LinkedCaseNumbers { get; set; } = new List<int>();
     public string? AuthorDisplay { get; set; }
+    public bool IsEditable { get; set; }
 }
 
 public class CaseEventCreateVm
