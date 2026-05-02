@@ -9,3 +9,4 @@ auth/
 *.tar
 *.sqlite
 backups/
+db_old_delete_me/
