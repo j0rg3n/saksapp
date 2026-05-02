@@ -263,6 +263,46 @@ public class MeetingsControllerTests : IDisposable
 
     #endregion
 
+    #region AddEventueltItem Tests
+
+    [Fact]
+    public async Task AddEventueltItem_ReturnsNotFound_WhenMeetingNotExists()
+    {
+        var result = await _controller.AddEventueltItem(999, "Test eventuelt", CancellationToken.None);
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task AddEventueltItem_RedirectsToMinutes_WhenContentEmpty()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.AddEventueltItem(meeting.Id, "  ", CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Minutes", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task AddEventueltItem_CreatesMeetingEventLinkWithIsEventuelt()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.AddEventueltItem(meeting.Id, "Diskusjon om budsjett", CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var link = await _db.MeetingEventLinks.IgnoreQueryFilters().FirstAsync();
+        Assert.True(link.IsEventuelt);
+        var caseEvent = await _db.CaseEvents.IgnoreQueryFilters().FirstAsync();
+        Assert.Equal("Diskusjon om budsjett", caseEvent.Content);
+    }
+
+    #endregion
+
     #region EditAgendaItem Tests
 
     [Fact]

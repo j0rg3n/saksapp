@@ -107,10 +107,18 @@
                 <span class="text-muted">Sak</span>
                 <strong>@(Model.CurrentIndex + 1)</strong>
                 <span class="text-muted">av @Model.TotalCount</span>
-                <span class="ms-2 fw-semibold">#@entry.CaseNumber — @entry.Title</span>
-                @if (!string.IsNullOrWhiteSpace(entry.AssigneeDisplay))
+                @if (entry.IsEventuelt)
                 {
-                    <span class="text-muted ms-1">(@entry.AssigneeDisplay)</span>
+                    <span class="badge bg-secondary ms-2">Eventuelt</span>
+                    <span class="ms-2 fw-semibold">@entry.Title</span>
+                }
+                else
+                {
+                    <span class="ms-2 fw-semibold">#@entry.CaseNumber — @entry.Title</span>
+                    @if (!string.IsNullOrWhiteSpace(entry.AssigneeDisplay))
+                    {
+                        <span class="text-muted ms-1">(@entry.AssigneeDisplay)</span>
+                    }
                 }
             </div>
             <div class="d-flex gap-2">
@@ -133,6 +141,7 @@
         <input type="hidden" asp-for="CaseEntries[0].Title" />
         <input type="hidden" asp-for="CaseEntries[0].AssigneeDisplay" />
         <input type="hidden" asp-for="CaseEntries[0].CaseEventId" />
+        <input type="hidden" asp-for="CaseEntries[0].IsEventuelt" />
 
         <div class="card mb-3">
             <div class="card-body">
@@ -217,6 +226,22 @@
         </div>
     }
 </form>
+
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Eventuelt</strong>
+    </div>
+    <div class="card-body">
+        <form asp-action="AddEventueltItem" method="post" class="mb-0">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="meetingId" value="@Model.MeetingId" />
+            <div class="input-group">
+                <input class="form-control" name="content" placeholder="Legg til eventuelt-punkt..." />
+                <button class="btn btn-outline-secondary" type="submit">Legg til</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 @if (entry?.CaseEventId is not null)
 {

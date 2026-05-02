@@ -35,15 +35,13 @@ public sealed class MinutesSaveService : IMinutesSaveService
             minutes.AttendanceText,
             minutes.AbsenceText,
             minutes.ApprovalOfPreviousMinutesText,
-            minutes.NextMeetingDate,
-            minutes.EventueltText
+            minutes.NextMeetingDate
         };
 
         minutes.AttendanceText = vm.AttendanceText;
         minutes.AbsenceText = vm.AbsenceText;
         minutes.ApprovalOfPreviousMinutesText = vm.ApprovalOfPreviousMinutesText;
         minutes.NextMeetingDate = vm.NextMeetingDate;
-        minutes.EventueltText = vm.EventueltText;
 
         await _db.SaveChangesAsync(ct);
 
@@ -85,8 +83,7 @@ public sealed class MinutesSaveService : IMinutesSaveService
             minutes.AttendanceText,
             minutes.AbsenceText,
             minutes.ApprovalOfPreviousMinutesText,
-            minutes.NextMeetingDate,
-            minutes.EventueltText
+            minutes.NextMeetingDate
         };
 
         await _audit.LogAsync(
