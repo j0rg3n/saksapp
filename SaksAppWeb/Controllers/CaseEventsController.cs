@@ -68,7 +68,7 @@ public class CaseEventsController : Controller
             LinkedCases = e.Cases
                 .Where(x => !x.IsDeleted)
                 .OrderBy(x => x.BoardCase.CaseNumber)
-                .Select(x => new LinkedCaseSummary(x.BoardCase.CaseNumber, x.BoardCase.Title, x.BoardCase.Theme))
+                .Select(x => new LinkedCaseSummary(x.BoardCase.Id, x.BoardCase.CaseNumber, x.BoardCase.Title, x.BoardCase.Theme))
                 .ToList(),
             AuthorDisplay = e.CreatedByUserId is not null && displayById.TryGetValue(e.CreatedByUserId, out var d) ? d : e.CreatedByUserId,
             IsEditable = EditableCategories.Contains(e.Category)

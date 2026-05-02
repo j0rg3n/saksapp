@@ -30,9 +30,17 @@
     @Html.AntiForgeryToken()
     <input type="hidden" name="caseId" value="@Model.Case.Id" />
     <div class="mb-2">
-        <textarea class="form-control" name="text" rows="3" placeholder="Add an unofficial comment..."></textarea>
+        <div class="btn-group btn-group-sm mb-2" role="group">
+            <input type="radio" class="btn-check" name="category" id="cat-general" value="general" checked />
+            <label class="btn btn-outline-info" for="cat-general">Generelt</label>
+            <input type="radio" class="btn-check" name="category" id="cat-avvik" value="avvik" />
+            <label class="btn btn-outline-danger" for="cat-avvik">Avvik</label>
+            <input type="radio" class="btn-check" name="category" id="cat-tiltak" value="tiltak" />
+            <label class="btn btn-outline-warning" for="cat-tiltak">Tiltak</label>
+        </div>
+        <textarea class="form-control" name="text" rows="3" placeholder="Legg til hendelse..."></textarea>
     </div>
-    <button class="btn btn-primary" type="submit">Add comment</button>
+    <button class="btn btn-primary" type="submit">Legg til</button>
 </form>
 
 @if (!Model.Timeline.Any())
@@ -46,7 +54,7 @@ else
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between">
                 <div>
-                    <strong>@item.OccurredAt</strong>
+                    <strong>@item.OccurredAt.ToString("dd.MM.yyyy HH:mm")</strong>
                     @if (item.Kind == CaseTimelineItemKind.Comment)
                     {
                         var author = item.CommentAuthorUserId is not null
@@ -79,6 +87,12 @@ else
                         <span class="badge @badgeClass ms-2">@CaseEventsController.CategoryLabel(item.EventCategory ?? "")</span>
                         <span class="text-muted ms-2">av @author</span>
                     }
+                    @foreach (var lc in item.LinkedCases)
+                    {
+                        <a class="badge bg-secondary ms-1 text-decoration-none"
+                           asp-action="Details" asp-route-id="@lc.Id"
+                           title="@lc.Title">#@lc.CaseNumber</a>
+                    }
                 </div>
 
                 <div class="d-flex gap-2">
@@ -98,6 +112,12 @@ else
                     @if (item.Kind == CaseTimelineItemKind.BoardEvent && item.CaseEventId is not null)
                     {
                         <a class="btn btn-sm btn-outline-secondary" asp-controller="CaseEvents" asp-action="Edit" asp-route-id="@item.CaseEventId">Rediger</a>
+                        <form asp-action="SoftDeleteComment" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="commentId" value="@item.CaseEventId" />
+                            <button class="btn btn-sm btn-outline-danger" type="submit"
+                                    onclick="return confirm('Slett denne hendelsen?')">Slett</button>
+                        </form>
                     }
                 </div>
             </div>
@@ -213,9 +233,35 @@ else
                                         @a.OriginalFileName
                                     </a>
                                     <span class="text-muted small">(@a.SizeBytes bytes)</span>
+                                    @if (a.LinkId is not null)
+                                    {
+                                        <form asp-action="RemoveCommentAttachment" method="post" class="d-inline ms-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="linkId" value="@a.LinkId" />
+                                            <button class="btn btn-sm btn-outline-danger" type="submit"
+                                                    onclick="return confirm('Fjern vedlegg?')">Fjern</button>
+                                        </form>
+                                    }
                                 </li>
                             }
                         </ul>
+                    }
+
+                    @if (item.CaseEventId is not null)
+                    {
+                        <form asp-action="UploadCommentAttachment" method="post" enctype="multipart/form-data" class="mt-3">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="commentId" value="@item.CaseEventId" />
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-8">
+                                    <label class="form-label">Last opp vedlegg</label>
+                                    <input class="form-control" type="file" name="file" />
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-outline-primary" type="submit">Last opp</button>
+                                </div>
+                            </div>
+                        </form>
                     }
                 }
             </div>

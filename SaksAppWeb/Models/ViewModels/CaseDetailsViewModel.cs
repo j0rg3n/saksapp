@@ -45,13 +45,16 @@ public class CaseTimelineItemVm
 
     public long SortId { get; set; }
 
-    // Comment-specific
+    // Comment and BoardEvent
     public int? CaseEventId { get; set; }
     public string? CommentText { get; set; }
     public string? CommentAuthorUserId { get; set; }
 
     // BoardEvent-specific
     public string? EventCategory { get; set; }
+
+    // Multi-case linking (other cases this event is linked to, excluding current case)
+    public IReadOnlyList<LinkedCaseSummary> LinkedCases { get; set; } = Array.Empty<LinkedCaseSummary>();
 
     // Minutes-specific
     public int? MeetingEventLinkId { get; set; }

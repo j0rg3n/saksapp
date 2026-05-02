@@ -10,4 +10,6 @@ public class CommentEditVm
 
     [Required]
     public string Text { get; set; } = "";
+
+    public string Category { get; set; } = "general";
 }

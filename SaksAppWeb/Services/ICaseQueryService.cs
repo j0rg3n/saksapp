@@ -92,6 +92,23 @@ public class CaseQueryService : ICaseQueryService
 
         var caseEventIds = caseEventCases.Select(x => x.CaseEventId).Distinct().ToList();
 
+        // Load other cases these events are linked to (for multi-case badges)
+        var otherCaseLinks = caseEventIds.Count == 0
+            ? new List<CaseEventCase>()
+            : await _db.CaseEventCases.AsNoTracking()
+                .Where(x => caseEventIds.Contains(x.CaseEventId) && x.BoardCaseId != id)
+                .Include(x => x.BoardCase)
+                .ToListAsync(ct);
+
+        var otherCasesByCaseEventId = otherCaseLinks
+            .GroupBy(x => x.CaseEventId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<LinkedCaseSummary>)g
+                    .OrderBy(x => x.BoardCase.CaseNumber)
+                    .Select(x => new LinkedCaseSummary(x.BoardCase.Id, x.BoardCase.CaseNumber, x.BoardCase.Title, x.BoardCase.Theme))
+                    .ToList());
+
         // Load attachments for all case events
         var eventAtts = caseEventIds.Count == 0
             ? new List<(int CaseEventId, int LinkId, int AttachmentId, string OriginalFileName, string ContentType, long SizeBytes)>()
@@ -134,11 +151,14 @@ public class CaseQueryService : ICaseQueryService
             var ce = cec.CaseEvent;
             var atts = eventAttsByCaseEventId.TryGetValue(ce.Id, out var rawAtts) ? rawAtts : new();
 
-            if (ce.Category == "comment")
+            var linkedCases = otherCasesByCaseEventId.TryGetValue(ce.Id, out var lc) ? lc : Array.Empty<LinkedCaseSummary>();
+
+            if (ce.Category is "comment" or "general" or "avvik" or "tiltak")
             {
+                var isLegacyComment = ce.Category == "comment";
                 var attachments = atts.Select(a => new CaseAttachmentVm
                 {
-                    LinkKind = CaseAttachmentLinkKind.CommentAttachment,
+                    LinkKind = isLegacyComment ? CaseAttachmentLinkKind.CommentAttachment : CaseAttachmentLinkKind.BoardEventAttachment,
                     LinkId = a.Item2,
                     AttachmentId = a.Item3,
                     OriginalFileName = a.Item4,
@@ -148,12 +168,14 @@ public class CaseQueryService : ICaseQueryService
 
                 timeline.Add(new CaseTimelineItemVm
                 {
-                    Kind = CaseTimelineItemKind.Comment,
+                    Kind = isLegacyComment ? CaseTimelineItemKind.Comment : CaseTimelineItemKind.BoardEvent,
                     OccurredAt = ce.CreatedAt,
                     SortId = ce.Id,
                     CaseEventId = ce.Id,
                     CommentText = ce.Content,
                     CommentAuthorUserId = ce.CreatedByUserId,
+                    EventCategory = ce.Category == "comment" ? "general" : ce.Category,
+                    LinkedCases = linkedCases,
                     Attachments = attachments
                 });
             }
@@ -183,30 +205,7 @@ public class CaseQueryService : ICaseQueryService
                     OfficialNotes = mel.OfficialNotes,
                     DecisionText = mel.DecisionText,
                     FollowUpText = mel.FollowUpText,
-                    Attachments = attachments
-                });
-            }
-            else if (ce.Category is "avvik" or "tiltak" or "general")
-            {
-                var attachments = atts.Select(a => new CaseAttachmentVm
-                {
-                    LinkKind = CaseAttachmentLinkKind.BoardEventAttachment,
-                    LinkId = a.Item2,
-                    AttachmentId = a.Item3,
-                    OriginalFileName = a.Item4,
-                    ContentType = a.Item5,
-                    SizeBytes = a.Item6
-                }).ToList();
-
-                timeline.Add(new CaseTimelineItemVm
-                {
-                    Kind = CaseTimelineItemKind.BoardEvent,
-                    OccurredAt = ce.CreatedAt,
-                    SortId = ce.Id,
-                    CaseEventId = ce.Id,
-                    CommentText = ce.Content,
-                    CommentAuthorUserId = ce.CreatedByUserId,
-                    EventCategory = ce.Category,
+                    LinkedCases = linkedCases,
                     Attachments = attachments
                 });
             }
