@@ -68,9 +68,11 @@ else
                     else if (item.Kind == CaseTimelineItemKind.Minutes)
                     {
                         <span class="badge bg-primary ms-2">Minutes</span>
-                        <span class="text-muted ms-2">
-                            Meeting @item.MeetingYear/@item.MeetingYearSequenceNumber — @item.MeetingDate
-                        </span>
+                        <a class="text-muted ms-2 text-decoration-none"
+                           asp-controller="Meetings" asp-action="Details" asp-route-id="@item.MeetingId"
+                           target="_blank">
+                            Møte @item.MeetingYear/@item.MeetingYearSequenceNumber — @item.MeetingDate
+                        </a>
                     }
                     else if (item.Kind == CaseTimelineItemKind.BoardEvent)
                     {

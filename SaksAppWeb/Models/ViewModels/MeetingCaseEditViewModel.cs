@@ -7,6 +7,7 @@ public class MeetingCaseEditVm
     public int Id { get; set; }
     public int MeetingId { get; set; }
 
+    public int BoardCaseId { get; set; }
     public int CaseNumber { get; set; }
     public string CaseTitle { get; set; } = "";
 
