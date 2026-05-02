@@ -232,12 +232,16 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         return RedirectToAction(nameof(Index));
     }
 
+    private static readonly string[] ValidCaseEventCategories = ["general", "avvik", "tiltak"];
+
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddComment(int caseId, string text, CancellationToken ct)
+    public async Task<IActionResult> AddComment(int caseId, string text, string? category, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(text))
             return RedirectToAction(nameof(Details), new { id = caseId });
+
+        var resolvedCategory = ValidCaseEventCategories.Contains(category) ? category! : "general";
 
         var c = await _db.BoardCases.AsNoTracking().FirstOrDefaultAsync(x => x.Id == caseId, ct);
         if (c is null) return NotFound();
@@ -246,7 +250,7 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
 
         var caseEvent = new CaseEvent
         {
-            Category = "comment",
+            Category = resolvedCategory,
             Content = text.Trim(),
             CreatedAt = DateTimeOffset.UtcNow,
             CreatedByUserId = userId
@@ -465,7 +469,8 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         {
             Id = caseEvent.Id,
             CaseId = caseId,
-            Text = caseEvent.Content
+            Text = caseEvent.Content,
+            Category = caseEvent.Category == "comment" ? "general" : caseEvent.Category
         };
 
         return View(vm);
@@ -485,13 +490,15 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
 
         var caseId = caseEvent.Cases.FirstOrDefault()?.BoardCaseId ?? vm.CaseId;
 
-        var before = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Content };
+        var resolvedCategory = ValidCaseEventCategories.Contains(vm.Category) ? vm.Category : "general";
+        var before = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Category, caseEvent.Content };
 
         caseEvent.Content = vm.Text;
+        caseEvent.Category = resolvedCategory;
 
         await _db.SaveChangesAsync(ct);
 
-        var after = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Content };
+        var after = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Category, caseEvent.Content };
 
         await _audit.LogAsync(
             AuditAction.Update,

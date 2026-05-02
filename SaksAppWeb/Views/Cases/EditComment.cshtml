@@ -1,10 +1,10 @@
 @model SaksAppWeb.Models.ViewModels.CommentEditVm
 
 @{
-    ViewData["Title"] = "Edit comment";
+    ViewData["Title"] = "Rediger hendelse";
 }
 
-<h1>Edit comment</h1>
+<h1>Rediger hendelse</h1>
 
 <form method="post">
     @Html.AntiForgeryToken()
@@ -12,13 +12,25 @@
     <input type="hidden" asp-for="CaseId" />
 
     <div class="mb-3">
-        <label class="form-label">Comment</label>
+        <label class="form-label">Kategori</label>
+        <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" asp-for="Category" id="cat-general" value="general" />
+            <label class="btn btn-outline-info" for="cat-general">Generelt</label>
+            <input type="radio" class="btn-check" asp-for="Category" id="cat-avvik" value="avvik" />
+            <label class="btn btn-outline-danger" for="cat-avvik">Avvik</label>
+            <input type="radio" class="btn-check" asp-for="Category" id="cat-tiltak" value="tiltak" />
+            <label class="btn btn-outline-warning" for="cat-tiltak">Tiltak</label>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Innhold</label>
         <textarea class="form-control" asp-for="Text" rows="6"></textarea>
         <span class="text-danger" asp-validation-for="Text"></span>
     </div>
 
-    <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.CaseId">Cancel</a>
+    <button class="btn btn-primary" type="submit">Lagre</button>
+    <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.CaseId">Avbryt</a>
 </form>
 
 @section Scripts {

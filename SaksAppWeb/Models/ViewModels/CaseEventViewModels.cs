@@ -19,7 +19,7 @@ public class CaseEventRowVm
     public bool IsEditable { get; set; }
 }
 
-public record LinkedCaseSummary(int CaseNumber, string Title, string? Theme);
+public record LinkedCaseSummary(int Id, int CaseNumber, string Title, string? Theme);
 
 public class CaseEventCreateVm
 {
