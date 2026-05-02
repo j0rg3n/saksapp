@@ -5,7 +5,10 @@
 }
 
 <h1>Edit agenda item</h1>
-<div class="text-muted">Case #@Model.CaseNumber — @Model.CaseTitle</div>
+<div class="text-muted">
+    <a asp-controller="Cases" asp-action="Details" asp-route-id="@Model.BoardCaseId"
+       target="_blank">#@Model.CaseNumber — @Model.CaseTitle</a>
+</div>
 
 <form method="post">
     @Html.AntiForgeryToken()

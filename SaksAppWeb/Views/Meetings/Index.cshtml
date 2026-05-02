@@ -23,9 +23,9 @@
     @foreach (var m in Model)
     {
         <tr>
-            <td>@m.MeetingDate</td>
+            <td><a asp-action="Details" asp-route-id="@m.Id">@m.MeetingDate</a></td>
             <td>@m.Id</td>
-            <td>@m.Year/@m.YearSequenceNumber</td>
+            <td><a asp-action="Details" asp-route-id="@m.Id">@m.Year/@m.YearSequenceNumber</a></td>
             <td>@m.Location</td>
             <td class="text-end">
                 <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@m.Id">Open</a>

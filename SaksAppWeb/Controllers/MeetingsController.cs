@@ -286,6 +286,7 @@ public class MeetingsController : Controller
         {
             Id = mel.Id,
             MeetingId = mel.MeetingId,
+            BoardCaseId = boardCase.Id,
             CaseNumber = boardCase.CaseNumber,
             CaseTitle = boardCase.Title,
             AgendaTextSnapshot = mel.AgendaTextSnapshot,
