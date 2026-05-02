@@ -43,4 +43,15 @@ public class CaseEventEditVm
     public string Content { get; set; } = "";
 
     public string? CaseNumbers { get; set; }
+
+    public IReadOnlyList<CaseEventAttachmentVm> Attachments { get; set; } = Array.Empty<CaseEventAttachmentVm>();
+}
+
+public class CaseEventAttachmentVm
+{
+    public int LinkId { get; set; }
+    public int AttachmentId { get; set; }
+    public string OriginalFileName { get; set; } = "";
+    public string ContentType { get; set; } = "";
+    public long SizeBytes { get; set; }
 }

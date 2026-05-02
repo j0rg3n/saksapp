@@ -35,5 +35,52 @@
                 <a class="btn btn-outline-secondary" asp-action="Index">Avbryt</a>
             </div>
         </form>
+
+        <hr class="my-4" />
+
+        <h5>Vedlegg</h5>
+
+        @if (!Model.Attachments.Any())
+        {
+            <p class="text-muted">Ingen vedlegg.</p>
+        }
+        else
+        {
+            <ul class="list-unstyled mb-3">
+                @foreach (var a in Model.Attachments)
+                {
+                    <li class="d-flex align-items-center gap-2 mb-2">
+                        <a asp-controller="Cases" asp-action="DownloadAttachment" asp-route-id="@a.AttachmentId">
+                            @a.OriginalFileName
+                        </a>
+                        <span class="text-muted small">(@a.SizeBytes bytes)</span>
+                        <form asp-action="RemoveAttachment" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="linkId" value="@a.LinkId" />
+                            <input type="hidden" name="eventId" value="@Model.Id" />
+                            <button class="btn btn-sm btn-outline-danger" type="submit"
+                                    onclick="return confirm('Fjern vedlegg?')">Fjern</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+
+        <form asp-action="UploadAttachment" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label">Last opp vedlegg (PDF eller bilde, maks 10 MB)</label>
+                    <input class="form-control" type="file" name="file" />
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-outline-primary" type="submit">Last opp</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
