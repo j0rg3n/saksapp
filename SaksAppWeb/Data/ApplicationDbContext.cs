@@ -154,7 +154,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<CaseEventCase>(b =>
         {
-            b.HasIndex(x => new { x.CaseEventId, x.BoardCaseId }).IsUnique();
+            b.HasIndex(x => new { x.CaseEventId, x.BoardCaseId }).IsUnique().HasFilter("\"IsDeleted\" = 0");
 
             b.HasOne(x => x.CaseEvent)
                 .WithMany(x => x.Cases)

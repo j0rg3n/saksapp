@@ -189,7 +189,20 @@ public class CaseEventsController : Controller
                 .ToListAsync(ct);
 
             foreach (var c in cases)
-                _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = entity.Id, BoardCaseId = c.Id });
+            {
+                var existing = await _db.CaseEventCases.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(x => x.CaseEventId == entity.Id && x.BoardCaseId == c.Id, ct);
+                if (existing is not null)
+                {
+                    existing.IsDeleted = false;
+                    existing.DeletedAt = null;
+                    existing.DeletedByUserId = null;
+                }
+                else
+                {
+                    _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = entity.Id, BoardCaseId = c.Id });
+                }
+            }
         }
 
         await _db.SaveChangesAsync(ct);
