@@ -4,6 +4,13 @@
 
 ---
 
+## Kjente feil (rapportert fra beta)
+
+- **Vedlegg mangler i hendelsesredigering fra sakvisning**: Når man trykker "Rediger" på en hendelse i sakens tidslinje, åpnes `Cases/EditComment` som ikke har vedlegg-håndtering. `CaseEvents/Edit` har det, men nås ikke fra denne lenken. Fiks: enten redirect til `CaseEvents/Edit` fra sakvisningen, eller legg til vedlegg-seksjon i `Cases/EditComment`.
+- **Mange engelske termer i UI**: Gjenstår en rekke engelske labels, knapper og overskrifter i grensesnittet. Systematisk gjennomgang nødvendig — se terminologitabellen i seksjon 1 nedenfor.
+
+---
+
 ## Fase 0: Test-oppsett ✅ KOMPLETT
 
 - Testprosjekt opprettet med xUnit, Moq, EF Core SQLite
