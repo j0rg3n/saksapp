@@ -119,7 +119,6 @@ public class CaseQueryService : ICaseQueryService
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var userIds = caseEventCases
-            .Where(x => x.CaseEvent.Category == "comment")
             .Select(x => x.CaseEvent.CreatedByUserId)
             .Append(c.AssigneeUserId)
             .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -184,6 +183,30 @@ public class CaseQueryService : ICaseQueryService
                     OfficialNotes = mel.OfficialNotes,
                     DecisionText = mel.DecisionText,
                     FollowUpText = mel.FollowUpText,
+                    Attachments = attachments
+                });
+            }
+            else if (ce.Category is "avvik" or "tiltak" or "general")
+            {
+                var attachments = atts.Select(a => new CaseAttachmentVm
+                {
+                    LinkKind = CaseAttachmentLinkKind.BoardEventAttachment,
+                    LinkId = a.Item2,
+                    AttachmentId = a.Item3,
+                    OriginalFileName = a.Item4,
+                    ContentType = a.Item5,
+                    SizeBytes = a.Item6
+                }).ToList();
+
+                timeline.Add(new CaseTimelineItemVm
+                {
+                    Kind = CaseTimelineItemKind.BoardEvent,
+                    OccurredAt = ce.CreatedAt,
+                    SortId = ce.Id,
+                    CaseEventId = ce.Id,
+                    CommentText = ce.Content,
+                    CommentAuthorUserId = ce.CreatedByUserId,
+                    EventCategory = ce.Category,
                     Attachments = attachments
                 });
             }
