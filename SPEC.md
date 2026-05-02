@@ -250,9 +250,57 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 
 ### User Management
 
-**List Users**
-- View all users with their full names and emails
+**Roles**
+- Two roles: **Admin** and **Regular user**
+- The first user to register is automatically an admin and auto-approved
+- All subsequent registrations start as unapproved regular users
+- An unapproved user who logs in sees a "pending approval" page and cannot access the app
+- Only admins can approve/unapprove users and toggle admin status
+- An admin cannot remove their own admin status
+
+**List Users (Admin only)**
+- View all users with full name, email, approval status, admin status
+- Approve or unapprove pending users
+- Toggle admin status for other users
 - Edit user (full name, email)
+
+**Registration flow**
+- New user registers with email + password (standard ASP.NET Identity)
+- Account is created with `IsApproved = false`
+- User sees "Din konto venter på godkjenning" on login until approved
+- Any admin can approve the user from the user list
+
+### Google Drive Backup
+
+**Overview**
+- Each user can link their own Google Drive account via OAuth 2.0
+- The app uploads a date-stamped SQLite backup to every linked Drive at the configured interval
+- Backup files are named `saksapp-backup-YYYY-MM-DD.db`
+- Only admins can trigger a manual backup or initiate a restore
+
+**Per-user Drive linking**
+- Settings page: "Koble til Google Drive" button initiates OAuth 2.0 flow (Google identity)
+- OAuth tokens (access + refresh) stored encrypted in DB per user
+- User can unlink their Drive at any time (tokens deleted)
+- Multiple users can have linked Drives; backup is sent to all of them
+
+**Backup schedule**
+- Background service checks daily whether a backup is due
+- Configurable interval: every N days (default: 1, set in appsettings or per-user preference)
+- On trigger: create SQLite backup using Online Backup API → upload to each linked Drive
+- Log each backup attempt (success/failure) to a `DriveBackupLog` table
+
+**Restore (Admin only)**
+- Admin selects a backup date from the list of known backups (from `DriveBackupLog`)
+- App downloads the backup file from a linked Drive
+- Restore writes the file to a staging path, then performs a graceful DB swap on next startup
+- A `/admin/restore-pending` flag file signals the startup code to swap the DB before migrating
+- After restore, all sessions are invalidated
+
+**Security**
+- OAuth tokens encrypted at rest using ASP.NET Data Protection
+- Restore is admin-only and requires re-entering password as confirmation
+- Backup/restore operations are logged to the audit log
 
 ### Audit Log
 
@@ -274,6 +322,13 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 The unified event model replaces the previous separate entities (CaseComment, MeetingMinutesCaseEntry, BoardEvent, BoardEventCase).
 
 ### Entities
+- **ApplicationUser** - Extended identity user
+  - `IsApproved` - bool, default false; first user auto-true
+  - `IsAdmin` - bool, default false; first user auto-true
+- **UserDriveToken** - Per-user Google Drive OAuth tokens
+  - `UserId`, `AccessToken` (encrypted), `RefreshToken` (encrypted), `TokenExpiry`, `LinkedAt`
+- **DriveBackupLog** - Record of each backup upload attempt
+  - `AttemptedAt`, `BackupDate`, `UserId` (Drive owner), `Success`, `ErrorMessage`
 - **BoardCase** - Case information
 - **CaseEvent** - Unified event entry (replaces CaseComment and BoardEvent)
   - Linked to Case via CaseEventCase

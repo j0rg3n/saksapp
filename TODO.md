@@ -307,6 +307,61 @@ public class MeetingEventLink
 
 ---
 
+### Phase 6A: Brukerroller og godkjenning
+
+**Mål**: Innføre admin/vanlig-bruker-skille og krav om godkjenning for nye brukere.
+
+#### 6A.1 Datamodell
+- [ ] Legg til `IsApproved` (bool, default false) og `IsAdmin` (bool, default false) på `ApplicationUser`
+- [ ] EF Core-migrering for nye kolonner
+- [ ] Ved oppstart: hvis ingen brukere finnes enda, sett første bruker til IsApproved=true, IsAdmin=true automatisk etter registrering (via seed-logikk i Program.cs)
+
+#### 6A.2 Registrerings- og innloggingsflyt
+- [ ] Override login-flow: hvis `!IsApproved`, redirect til "Din konto venter på godkjenning"-side i stedet for å gi tilgang
+- [ ] Implementer `RequireApprovedUser`-attributt eller middleware som sjekker godkjenningsstatus på alle [Authorize]-sider
+- [ ] Første bruker som registrerer seg får IsAdmin=true og IsApproved=true automatisk
+
+#### 6A.3 Brukeradministrasjon (kun admin)
+- [ ] Oppdater `UsersController` med `[AdminOnly]`-filter (eller policy)
+- [ ] Legg til kolonne for godkjenningsstatus og admin-status i brukerliste
+- [ ] Legg til "Godkjenn"/"Avvis" knapper for ventende brukere
+- [ ] Legg til "Gjør til admin"/"Fjern admin" knapper (ikke på seg selv)
+- [ ] Tester for admin-only tilgangskontroll
+
+---
+
+### Phase 6B: Google Drive Backup
+
+**Mål**: Automatisk opplasting av SQLite-sikkerhetskopier til brukernes Google Drive, med mulighet for admin-gjenoppretting.
+
+#### 6B.1 Google OAuth — Drive-tilkobling
+- [ ] Registrer OAuth 2.0-app i Google Cloud Console (scope: `drive.file`)
+- [ ] Legg til `UserDriveToken`-entitet: `UserId`, `AccessToken` (kryptert), `RefreshToken` (kryptert), `TokenExpiry`, `LinkedAt`
+- [ ] EF Core-migrering
+- [ ] Innstillingsside (`/settings`): "Koble til Google Drive"-knapp → OAuth-flyt → lagre tokens kryptert med ASP.NET Data Protection
+- [ ] Vis koblingsstatus og "Koble fra"-knapp
+- [ ] Krypter tokens med `IDataProtector` (purpose: `"DriveTokens"`)
+
+#### 6B.2 Backup-tjeneste
+- [ ] Legg til `DriveBackupLog`-entitet: `AttemptedAt`, `BackupDate`, `UserId`, `Success`, `ErrorMessage`
+- [ ] EF Core-migrering
+- [ ] Implementer `IGoogleDriveUploader` interface + `GoogleDriveUploader` — tar en SQLite-snapshot og laster opp til Drive med filnavn `saksapp-backup-YYYY-MM-DD.db`
+- [ ] Legg til `DriveBackupService` (BackgroundService): kjør daglig, sjekk om backup er forfallen (N dager siden siste), bruk SQLite Online Backup API til å lage snapshot, kall uploader for alle brukere med koblet Drive
+- [ ] Konfigurasjon: `GoogleDrive:BackupIntervalDays` (default: 1), `GoogleDrive:ClientId`, `GoogleDrive:ClientSecret`
+- [ ] Logg resultat til `DriveBackupLog`
+
+#### 6B.3 Gjenoppretting (kun admin)
+- [ ] Admin-side `/admin/restore`: vis liste over kjente backups fra `DriveBackupLog`
+- [ ] "Gjenopprett"-knapp: krev passordbekreftelse, last ned valgt backup-fil fra Drive
+- [ ] Skriv ned til staging-fil (`/app/db/app.db.pending`), skriv flaggfil `/app/db/restore.pending`
+- [ ] Startup-logikk i `Program.cs`: hvis `restore.pending` finnes, swap `app.db` → `app.db.bak`, flytt `app.db.pending` → `app.db`, slett flagg, kjør migreringer
+- [ ] Invalider alle sesjoner etter gjenoppretting (roter Data Protection-nøkler eller sett en sesjon-ugyldig-etter-timestamp)
+- [ ] Audit-logging av backup- og restore-hendelser
+
+**Avhengigheter**: Krever Phase 6A (admin-rolle for restore-tilgang).
+
+---
+
 ### Phase 7: WhatsApp Bot
 
 **Mål**: Automatisk inntak av WhatsApp-meldinger som CaseEvents, med vedlegg og sak-kobling via hashtags.
