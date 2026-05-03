@@ -109,7 +109,8 @@ Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
 - Record meeting outcomes per agenda item
 - Fields: OfficialNotes, DecisionText, FollowUpText
 - Upload attachments to minutes
-- Mark outcome (e.g., continued, decided, archived)
+- Mark outcome: Fortsetter, Avsluttet, Utsatt, Orientering, Diskusjon
+  - **Diskusjon** — item was discussed with no decision intended; no follow-up action expected
 - Download minutes PDF
 
 ### Eventuelt (Extra Items)
@@ -192,7 +193,7 @@ A bot is added to one or more WhatsApp groups. Incoming messages are ingested an
 
 **Configuration:**
 
-- Grouping window duration (minutes) — per group or global default (5 min).
+- Grouping window duration (minutes) — per group or global default (2 min).
 - Which groups the bot is active in is controlled by the group's WhatsApp ID being present in the bot configuration.
 
 **Data model:**
@@ -444,3 +445,13 @@ All services are registered in Program.cs and injected via constructor:
 Extract query logic and abstract external dependencies to enable effective mocking.
 
 See TODO.md for detailed tasks.
+
+---
+
+## Valgfrie fremtidige planer
+
+Features that have been considered but deprioritised or deferred indefinitely.
+
+### Jotta-backup (alternativ til Google Drive)
+
+Jotta is a Norwegian cloud storage service that supports WebDAV. As an alternative to the Google Drive OAuth integration in Phase 6B, backups could be pushed to Jotta via WebDAV — simpler to implement (no OAuth app registration, credential-based auth) but less universal. Deferred in favour of Google Drive; revisit if users prefer Jotta.

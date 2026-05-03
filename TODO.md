@@ -113,8 +113,9 @@ Tabellen under viser nåværende engelske termer i kode og UI, og deres anbefalt
 | Theme | Theme / Tema | Tema | |
 | Assignee | Assignee / Ansvarlig | Ansvarlig | |
 | Tidsfrist | Tidsfrist | Tidsfrist | |
-| Attendance | Attendance / Oppmøte | Oppmøte | |
+| Attendance | Attendance / Oppmøte | Tilstede | var Oppmøte |
 | Absence | Absence / Forfall | Forfall | |
+| Discussion (outcome) | — | Diskusjon | Ny utfallstype: diskutert uten beslutning |
 | Eventuelt | Eventuelt | Eventuelt | |
 | Continue (outcome) | Fortsetter | Fortsetter | |
 | Closed (outcome) | Avsluttet | Avsluttet | |
@@ -293,7 +294,12 @@ public class MeetingEventLink
 
 #### 5.3 Utfall Badge
 - [ ] **Task 5.3.1**: Endre Minutes PDF til å vise Utfall som badge (● farge)
-- [ ] **Task 5.3.2**: Definer fargekart: Blå=Fortsetter, Grønn=Avsluttet, Grå=Utsatt, Lilla=Orientering
+- [ ] **Task 5.3.2**: Definer fargekart: Blå=Fortsetter, Grønn=Avsluttet, Grå=Utsatt, Lilla=Orientering, Gul=Diskusjon
+
+#### 5.4 Diskusjon-utfall
+- [ ] Legg til `Discussion = 5` i `MeetingCaseOutcome`-enum
+- [ ] Legg til "Diskusjon" i utfallsvelger i Minutes-visningen
+- [ ] EF Core-migrering er ikke nødvendig (enum lagres som int)
 
 **Test**: Generer begge PDF-er og verifiser layout.
 
