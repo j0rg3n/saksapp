@@ -1,16 +1,16 @@
 @model SaksAppWeb.Models.ViewModels.CaseEditVm
 
 @{
-    ViewData["Title"] = "Edit case";
+    ViewData["Title"] = "Rediger sak";
 }
 
-<h1>Edit case</h1>
+<h1>Rediger sak</h1>
 
 <form method="post">
     <input type="hidden" asp-for="Id" />
     <partial name="_CaseForm" model="Model" />
-    <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+    <button class="btn btn-primary" type="submit">Lagre</button>
+    <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.Id">Avbryt</a>
 </form>
 
 @section Scripts {

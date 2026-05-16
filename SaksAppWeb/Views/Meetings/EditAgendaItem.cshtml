@@ -1,10 +1,10 @@
 @model SaksAppWeb.Models.ViewModels.MeetingCaseEditVm
 
 @{
-    ViewData["Title"] = "Edit agenda item";
+    ViewData["Title"] = "Rediger dagsordenspunkt";
 }
 
-<h1>Edit agenda item</h1>
+<h1>Rediger dagsordenspunkt</h1>
 <div class="text-muted">
     <a asp-controller="Cases" asp-action="Details" asp-route-id="@Model.BoardCaseId"
        target="_blank">#@Model.CaseNumber — @Model.CaseTitle</a>
@@ -19,24 +19,24 @@
     <input type="hidden" asp-for="CaseTitle" />
 
     <div class="mb-3">
-        <label class="form-label">Agenda text (snapshot)</label>
+        <label class="form-label">Dagsordenstekst</label>
         <textarea class="form-control" asp-for="AgendaTextSnapshot" rows="6"></textarea>
         <span class="text-danger" asp-validation-for="AgendaTextSnapshot"></span>
     </div>
 
     <div class="row">
         <div class="col-md-4 mb-3">
-            <label class="form-label">Tidsfrist override date</label>
+            <label class="form-label">Tidsfrist (dato)</label>
             <input class="form-control" asp-for="TidsfristOverrideDate" type="date" />
         </div>
         <div class="col-md-8 mb-3">
-            <label class="form-label">Tidsfrist override text</label>
+            <label class="form-label">Tidsfrist (tekst)</label>
             <input class="form-control" asp-for="TidsfristOverrideText" />
         </div>
     </div>
 
-    <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.MeetingId">Cancel</a>
+    <button class="btn btn-primary" type="submit">Lagre</button>
+    <a class="btn btn-secondary" asp-action="Details" asp-route-id="@Model.MeetingId">Avbryt</a>
 </form>
 
 @section Scripts {

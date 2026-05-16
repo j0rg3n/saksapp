@@ -2,17 +2,17 @@
 @using SaksAppWeb.Models
 
 @{
-    ViewData["Title"] = "Cases";
+    ViewData["Title"] = "Saker";
 }
 
 <div class="d-flex justify-content-between align-items-center">
-    <h1>Cases</h1>
+    <h1>Saker</h1>
     <div>
         <form method="get" asp-action="Index" class="d-inline-flex align-items-center gap-2">
             <input type="checkbox" class="form-check-input" name="showClosed" id="showClosed" value="true" @(Context.Request.Query["showClosed"].ToString() == "true" ? "checked" : "") onchange="this.form.submit()">
-            <label class="form-check-label" for="showClosed">Show closed</label>
+            <label class="form-check-label" for="showClosed">Vis lukkede</label>
         </form>
-        <a class="btn btn-primary ms-3" asp-action="Create">New case</a>
+        <a class="btn btn-primary ms-3" asp-action="Create">Ny sak</a>
     </div>
 </div>
 
@@ -20,11 +20,11 @@
     <thead>
     <tr>
         <th>#</th>
-        <th>Title</th>
-        <th>Theme</th>
-        <th>Priority</th>
+        <th>Tittel</th>
+        <th>Tema</th>
+        <th>Prioritet</th>
         <th>Status</th>
-        <th>Assignee</th>
+        <th>Ansvarlig</th>
         <th>Tidsfrist</th>
         <th></th>
     </tr>
@@ -50,7 +50,7 @@
                 }
             </td>
             <td class="text-end">
-                <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@c.Id">Open</a>
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@c.Id">Åpne</a>
             </td>
         </tr>
     }
