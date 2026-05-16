@@ -18,9 +18,11 @@ public interface ISimplePdfWriter
     int GetCurrentPageNumber();
     void Blank(double points = 8);
     void WriteAttachmentTocEntry(int pageNumber, int attachmentNumber, string fileName);
+    void WriteAttachmentTocEntryLabel(int pageNumber, string label, string fileName);
     int AddPdfAttachmentStart();
     void AddPdfAttachment(byte[] pdfContent, string fileName, int number);
     void AddImageAttachment(byte[] imageContent, string fileName, int number);
+    void OutcomeBadge(string label, string colorHex);
     byte[] ToBytes();
 }
 

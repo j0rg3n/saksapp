@@ -25,11 +25,15 @@ public sealed class CapturingPdfWriter : ISimplePdfWriter
     public void Blank(double points = 8) => Calls.Add($"Blank:{points}");
     public void WriteAttachmentTocEntry(int pageNumber, int attachmentNumber, string fileName)
         => Calls.Add($"WriteAttachmentTocEntry:{attachmentNumber}:{fileName}");
+    public void WriteAttachmentTocEntryLabel(int pageNumber, string label, string fileName)
+        => Calls.Add($"WriteAttachmentTocEntryLabel:{label}:{fileName}");
     public int AddPdfAttachmentStart() { Calls.Add("AddPdfAttachmentStart"); return 1; }
     public void AddPdfAttachment(byte[] pdfContent, string fileName, int number)
         => Calls.Add($"AddPdfAttachment:{number}:{fileName}");
     public void AddImageAttachment(byte[] imageContent, string fileName, int number)
         => Calls.Add($"AddImageAttachment:{number}:{fileName}");
+    public void OutcomeBadge(string label, string colorHex)
+        => Calls.Add($"OutcomeBadge:{label}:{colorHex}");
     public byte[] ToBytes() => ResultBytes;
 }
 

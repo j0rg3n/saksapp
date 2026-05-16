@@ -30,7 +30,7 @@ public record AgendaPdfData(
     Meeting Meeting,
     int Sequence,
     IReadOnlyList<AgendaItemData> Items,
-    IReadOnlyDictionary<string, int> AttachmentNumberByFileName,
+    IReadOnlyDictionary<string, string> AttachmentLabelByFileName,
     IReadOnlyList<AgendaAttachmentRef> AttachmentsInOrder);
 
 public interface IAgendaPdfDataService
@@ -152,16 +152,25 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
             .GroupBy(x => x.Item1)
             .ToDictionary(g => g.Key, g => g.Select(x => new AgendaAttachmentRef(x.Item2, x.Item3, x.Item4)).ToList());
 
-        // Collect referenced attachments in order (de-duplicated by filename)
+        // Collect referenced attachments in order (de-duplicated by filename) with per-item labels
         var referencedAttachments = new Dictionary<string, AgendaAttachmentRef>(StringComparer.OrdinalIgnoreCase);
+        var attachmentLabelByFileName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var row in agendaRows)
         {
+            var agendaOrder = row.mel.AgendaOrder;
+            var attachmentIndex = 1;
+
             if (previousByCaseId.TryGetValue(row.boardCase.Id, out var prev)
                 && prevMinutesAttachmentsByCaseEventId.TryGetValue(prev.CaseEventId, out var prevAtts))
             {
                 foreach (var att in prevAtts)
+                {
                     referencedAttachments.TryAdd(att.FileName, att);
+                    if (!attachmentLabelByFileName.ContainsKey(att.FileName))
+                        attachmentLabelByFileName[att.FileName] = $"{agendaOrder}.{attachmentIndex}";
+                    attachmentIndex++;
+                }
             }
 
             var windowStart = previousByCaseId.TryGetValue(row.boardCase.Id, out var p2)
@@ -178,15 +187,17 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
             foreach (var cec in betweenEvents)
             {
                 if (commentAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var atts))
+                {
                     foreach (var att in atts)
+                    {
                         referencedAttachments.TryAdd(att.FileName, att);
+                        if (!attachmentLabelByFileName.ContainsKey(att.FileName))
+                            attachmentLabelByFileName[att.FileName] = $"{agendaOrder}.{attachmentIndex}";
+                        attachmentIndex++;
+                    }
+                }
             }
         }
-
-        var attachmentNumberByFileName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var num = 1;
-        foreach (var key in referencedAttachments.Keys)
-            attachmentNumberByFileName[key] = num++;
 
         // Assemble per-item data
         var items = new List<AgendaItemData>();
@@ -225,7 +236,7 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
             meeting,
             seq,
             items,
-            attachmentNumberByFileName,
+            attachmentLabelByFileName,
             referencedAttachments.Values.ToList());
     }
 }
