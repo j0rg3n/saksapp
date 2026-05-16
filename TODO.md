@@ -259,23 +259,23 @@ public class MeetingEventLink
 **Mål**: Fjerne kunstig skille mellom "saksmerknad" (comment) og frittstående hendelser. Alle sakhendelser bruker samme kategorier (general/avvik/tiltak) og har samme funksjonalitet uavhengig av om de ble opprettet fra saken eller fra Hendelseslogg.
 
 #### 4.5.1 Kategorivalg i sakvisning
-- [ ] Erstatt "Add comment" form med "Legg til hendelse" form med kategorivalg (Generelt/Avvik/Tiltak, default: Generelt)
-- [ ] `CasesController.AddComment` → `AddEvent`, oppretter CaseEvent med valgt kategori (ikke hardkodet "comment")
-- [ ] Oppdater view og action-navn konsistent
+- [x] Erstatt "Add comment" form med "Legg til hendelse" form med kategorivalg (Generelt/Avvik/Tiltak, default: Generelt)
+- [x] `CasesController.AddComment` → `AddEvent`, oppretter CaseEvent med valgt kategori (ikke hardkodet "comment")
+- [x] Oppdater view og action-navn konsistent
 
 #### 4.5.2 Slett fra sakvisning for alle hendelsestyper
-- [ ] Legg til slett-knapp for avvik/tiltak/general events i sakens tidslinje
-- [ ] Bruk `CaseEventsController.SoftDelete` (redirect tilbake til saken etter sletting)
+- [x] Legg til slett-knapp for avvik/tiltak/general events i sakens tidslinje
+- [x] Bruk `CaseEventsController.SoftDelete` (redirect tilbake til saken etter sletting)
 
 #### 4.5.3 Multi-sak badges i tidslinje
-- [ ] Legg til `LinkedCases` (liste av `LinkedCaseSummary`) på `CaseTimelineItemVm`
-- [ ] Populer fra `CaseEventCases` i `GetCaseDetailsAsync` — filtrer ut gjeldende sak, vis de andre
-- [ ] Vis som klikkbare badges i sakens tidslinje
+- [x] Legg til `LinkedCases` (liste av `LinkedCaseSummary`) på `CaseTimelineItemVm`
+- [x] Populer fra `CaseEventCases` i `GetCaseDetailsAsync` — filtrer ut gjeldende sak, vis de andre
+- [x] Vis som klikkbare badges i sakens tidslinje
 
 #### 4.5.4 Vedlegg-opplasting for alle hendelsestyper fra sakvisning
-- [ ] Legg til upload-skjema for avvik/tiltak/general i sakens tidslinje (samme mønster som for comment)
-- [ ] Legg til `UploadBoardEventAttachment` og `RemoveBoardEventAttachment` actions i CasesController
-- [ ] Vis vedlegg med slett-knapp for redigerbare hendelser
+- [x] Legg til upload-skjema for avvik/tiltak/general i sakens tidslinje (samme mønster som for comment)
+- [x] Legg til `UploadBoardEventAttachment` og `RemoveBoardEventAttachment` actions i CasesController
+- [x] Vis vedlegg med slett-knapp for redigerbare hendelser
 
 **Test**: Bygg og kjør manuelle tester. Legg til tester for nye actions.
 

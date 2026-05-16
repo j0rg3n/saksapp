@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-source auth/secret.env
+source "$(dirname "$0")/../auth/secret.env"
 
 VM_HOST="root@${UPCLOUD__HOST}"
 VM_PATH="/root/SaksAppWeb/db/Backups"
