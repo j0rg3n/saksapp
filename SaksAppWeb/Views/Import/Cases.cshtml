@@ -1,14 +1,14 @@
 @model SaksAppWeb.Services.ImportResult?
 
 @{
-    ViewData["Title"] = "Import cases";
+    ViewData["Title"] = "Importer saker";
 }
 
-<h1>Import cases</h1>
+<h1>Importer saker</h1>
 
 <div class="alert alert-info">
-    <div><strong>One-time bootstrap import</strong></div>
-    <div>Recommended: delete <code>app.db</code> first, then run migrations, then import.</div>
+    <div><strong>Engangsimport</strong></div>
+    <div>Anbefalt: slett <code>app.db</code> først, kjør migreringer, deretter importer.</div>
 </div>
 
 <form method="post" enctype="multipart/form-data">
@@ -19,7 +19,7 @@
         <input class="form-control" type="file" name="file" />
     </div>
 
-    <button class="btn btn-primary" type="submit">Import</button>
+    <button class="btn btn-primary" type="submit">Importer</button>
 </form>
 
 @if (!ViewData.ModelState.IsValid)
@@ -35,16 +35,16 @@
 @if (Model is not null)
 {
     <div class="alert alert-success mt-3">
-        Imported successfully.
-        Created: <strong>@Model.Created</strong>,
-        Updated: <strong>@Model.Updated</strong>,
-        Skipped: <strong>@Model.Skipped</strong>.
+        Import fullført.
+        Opprettet: <strong>@Model.Created</strong>,
+        Oppdatert: <strong>@Model.Updated</strong>,
+        Hoppet over: <strong>@Model.Skipped</strong>.
     </div>
 
     @if (Model.Warnings.Any())
     {
         <div class="alert alert-warning">
-            <strong>Warnings</strong>
+            <strong>Advarsler</strong>
             <ul>
                 @foreach (var w in Model.Warnings)
                 {

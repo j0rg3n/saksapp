@@ -1,23 +1,23 @@
 @model IReadOnlyList<SaksAppWeb.Models.AuditEvent>
 
 @{
-    ViewData["Title"] = "Audit log";
+    ViewData["Title"] = "Revisjonslogg";
 }
 
-<h1>Audit log</h1>
+<h1>Revisjonslogg</h1>
 
 <form method="get" class="mb-3">
     <div class="row g-2 align-items-end">
         <div class="col-md-6">
-            <label class="form-label">Search</label>
+            <label class="form-label">Søk</label>
             <input class="form-control" name="q" value="@ViewBag.Query" placeholder="EntityType / EntityId / Reason" />
         </div>
         <div class="col-md-2">
-            <label class="form-label">Take</label>
+            <label class="form-label">Antall</label>
             <input class="form-control" type="number" name="take" value="@ViewBag.Take" min="50" max="1000" />
         </div>
         <div class="col-md-2">
-            <button class="btn btn-primary" type="submit">Filter</button>
+            <button class="btn btn-primary" type="submit">Filtrer</button>
         </div>
     </div>
 </form>
@@ -25,12 +25,12 @@
 <table class="table table-sm table-striped">
     <thead>
     <tr>
-        <th>When (UTC)</th>
-        <th>Actor</th>
-        <th>Action</th>
-        <th>Entity</th>
+        <th>Tidspunkt (UTC)</th>
+        <th>Bruker</th>
+        <th>Handling</th>
+        <th>Entitet</th>
         <th>Id</th>
-        <th>Reason</th>
+        <th>Årsak</th>
     </tr>
     </thead>
     <tbody>
@@ -47,14 +47,14 @@
         <tr>
             <td colspan="6">
                 <details>
-                    <summary>Before/After</summary>
+                    <summary>Før/Etter</summary>
                     <div class="row">
                         <div class="col-md-6">
-                            <strong>Before</strong>
+                            <strong>Før</strong>
                             <pre style="white-space: pre-wrap">@e.BeforeJson</pre>
                         </div>
                         <div class="col-md-6">
-                            <strong>After</strong>
+                            <strong>Etter</strong>
                             <pre style="white-space: pre-wrap">@e.AfterJson</pre>
                         </div>
                     </div>
