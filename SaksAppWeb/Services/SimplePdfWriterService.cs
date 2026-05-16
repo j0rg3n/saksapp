@@ -187,6 +187,48 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
         _y += fontHeight + LineGap + 4;
     }
 
+    public void WriteAttachmentTocEntryLabel(int pageNumber, string label, string fileName)
+    {
+        var text = $"{pageNumber}: Vedlegg {label}: {fileName}";
+        var fontHeight = _pFont.GetHeight();
+        var textWidth = _gfx.MeasureString(text, _pFont).Width;
+
+        _gfx.DrawString(text, _pFont, XBrushes.Black, new XRect(Margin, _y, textWidth, fontHeight + LineGap), XStringFormats.TopLeft);
+
+        _pendingTocLinks.Add(new PendingTocLink
+        {
+            PageNumber = _doc.PageCount,
+            Y = _y,
+            Width = textWidth,
+            Height = fontHeight + LineGap,
+            TargetPageNumber = pageNumber
+        });
+
+        _y += fontHeight + LineGap + 4;
+    }
+
+    public void OutcomeBadge(string label, string colorHex)
+    {
+        var r = Convert.ToInt32(colorHex.Substring(1, 2), 16);
+        var g = Convert.ToInt32(colorHex.Substring(3, 2), 16);
+        var b = Convert.ToInt32(colorHex.Substring(5, 2), 16);
+        var color = XColor.FromArgb(r, g, b);
+        var brush = new XSolidBrush(color);
+
+        var fontHeight = _pFont.GetHeight();
+        var circleRadius = fontHeight * 0.4;
+        var circleX = Margin + circleRadius;
+        var circleY = _y + fontHeight * 0.1;
+
+        EnsureSpace(fontHeight + LineGap);
+        _gfx.DrawEllipse(brush, circleX - circleRadius, circleY, circleRadius * 2, circleRadius * 2);
+
+        var textX = Margin + circleRadius * 2 + 4;
+        var textRect = new XRect(textX, _y, _page.Width - textX - Margin, fontHeight + LineGap);
+        _gfx.DrawString(label, _pFont, XBrushes.Black, textRect, XStringFormats.TopLeft);
+        _y += fontHeight + LineGap + 4;
+    }
+
     public int AddPdfAttachmentStart()
     {
         return _doc.PageCount + 1;

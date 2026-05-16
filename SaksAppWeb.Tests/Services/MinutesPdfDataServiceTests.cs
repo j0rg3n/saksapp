@@ -141,9 +141,9 @@ public class MinutesPdfDataServiceTests : IDisposable
 
         Assert.NotNull(result);
         Assert.Single(result.Entries);
-        Assert.Equal(2, result.Entries[0].AttachmentNumbers.Count);
-        Assert.Equal(1, result.Entries[0].AttachmentNumbers[0]);
-        Assert.Equal(2, result.Entries[0].AttachmentNumbers[1]);
+        Assert.Equal(2, result.Entries[0].AttachmentLabels.Count);
+        Assert.Equal("1.1", result.Entries[0].AttachmentLabels[0]);
+        Assert.Equal("1.2", result.Entries[0].AttachmentLabels[1]);
     }
 
     [Fact]
@@ -162,5 +162,47 @@ public class MinutesPdfDataServiceTests : IDisposable
 
         Assert.NotNull(result);
         Assert.Equal(5, result.Sequence);
+    }
+
+    [Fact]
+    public async Task GetMinutesDataAsync_AssignsPerCaseLabels_TwoEntries()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        var c1 = new BoardCase { CaseNumber = 1, Title = "First", Status = CaseStatus.Open };
+        var c2 = new BoardCase { CaseNumber = 2, Title = "Second", Status = CaseStatus.Open };
+        _db.BoardCases.AddRange(c1, c2);
+        await _db.SaveChangesAsync();
+
+        var ce1 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ce2 = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        _db.CaseEvents.AddRange(ce1, ce2);
+        _db.MeetingMinutes.Add(new MeetingMinutes { MeetingId = meeting.Id });
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce1.Id, BoardCaseId = c1.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ce2.Id, BoardCaseId = c2.Id });
+        var mel1 = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce1.Id, AgendaOrder = 2, AgendaTextSnapshot = "" };
+        var mel2 = new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ce2.Id, AgendaOrder = 3, AgendaTextSnapshot = "" };
+        _db.MeetingEventLinks.AddRange(mel1, mel2);
+        await _db.SaveChangesAsync();
+
+        var att1 = new Attachment { OriginalFileName = "a.pdf", ContentType = "application/pdf", SizeBytes = 10, Content = new byte[10], UploadedByUserId = "u" };
+        var att2 = new Attachment { OriginalFileName = "b.pdf", ContentType = "application/pdf", SizeBytes = 10, Content = new byte[10], UploadedByUserId = "u" };
+        _db.Attachments.AddRange(att1, att2);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventAttachments.Add(new CaseEventAttachment { CaseEventId = ce1.Id, AttachmentId = att1.Id });
+        _db.CaseEventAttachments.Add(new CaseEventAttachment { CaseEventId = ce2.Id, AttachmentId = att2.Id });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.GetMinutesDataAsync(meeting.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Entries.Count);
+        Assert.Single(result.Entries[0].AttachmentLabels);
+        Assert.Equal("2.1", result.Entries[0].AttachmentLabels[0]);
+        Assert.Single(result.Entries[1].AttachmentLabels);
+        Assert.Equal("3.1", result.Entries[1].AttachmentLabels[0]);
     }
 }

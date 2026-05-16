@@ -5,5 +5,6 @@ public enum MeetingCaseOutcome
     Continue = 1,
     Closed = 2,
     Deferred = 3,
-    Orientering = 4
+    Orientering = 4,
+    Discussion = 5
 }

@@ -471,8 +471,8 @@ public class MeetingsController : Controller
                 if (!string.IsNullOrWhiteSpace(tidsfrist)) pdf.HeadingInline("Tidsfrist: ", tidsfrist);
                 if (prev.Attachments.Count > 0)
                 {
-                    var attRefs = string.Join(", ", prev.Attachments.Select(a => $"[Vedlegg {data.AttachmentNumberByFileName[a.FileName]}]"));
-                    pdf.WriteTextWithAttachmentLinks($"Vedlegg: {attRefs}");
+                    var attRefs = string.Join(", ", prev.Attachments.Select(a => $"Vedlegg {data.AttachmentLabelByFileName[a.FileName]}"));
+                    pdf.Paragraph($"Vedlegg: {attRefs}");
                 }
             }
             else
@@ -517,8 +517,8 @@ public class MeetingsController : Controller
                     pdf.ParagraphFirstLine(firstLine, continuation, isItalic: true);
                     if (com.Attachments.Count > 0)
                     {
-                        var attRefs = string.Join(", ", com.Attachments.Select(a => $"[Vedlegg {data.AttachmentNumberByFileName[a.FileName]}]"));
-                        pdf.WriteTextWithAttachmentLinks(attRefs);
+                        var attRefs = string.Join(", ", com.Attachments.Select(a => $"Vedlegg {data.AttachmentLabelByFileName[a.FileName]}"));
+                        pdf.Paragraph(attRefs);
                     }
                 }
             }
@@ -534,7 +534,8 @@ public class MeetingsController : Controller
             var attachmentNumber = 1;
             foreach (var att in data.AttachmentsInOrder)
             {
-                pdf.Paragraph($"Vedlegg {attachmentNumber}: {att.FileName}");
+                var label = data.AttachmentLabelByFileName[att.FileName];
+                pdf.WriteAttachmentTocEntryLabel(pdf.GetCurrentPageNumber() + 1, label, att.FileName);
                 attachmentNumber++;
             }
             attachmentNumber = 1;
@@ -700,7 +701,7 @@ public class MeetingsController : Controller
 
         if (!string.IsNullOrWhiteSpace(minutes.ApprovalOfPreviousMinutesText))
         {
-            pdf.Heading("1. Godkjenning av forrige referat");
+            pdf.Heading2("1. Godkjenning av forrige referat");
             pdf.Paragraph(minutes.ApprovalOfPreviousMinutesText);
             pdf.Blank(12);
         }
@@ -716,18 +717,29 @@ public class MeetingsController : Controller
                 MeetingCaseOutcome.Closed => "Avsluttet",
                 MeetingCaseOutcome.Deferred => "Utsatt",
                 MeetingCaseOutcome.Orientering => "Orientering",
+                MeetingCaseOutcome.Discussion => "Diskusjon",
                 _ => entry.Entry.Outcome.ToString()
             };
 
-            pdf.Heading($"{i}. {entry.Case.Title} ({assignee}; #{entry.Case.CaseNumber})");
-            pdf.Paragraph($"Status: {outcomeDisplay}");
+            pdf.Heading2($"{i}. {entry.Case.Title} ({assignee}; #{entry.Case.CaseNumber})");
+
+            var outcomeColor = entry.Entry.Outcome switch
+            {
+                MeetingCaseOutcome.Continue => "#0D6EFD",
+                MeetingCaseOutcome.Closed => "#198754",
+                MeetingCaseOutcome.Deferred => "#6C757D",
+                MeetingCaseOutcome.Orientering => "#6F42C1",
+                MeetingCaseOutcome.Discussion => "#FFC107",
+                _ => "#6C757D"
+            };
+            pdf.OutcomeBadge(outcomeDisplay, outcomeColor);
 
             if (!string.IsNullOrWhiteSpace(entry.Entry.OfficialNotes)) pdf.Paragraph(entry.Entry.OfficialNotes);
             if (!string.IsNullOrWhiteSpace(entry.Entry.DecisionText)) pdf.Paragraph($"Vedtak: {entry.Entry.DecisionText}");
             if (!string.IsNullOrWhiteSpace(entry.Entry.FollowUpText)) pdf.Paragraph($"Oppfølging: {entry.Entry.FollowUpText}");
 
-            if (entry.AttachmentNumbers.Count > 0)
-                pdf.Paragraph(string.Join(", ", entry.AttachmentNumbers.Select(n => $"Vedlegg {n}")));
+            if (entry.AttachmentLabels.Count > 0)
+                pdf.Paragraph(string.Join(", ", entry.AttachmentLabels.Select(label => $"Vedlegg {label}")));
 
             pdf.Blank(10);
             i++;
@@ -736,34 +748,30 @@ public class MeetingsController : Controller
         if (!string.IsNullOrWhiteSpace(minutes.EventueltText))
         {
             pdf.Blank(10);
-            pdf.Heading("Eventuelt");
+            pdf.Heading2("Eventuelt");
             pdf.Paragraph(minutes.EventueltText);
         }
 
-        if (data.AllAttachments.Count > 0)
+        // Collect all labeled attachments from entries
+        var labeledAttachments = data.Entries
+            .SelectMany(e => e.Attachments.Zip(e.AttachmentLabels, (att, label) => (label, att)))
+            .ToList();
+
+        if (labeledAttachments.Count > 0)
         {
             pdf.Blank(12);
             pdf.Heading("Vedlegg");
 
-            var pageNumbers = new List<int>();
-            foreach (var _ in data.AllAttachments)
-                pageNumbers.Add(pdf.GetCurrentPageNumber() + 1);
+            foreach (var (label, att) in labeledAttachments)
+                pdf.WriteAttachmentTocEntryLabel(pdf.GetCurrentPageNumber() + 1, label, att.FileName);
 
-            var attachmentNumber = 1;
-            foreach (var att in data.AllAttachments)
+            foreach (var (label, att) in labeledAttachments)
             {
-                pdf.WriteAttachmentTocEntry(pageNumbers[attachmentNumber - 1], attachmentNumber, att.FileName);
-                attachmentNumber++;
-            }
-
-            attachmentNumber = 1;
-            foreach (var att in data.AllAttachments)
-            {
+                var seqNum = labeledAttachments.IndexOf((label, att)) + 1;
                 if (att.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-                    pdf.AddPdfAttachment(att.Content, att.FileName, attachmentNumber);
+                    pdf.AddPdfAttachment(att.Content, att.FileName, seqNum);
                 else if (att.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                    pdf.AddImageAttachment(att.Content, att.FileName, attachmentNumber);
-                attachmentNumber++;
+                    pdf.AddImageAttachment(att.Content, att.FileName, seqNum);
             }
         }
 

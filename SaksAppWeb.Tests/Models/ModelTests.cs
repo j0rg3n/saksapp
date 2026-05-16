@@ -262,3 +262,12 @@ public class MeetingMinutesCaseEntryTests
         Assert.Equal(MeetingCaseOutcome.Closed, entry.Outcome);
     }
 }
+
+public class MeetingCaseOutcomeTests
+{
+    [Fact]
+    public void MeetingCaseOutcome_Discussion_HasValue5()
+    {
+        Assert.Equal(5, (int)MeetingCaseOutcome.Discussion);
+    }
+}

@@ -768,7 +768,7 @@ public class MeetingsControllerTests : IDisposable
             meeting,
             Sequence: 1,
             Items: Array.Empty<AgendaItemData>(),
-            AttachmentNumberByFileName: new Dictionary<string, int>(),
+            AttachmentLabelByFileName: new Dictionary<string, string>(),
             AttachmentsInOrder: Array.Empty<AgendaAttachmentRef>());
 
         _agendaPdfDataMock.Setup(x => x.GetAgendaDataAsync(1, It.IsAny<CancellationToken>()))
@@ -827,6 +827,74 @@ public class MeetingsControllerTests : IDisposable
         Assert.Equal("application/pdf", fileResult.ContentType);
         Assert.NotNull(capturingFactory.Last);
         Assert.Contains(capturingFactory.Last!.Calls, c => c.StartsWith("Title:"));
+    }
+
+    [Fact]
+    public async Task DownloadMinutesPdf_CallsOutcomeBadge_ForContinueOutcome()
+    {
+        var meeting = new Meeting { Id = 3, MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        var minutes = new MeetingMinutes { Id = 2, MeetingId = 3 };
+        var boardCase = new BoardCase { Id = 1, CaseNumber = 1, Title = "Test Case", Status = CaseStatus.Open };
+        var mel = new MeetingEventLink { MeetingId = 3, CaseEventId = 1, AgendaOrder = 2, Outcome = MeetingCaseOutcome.Continue };
+        var entry = new MinutesCaseEntryData(
+            mel, boardCase, "John Doe",
+            Attachments: Array.Empty<MinutesAttachmentRef>(),
+            AttachmentLabels: Array.Empty<string>());
+
+        var data = new MinutesPdfData(
+            meeting, minutes,
+            Sequence: 1,
+            Entries: new[] { entry },
+            AllAttachments: Array.Empty<MinutesAttachmentRef>());
+
+        _minutesPdfDataMock.Setup(x => x.GetMinutesDataAsync(3, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(data);
+
+        var capturingFactory = new CapturingPdfWriterFactory();
+        var controller = new MeetingsController(
+            _db, _auditMock.Object, _userManager, _pdfSequenceMock.Object,
+            _meetingQueryMock.Object, capturingFactory,
+            _agendaPdfDataMock.Object, _minutesPdfDataMock.Object, _minutesSaveMock.Object);
+        controller.ControllerContext = _controller.ControllerContext;
+
+        await controller.DownloadMinutesPdf(3, CancellationToken.None);
+
+        Assert.NotNull(capturingFactory.Last);
+        Assert.True(capturingFactory.Last!.Calls.Any(c => c.StartsWith("OutcomeBadge:Fortsetter:")));
+    }
+
+    [Fact]
+    public async Task DownloadMinutesPdf_UsesHeading2_ForCaseEntries()
+    {
+        var meeting = new Meeting { Id = 4, MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        var minutes = new MeetingMinutes { Id = 3, MeetingId = 4 };
+        var boardCase = new BoardCase { Id = 2, CaseNumber = 2, Title = "Another Case", Status = CaseStatus.Open };
+        var mel = new MeetingEventLink { MeetingId = 4, CaseEventId = 2, AgendaOrder = 2 };
+        var entry = new MinutesCaseEntryData(
+            mel, boardCase, "Jane Smith",
+            Attachments: Array.Empty<MinutesAttachmentRef>(),
+            AttachmentLabels: Array.Empty<string>());
+
+        var data = new MinutesPdfData(
+            meeting, minutes,
+            Sequence: 1,
+            Entries: new[] { entry },
+            AllAttachments: Array.Empty<MinutesAttachmentRef>());
+
+        _minutesPdfDataMock.Setup(x => x.GetMinutesDataAsync(4, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(data);
+
+        var capturingFactory = new CapturingPdfWriterFactory();
+        var controller = new MeetingsController(
+            _db, _auditMock.Object, _userManager, _pdfSequenceMock.Object,
+            _meetingQueryMock.Object, capturingFactory,
+            _agendaPdfDataMock.Object, _minutesPdfDataMock.Object, _minutesSaveMock.Object);
+        controller.ControllerContext = _controller.ControllerContext;
+
+        await controller.DownloadMinutesPdf(4, CancellationToken.None);
+
+        Assert.NotNull(capturingFactory.Last);
+        Assert.True(capturingFactory.Last!.Calls.Any(c => c.StartsWith("Heading2:") && c.Contains("Another Case")));
     }
 
     #endregion

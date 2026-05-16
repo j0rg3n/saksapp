@@ -12,7 +12,7 @@ public record MinutesCaseEntryData(
     BoardCase Case,
     string? AssigneeName,
     IReadOnlyList<MinutesAttachmentRef> Attachments,
-    IReadOnlyList<int> AttachmentNumbers);
+    IReadOnlyList<string> AttachmentLabels);
 
 public record MinutesPdfData(
     Meeting Meeting,
@@ -90,17 +90,16 @@ public sealed class MinutesPdfDataService : IMinutesPdfDataService
 
         var seq = await _pdfSequence.AllocateNextAsync(meetingId, PdfDocumentType.Minutes, ct);
 
-        // Assign global sequential attachment numbers
-        var globalAttNum = 1;
+        // Assign per-case attachment labels
         var entries = new List<MinutesCaseEntryData>();
         foreach (var row in rows)
         {
             var atts = attachmentsByCaseEventId.TryGetValue(row.mel.CaseEventId, out var list) ? list : new List<MinutesAttachmentRef>();
-            var nums = Enumerable.Range(globalAttNum, atts.Count).ToList();
-            globalAttNum += atts.Count;
+            var agendaOrder = row.mel.AgendaOrder;
+            var labels = Enumerable.Range(1, atts.Count).Select(i => $"{agendaOrder}.{i}").ToList();
 
             var assigneeName = userDisplay.TryGetValue(row.boardCase.AssigneeUserId ?? "", out var d) ? d : row.boardCase.AssigneeUserId;
-            entries.Add(new MinutesCaseEntryData(row.mel, row.boardCase, assigneeName, atts, nums));
+            entries.Add(new MinutesCaseEntryData(row.mel, row.boardCase, assigneeName, atts, labels));
         }
 
         var allAttachments = entryAttachmentsFull
