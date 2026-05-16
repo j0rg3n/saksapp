@@ -283,23 +283,23 @@ public class MeetingEventLink
 
 ### Phase 5: PDF-endringer
 
-#### 5.1 Fiks Heading-nivåer
-- [ ] **Task 5.1.1**: Gå gjennom Agenda PDF og standardiser H1/H2/H3
-- [ ] **Task 5.1.2**: Gå gjennom Minutes PDF og standardiser H1/H2/H3
+#### 5.1 Fiks Heading-nivåer ✅ KOMPLETT
+- [x] **Task 5.1.1**: Gå gjennom Agenda PDF og standardiser H1/H2/H3
+- [x] **Task 5.1.2**: Gå gjennom Minutes PDF og standardiser H1/H2/H3
 
-#### 5.2 Per-case Vedlegg-nummerering
-- [ ] **Task 5.2.1**: Endre logikk i `DownloadAgendaPdf` til per-case (2.1, 2.2)
-- [ ] **Task 5.2.2**: Endre logikk i `DownloadMinutesPdf` til per-case
-- [ ] **Task 5.2.3**: Test at vedlegg-nummerering er korrekt i generert PDF
+#### 5.2 Per-case Vedlegg-nummerering ✅ KOMPLETT
+- [x] **Task 5.2.1**: Endre logikk i `DownloadAgendaPdf` til per-case (2.1, 2.2)
+- [x] **Task 5.2.2**: Endre logikk i `DownloadMinutesPdf` til per-case
+- [x] **Task 5.2.3**: Test at vedlegg-nummerering er korrekt i generert PDF
 
-#### 5.3 Utfall Badge
-- [ ] **Task 5.3.1**: Endre Minutes PDF til å vise Utfall som badge (● farge)
-- [ ] **Task 5.3.2**: Definer fargekart: Blå=Fortsetter, Grønn=Avsluttet, Grå=Utsatt, Lilla=Orientering, Gul=Diskusjon
+#### 5.3 Utfall Badge ✅ KOMPLETT
+- [x] **Task 5.3.1**: Endre Minutes PDF til å vise Utfall som badge (● farge)
+- [x] **Task 5.3.2**: Definer fargekart: Blå=Fortsetter, Grønn=Avsluttet, Grå=Utsatt, Lilla=Orientering, Gul=Diskusjon
 
-#### 5.4 Diskusjon-utfall
-- [ ] Legg til `Discussion = 5` i `MeetingCaseOutcome`-enum
-- [ ] Legg til "Diskusjon" i utfallsvelger i Minutes-visningen
-- [ ] EF Core-migrering er ikke nødvendig (enum lagres som int)
+#### 5.4 Diskusjon-utfall ✅ KOMPLETT
+- [x] Legg til `Discussion = 5` i `MeetingCaseOutcome`-enum
+- [x] Legg til "Diskusjon" i utfallsvelger i Minutes-visningen
+- [x] EF Core-migrering er ikke nødvendig (enum lagres som int)
 
 **Test**: Generer begge PDF-er og verifiser layout.
 
