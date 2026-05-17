@@ -54,15 +54,18 @@ public class CaseEventsControllerTests : IDisposable
     {
         _db.CaseEvents.AddRange(
             new CaseEvent { Category = "avvik", Content = "Avvik 1", CreatedAt = DateTimeOffset.UtcNow },
-            new CaseEvent { Category = "comment", Content = "Comment (excluded)", CreatedAt = DateTimeOffset.UtcNow },
+            new CaseEvent { Category = "tiltak", Content = "Tiltak", CreatedAt = DateTimeOffset.UtcNow },
+            new CaseEvent { Category = "general", Content = "General", CreatedAt = DateTimeOffset.UtcNow },
             new CaseEvent { Category = "meeting", Content = "Meeting (excluded)", CreatedAt = DateTimeOffset.UtcNow });
         await _db.SaveChangesAsync();
 
         var result = await _controller.Index(null, CancellationToken.None) as ViewResult;
 
         var vm = Assert.IsType<CaseEventIndexVm>(result!.Model);
-        Assert.Single(vm.Events);
-        Assert.Equal("avvik", vm.Events[0].Category);
+        // Should return all non-meeting events (3 events)
+        Assert.Equal(3, vm.Events.Count);
+        // Meeting should be excluded
+        Assert.DoesNotContain(vm.Events, e => e.Category == "meeting");
     }
 
     [Fact]

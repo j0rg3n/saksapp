@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Brukere";
+    var currentUserId = ViewBag.CurrentUserId;
 }
 
 <h1>Brukere</h1>
@@ -11,6 +12,8 @@
         <tr>
             <th>E-post</th>
             <th>Fullt navn</th>
+            <th>Status</th>
+            <th>Admin</th>
             <th></th>
         </tr>
     </thead>
@@ -20,8 +23,57 @@
             <tr>
                 <td>@user.Email</td>
                 <td>@(user.FullName ?? "-")</td>
+                <td>
+                    @if (user.IsApproved)
+                    {
+                        <span class="badge bg-success">Godkjent</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning">Venter</span>
+                    }
+                </td>
+                <td>
+                    @if (user.IsAdmin)
+                    {
+                        <span class="badge bg-info">Ja</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">-</span>
+                    }
+                </td>
                 <td class="text-end">
-                    <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@user.Id">Rediger navn</a>
+                    <div class="btn-group" role="group" aria-label="Brukerhandlinger">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@user.Id">Rediger navn</a>
+
+                        @if (!user.IsApproved)
+                        {
+                            <form method="post" asp-action="Approve" asp-route-id="@user.Id" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-success">Godkjenn</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form method="post" asp-action="Unapprove" asp-route-id="@user.Id" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Avvis</button>
+                            </form>
+                        }
+
+                        @if (user.Id != currentUserId)
+                        {
+                            <form method="post" asp-action="ToggleAdmin" asp-route-id="@user.Id" style="display: inline;">
+                                @if (user.IsAdmin)
+                                {
+                                    <button type="submit" class="btn btn-sm btn-outline-warning">Fjern admin</button>
+                                }
+                                else
+                                {
+                                    <button type="submit" class="btn btn-sm btn-outline-info">Gjør til admin</button>
+                                }
+                            </form>
+                        }
+                    </div>
                 </td>
             </tr>
         }
