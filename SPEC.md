@@ -448,6 +448,94 @@ See TODO.md for detailed tasks.
 
 ---
 
+## Pentest Design: Phase 6A (User Roles and Approval)
+
+This section documents the penetration test plan for the Phase 6A authentication and authorization feature. Each test case includes: the attack vector, how to test it, and the expected (correct) outcome.
+
+### Attack Surface
+
+| Component | Entry points |
+|-----------|-------------|
+| `RequireApprovedUserMiddleware` | All authenticated routes except `/PendingApproval/*`, `/Account/*`, `/Identity/*`, static assets |
+| `AdminOnlyFilter` | `UsersController` (all actions) |
+| `AppUserManager.CreateAsync` | Registration form (`/Identity/Account/Register`) |
+| `UsersController` (Approve/Unapprove/ToggleAdmin) | POST forms in `/Users/Index` |
+| `PendingApprovalController` | `/PendingApproval/Index` |
+
+### Test Cases
+
+#### T6A-01 — Approval bypass via direct URL
+**Threat**: Unapproved authenticated user navigates directly to a protected page.  
+**How to test**: Register a new account (do not have it approved), log in, then GET `/Cases/Index` directly.  
+**Expected**: 302 redirect to `/PendingApproval/Index`. No case data returned.  
+**Failure indicator**: Any 200 response with app content.
+
+#### T6A-02 — Approval bypass via middleware-exempt paths
+**Threat**: Unapproved user crafts a URL that looks like an exempt path but accesses app functionality.  
+**How to test**: As unapproved user, try GETs to `/Account/foo/../../Cases`, `/css/../Cases/Index`, `/Identity/../Cases`.  
+**Expected**: These paths should not resolve to protected actions (ASP.NET routing + Kestrel normalise paths before routing). Verify each returns 302 to pending-approval or 404, never app content.  
+**Failure indicator**: App content served to unapproved user through a path-traversal-style URL.
+
+#### T6A-03 — Admin action without admin status
+**Threat**: Regular (approved but non-admin) user calls `POST /Users/Approve` or `POST /Users/ToggleAdmin`.  
+**How to test**: Log in as a non-admin approved user; POST to `/Users/Approve?id=<some-user-id>` with a valid CSRF token.  
+**Expected**: 403 Forbidden from `AdminOnlyFilter`.  
+**Failure indicator**: 200 or 302 indicating the action executed.
+
+#### T6A-04 — Admin action as unapproved user
+**Threat**: Unapproved user calls admin endpoints directly, bypassing the approval middleware through middleware ordering.  
+**How to test**: As unapproved authenticated user, POST to `/Users/Approve?id=<some-user-id>`.  
+**Expected**: 302 to `/PendingApproval/Index` (middleware fires before `AdminOnlyFilter`).  
+**Failure indicator**: 403 would be acceptable too; 200/redirect to Index would indicate bypass.
+
+#### T6A-05 — Self-approval via mass assignment
+**Threat**: A user sets `IsApproved=true` or `IsAdmin=true` by injecting form fields into a POST request.  
+**How to test**: POST to `/Users/Edit?id=<own-id>` with extra fields `IsApproved=true&IsAdmin=true`.  
+**Expected**: `Edit` POST only processes `fullName`; `IsApproved`/`IsAdmin` are not model-bound there (they are set only via explicit `Approve`/`ToggleAdmin` actions). Verify the DB values are unchanged.  
+**Failure indicator**: User's `IsApproved` or `IsAdmin` flips to true after the request.
+
+#### T6A-06 — CSRF on admin actions
+**Threat**: Forged cross-site requests that trigger Approve/Unapprove/ToggleAdmin without the user's knowledge.  
+**How to test**: Craft a form on an external page that POSTs to `/Users/Approve?id=<victim-id>` and load it while logged in as admin. The form lacks the `__RequestVerificationToken` field.  
+**Expected**: 400 Bad Request (`ValidateAntiForgeryToken` rejects the request).  
+**Failure indicator**: 302 redirect to Index (action executed).
+
+#### T6A-07 — IDOR on Approve/Unapprove/ToggleAdmin
+**Threat**: Admin sets another admin's `IsAdmin=false` or unapproves a co-admin.  
+**How to test**: Log in as Admin A; POST `ToggleAdmin` with `id=<Admin-B's-ID>`. Also POST `Unapprove` with `id=<Admin-B's-ID>`.  
+**Expected**: ToggleAdmin succeeds (spec only prevents self-demotion, not cross-admin toggling — this is by design). Unapprove also succeeds. Document this is accepted behaviour: admins can manage each other.  
+**Note**: If the deployment has exactly one admin, the admin can lock everyone out by unapproving all users. Accept as a known risk; the first-user remains the recovery path (factory reset via DB).
+
+#### T6A-08 — Admin self-demotion via direct POST
+**Threat**: Admin bypasses the UI check and POSTs `ToggleAdmin` with their own ID directly (e.g. via curl).  
+**How to test**: Log in as admin; POST `/Users/ToggleAdmin` with `id=<own-ID>` and a valid CSRF token.  
+**Expected**: Controller returns redirect to Index without changing the flag (the server-side check in `ToggleAdmin` compares `currentUser.Id == id` and skips the toggle).  
+**Failure indicator**: `IsAdmin` becomes false for the current user after the POST.
+
+#### T6A-09 — First-user race condition (concurrent registration)
+**Threat**: Two users register simultaneously; both see `Users.Count() == 1` after their own CreateAsync and both get auto-admin.  
+**How to test**: Use two browser sessions (or a tool) to submit the registration form at the same time to a fresh database.  
+**Expected**: In practice SQLite serialises writes, so only one of the two will see Count==1. The second sees Count==2. Manual test; document the result.  
+**Note**: This is an inherent limitation of the optimistic count check. On a fresh install only one administrator should exist, so the risk is low (SQLite single-writer model mitigates this). If PostgreSQL is adopted later, this should be revisited with a DB-level constraint.
+
+#### T6A-10 — Pending approval page accessible without login
+**Threat**: Anonymous user navigates to `/PendingApproval/Index` to scrape the page or bypass something.  
+**How to test**: Log out, then GET `/PendingApproval/Index`.  
+**Expected**: 302 redirect to the login page (`[Authorize]` on `PendingApprovalController` triggers the Identity redirect).  
+**Failure indicator**: 200 response with the pending approval message (information disclosure, minor).
+
+### Tools
+
+- Browser DevTools / curl / Burp Suite Community for manual request crafting
+- The existing `docker compose up` stack for a local test environment
+
+### Pass Criteria
+
+All T6A-01 through T6A-10 behave as documented in "Expected" above.  
+Any "Failure indicator" outcome constitutes a finding that must be fixed before Phase 6A is considered production-ready.
+
+---
+
 ## Valgfrie fremtidige planer
 
 Features that have been considered but deprioritised or deferred indefinitely.
