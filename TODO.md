@@ -324,22 +324,22 @@ public class MeetingEventLink
 
 **Mål**: Innføre admin/vanlig-bruker-skille og krav om godkjenning for nye brukere.
 
-#### 6A.1 Datamodell
-- [ ] Legg til `IsApproved` (bool, default false) og `IsAdmin` (bool, default false) på `ApplicationUser`
-- [ ] EF Core-migrering for nye kolonner
-- [ ] Ved oppstart: hvis ingen brukere finnes enda, sett første bruker til IsApproved=true, IsAdmin=true automatisk etter registrering (via seed-logikk i Program.cs)
+#### 6A.1 Datamodell ✅ KOMPLETT
+- [x] Legg til `IsApproved` (bool, default false) og `IsAdmin` (bool, default false) på `ApplicationUser`
+- [x] EF Core-migrering for nye kolonner
+- [x] Ved oppstart: hvis ingen brukere finnes enda, sett første bruker til IsApproved=true, IsAdmin=true automatisk etter registrering (via AppUserManager.CreateAsync)
 
-#### 6A.2 Registrerings- og innloggingsflyt
-- [ ] Override login-flow: hvis `!IsApproved`, redirect til "Din konto venter på godkjenning"-side i stedet for å gi tilgang
-- [ ] Implementer `RequireApprovedUser`-attributt eller middleware som sjekker godkjenningsstatus på alle [Authorize]-sider
-- [ ] Første bruker som registrerer seg får IsAdmin=true og IsApproved=true automatisk
+#### 6A.2 Registrerings- og innloggingsflyt ✅ KOMPLETT
+- [x] Override login-flow: hvis `!IsApproved`, redirect til "Din konto venter på godkjenning"-side i stedet for å gi tilgang
+- [x] Implementer `RequireApprovedUserMiddleware` som sjekker godkjenningsstatus på alle [Authorize]-sider
+- [x] Første bruker som registrerer seg får IsAdmin=true og IsApproved=true automatisk
 
-#### 6A.3 Brukeradministrasjon (kun admin)
-- [ ] Oppdater `UsersController` med `[AdminOnly]`-filter (eller policy)
-- [ ] Legg til kolonne for godkjenningsstatus og admin-status i brukerliste
-- [ ] Legg til "Godkjenn"/"Avvis" knapper for ventende brukere
-- [ ] Legg til "Gjør til admin"/"Fjern admin" knapper (ikke på seg selv)
-- [ ] Tester for admin-only tilgangskontroll
+#### 6A.3 Brukeradministrasjon (kun admin) ✅ KOMPLETT
+- [x] Oppdater `UsersController` med `[AdminOnly]`-filter (eller policy)
+- [x] Legg til kolonne for godkjenningsstatus og admin-status i brukerliste
+- [x] Legg til "Godkjenn"/"Avvis" knapper for ventende brukere
+- [x] Legg til "Gjør til admin"/"Fjern admin" knapper (ikke på seg selv)
+- [x] Tester for admin-only tilgangskontroll (AppUserManagerTests, AdminOnlyFilterTests, RequireApprovedUserMiddlewareTests)
 
 ---
 
