@@ -1,0 +1,21 @@
+@{
+    ViewData["Title"] = "Venter på godkjenning";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading">Din konto venter på godkjenning</h4>
+                <p>
+                    Din bruker er opprettet, men venter på godkjenning fra en administrator før du kan få tilgang til appen.
+                </p>
+                <p>Ta kontakt med en administrator for å bli godkjent.</p>
+                <hr>
+                <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/">
+                    <button type="submit" class="btn btn-primary">Logg ut</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -171,6 +171,12 @@ namespace SaksAppWeb.Data.Migrations
                     b.Property<string>("FullName")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("INTEGER");
 

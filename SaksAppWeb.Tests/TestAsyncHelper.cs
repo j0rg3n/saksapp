@@ -21,6 +21,22 @@ public class TestUserManager : UserManager<AppUser>
     public void AddUser(AppUser user) => _users.Add(user);
 
     public override IQueryable<AppUser> Users => new AsyncUserQueryable<AppUser>(_users);
+
+    public override async Task<AppUser?> FindByIdAsync(string userId)
+    {
+        return await Task.FromResult(_users.FirstOrDefault(u => u.Id == userId));
+    }
+
+    public override async Task<IdentityResult> UpdateAsync(AppUser user)
+    {
+        var existingUser = _users.FirstOrDefault(u => u.Id == user.Id);
+        if (existingUser != null)
+        {
+            var index = _users.IndexOf(existingUser);
+            _users[index] = user;
+        }
+        return await Task.FromResult(IdentityResult.Success);
+    }
 }
 
 public class AsyncUserQueryable<T> : IQueryable<T>, IAsyncEnumerable<T>, IOrderedQueryable<T>

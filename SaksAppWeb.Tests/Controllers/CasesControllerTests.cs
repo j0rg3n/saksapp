@@ -154,14 +154,14 @@ public class CasesControllerTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var result = await _controller.AddComment(boardCase.Id, "New comment", CancellationToken.None);
+        var result = await _controller.AddComment(boardCase.Id, "New comment", "avvik", CancellationToken.None);
 
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
 
         var savedEvent = await _db.CaseEvents.FirstOrDefaultAsync();
         Assert.NotNull(savedEvent);
         Assert.Equal("New comment", savedEvent.Content);
-        Assert.Equal("comment", savedEvent.Category);
+        Assert.Equal("avvik", savedEvent.Category);
 
         var savedLink = await _db.CaseEventCases.FirstOrDefaultAsync();
         Assert.NotNull(savedLink);
