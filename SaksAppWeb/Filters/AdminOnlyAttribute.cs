@@ -26,7 +26,7 @@ public class AdminOnlyFilter : IAsyncAuthorizationFilter
         var user = await _userManager.GetUserAsync(context.HttpContext.User);
         if (user == null || !user.IsAdmin)
         {
-            context.Result = new ForbidResult();
+            context.Result = new StatusCodeResult(403);
         }
     }
 }

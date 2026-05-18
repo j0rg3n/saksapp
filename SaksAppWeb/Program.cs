@@ -24,7 +24,8 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddDefaultUI();
 
 builder.Services.AddScoped<UserManager<ApplicationUser>, AppUserManager>();
 
@@ -44,6 +45,7 @@ builder.Services.AddScoped<IMinutesPdfDataService, MinutesPdfDataService>();
 builder.Services.AddScoped<IMinutesSaveService, MinutesSaveService>();
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages(); // Required by Identity UI (AddIdentity doesn't add this, AddDefaultIdentity does)
 
 // Hourly SQLite database backups (see Services/DatabaseBackupService)
 builder.Services.AddSingleton<IDatabaseBackupExecutor, DatabaseBackupExecutor>();
@@ -83,3 +85,5 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
+
+public partial class Program { }

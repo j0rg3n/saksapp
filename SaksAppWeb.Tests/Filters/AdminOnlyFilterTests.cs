@@ -42,8 +42,8 @@ public class AdminOnlyFilterTests
 
         await filter.OnAuthorizationAsync(context);
 
-        Assert.NotNull(context.Result);
-        Assert.IsType<ForbidResult>(context.Result);
+        var result = Assert.IsType<StatusCodeResult>(context.Result);
+        Assert.Equal(403, result.StatusCode);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class AdminOnlyFilterTests
 
         await filter.OnAuthorizationAsync(context);
 
-        Assert.NotNull(context.Result);
-        Assert.IsType<ForbidResult>(context.Result);
+        var result = Assert.IsType<StatusCodeResult>(context.Result);
+        Assert.Equal(403, result.StatusCode);
     }
 }
