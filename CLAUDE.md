@@ -42,3 +42,4 @@ dotnet ef database update
 - TODO.md should be lean - reference content in SPEC.md rather than duplicating
 - TODO.md should contain ordered groups of tasks
 - Tasks within each group can be done in parallel
+- **Before any ad-hoc fix or change**: update SPEC.md (behaviour/design) and TODO.md (task entry) first, then implement. No exceptions.
