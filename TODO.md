@@ -4,6 +4,15 @@
 
 ---
 
+## Ad-hoc: Hjem-side med Markdown-innhold
+
+- [x] Legg til `Markdig` NuGet-pakke
+- [x] Opprett `SaksAppWeb/Content/home.md` med forklaring av appen
+- [x] `HomeController.Index()` leser filen og konverterer til HTML med Markdig
+- [x] `Views/Home/Index.cshtml` rendrer HTML-innholdet
+
+---
+
 ## Phase 6: Nye Features
 
 ### 6.1 Board Log (Styrelogg)

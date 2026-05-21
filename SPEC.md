@@ -42,6 +42,13 @@ Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
 
 ## User Functions
 
+### Home Page
+- The home page (`/`) displays a rendered Markdown document explaining how the app works.
+- The content lives in `SaksAppWeb/Content/home.md` — editable without redeploying.
+- Rendering: the controller reads `home.md` at request time, converts it to HTML via **Markdig**, and passes it to the view as an `HtmlString`.
+- The page is accessible to unauthenticated users (no `[Authorize]` required).
+- The view renders the HTML inside the standard layout with no additional chrome.
+
 ### Authentication
 - Users log in via ASP.NET Identity
 - Password reset via email
