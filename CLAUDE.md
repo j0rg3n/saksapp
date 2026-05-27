@@ -43,3 +43,7 @@ dotnet ef database update
 - TODO.md should contain ordered groups of tasks
 - Tasks within each group can be done in parallel
 - **Before any ad-hoc fix or change**: update SPEC.md (behaviour/design) and TODO.md (task entry) first, then implement. No exceptions.
+
+## Daily routines
+
+- **todoist-triage**: `/todoist-triage styret/saksapp` — run daily to pull new tasks from Todoist into this repo.
