@@ -13,6 +13,37 @@
 
 ---
 
+## Ad-hoc: Bugfix — Agenda mangler hendelser med blå Generelt-badge
+
+- [ ] Undersøk hvorfor CaseEvents med Category="general" (blå badge) utelates fra agenda
+      mens Category="comment" (grå badge) inkluderes; sjekk filtrering i agenda-query
+      og PDF-generator (`MeetingController`, `PdfGeneratorService`, agenda-query i
+      `IMeetingQueryService`)
+- [ ] Fiks filtreringen slik at begge kategorier inkluderes konsekvent
+
+---
+
+## Ad-hoc: Referat-modus — «Utvikling siden innkallingen»
+
+- [ ] Legg til felt `AgendaPdfGeneratedAt` (nullable DateTime) på `Meeting` + migrering
+- [ ] Sett `AgendaPdfGeneratedAt = DateTime.UtcNow` når agenda-PDF genereres
+- [ ] I referat-visningen: for hvert agenda-punkt, hent CaseEvents på saken med
+      `CreatedAt > meeting.AgendaPdfGeneratedAt AND CreatedAt <= meeting.MeetingDate`
+- [ ] Vis disse under en seksjon «Utvikling siden innkallingen» per agenda-punkt
+      (lesevisning, ikke redigerbar); render vedleggslenker som åpner i ny fane
+
+---
+
+## Ad-hoc: PDF — dedupliser vedlegg på tvers av saker
+
+- [ ] I agenda-PDF og referat-PDF: samle alle vedlegg på tvers av agenda-punkter,
+      dedupliser på `Attachment.Id`, og list hvert vedlegg kun én gang
+      (f.eks. samlet vedleggsliste bakerst, eller én forekomst pr. agenda-punkt med
+      en note «(se også sak X)»)
+- [ ] Oppdater `PdfGeneratorService` (agenda og referat) tilsvarende
+
+---
+
 ## Phase 6: Nye Features
 
 ### 6.1 Board Log (Styrelogg)

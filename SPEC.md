@@ -120,6 +120,13 @@ Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
   - **Diskusjon** — item was discussed with no decision intended; no follow-up action expected
 - Download minutes PDF
 
+**Utvikling siden innkallingen**
+- In the minutes view, each agenda item shows a read-only section «Utvikling siden innkallingen» listing CaseEvents on the case that occurred after the last agenda PDF was generated (`Meeting.AgendaPdfGeneratedAt`) and up to and including the meeting date.
+- If `AgendaPdfGeneratedAt` is null (agenda PDF was never generated), this section is omitted.
+- Events that occur after the meeting date belong to the next meeting and are not shown.
+- The section is informational only — no editing, no outcome fields.
+- If any event has attachments, each attachment is shown as a link opening in a new tab (`target="_blank"`), so the minutes writer can reference the document without losing their place.
+
 ### Eventuelt (Extra Items)
 - Cases can be marked as "Eventuelt" (extra items)
 - Eventuelt cases appear in meeting minutes but not in the agenda PDF
@@ -238,6 +245,10 @@ A bot is added to one or more WhatsApp groups. Incoming messages are ingested an
 Compact. Use font sizes, styles, and spacing to visually distinguish different sections and speed up visual search.
 
 **Layouts**: See [LAYOUTS.md](./LAYOUTS.md) for detailed visual mockups and specifications.
+
+**Vedleggsdeduplisering**
+- If the same attachment (by ID) is referenced by multiple agenda items, it must appear only once in the agenda PDF and once in the minutes PDF.
+- Preferred placement: list it under the first agenda item that references it; subsequent items show a cross-reference note.
 
 **Agenda PDF**
 - For each agenda item: Title, CaseNumber, Assignee
@@ -546,6 +557,10 @@ Any "Failure indicator" outcome constitutes a finding that must be fixed before 
 ## Valgfrie fremtidige planer
 
 Features that have been considered but deprioritised or deferred indefinitely.
+
+### Per-sak kommunikasjonskanal
+
+Each case could get its own real-time channel (e.g. a dedicated WhatsApp group or in-app thread) where board members can discuss the case asynchronously. Open question: a board member may be involved in many cases simultaneously, which would create many channels. Deferred; revisit if users express this need explicitly.
 
 ### Jotta-backup (alternativ til Google Drive)
 
