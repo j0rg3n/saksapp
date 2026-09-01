@@ -71,7 +71,7 @@ else
                         <a class="text-muted ms-2 text-decoration-none"
                            asp-controller="Meetings" asp-action="Details" asp-route-id="@item.MeetingId"
                            target="_blank">
-                            Møte @item.MeetingYear/@item.MeetingYearSequenceNumber — @item.MeetingDate
+                            Møte @item.MeetingYear/@item.MeetingYearSequenceNumber — @(item.MeetingDate is { } md ? SaksAppWeb.Models.MeetingDisplay.Format(md, item.MeetingTime) : "")
                         </a>
                     }
                     else if (item.Kind == CaseTimelineItemKind.BoardEvent)

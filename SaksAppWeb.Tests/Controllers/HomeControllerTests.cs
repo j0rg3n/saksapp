@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using SaksAppWeb.Controllers;
 using SaksAppWeb.Models;
+using Microsoft.AspNetCore.Hosting;
 
 namespace SaksAppWeb.Tests.Controllers;
 
@@ -15,7 +16,9 @@ public class HomeControllerTests
     public void Index_ReturnsView()
     {
         var logger = new Mock<ILogger<HomeController>>();
-        var controller = new HomeController(logger.Object);
+        var env = new Mock<IWebHostEnvironment>();
+        env.SetupGet(x => x.ContentRootPath).Returns(Directory.GetCurrentDirectory());
+        var controller = new HomeController(logger.Object, env.Object);
 
         var result = controller.Index();
 
@@ -26,7 +29,9 @@ public class HomeControllerTests
     public void Privacy_ReturnsView()
     {
         var logger = new Mock<ILogger<HomeController>>();
-        var controller = new HomeController(logger.Object);
+        var env = new Mock<IWebHostEnvironment>();
+        env.SetupGet(x => x.ContentRootPath).Returns(Directory.GetCurrentDirectory());
+        var controller = new HomeController(logger.Object, env.Object);
 
         var result = controller.Privacy();
 
@@ -37,7 +42,9 @@ public class HomeControllerTests
     public void Error_ReturnsViewWithErrorViewModel()
     {
         var logger = new Mock<ILogger<HomeController>>();
-        var controller = new HomeController(logger.Object);
+        var env = new Mock<IWebHostEnvironment>();
+        env.SetupGet(x => x.ContentRootPath).Returns(Directory.GetCurrentDirectory());
+        var controller = new HomeController(logger.Object, env.Object);
         
         var httpContext = new DefaultHttpContext();
         httpContext.TraceIdentifier = "test-trace-id";

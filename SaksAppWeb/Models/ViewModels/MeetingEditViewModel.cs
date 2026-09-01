@@ -8,6 +8,8 @@ public class MeetingEditVm
 
     public DateOnly MeetingDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
 
+    public TimeOnly? MeetingTime { get; set; }
+
     public int YearSequenceNumber { get; set; } = 1;
 
     public string? Location { get; set; }

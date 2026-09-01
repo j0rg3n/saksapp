@@ -232,8 +232,6 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         return RedirectToAction(nameof(Index));
     }
 
-    private static readonly string[] ValidCaseEventCategories = ["general", "avvik", "tiltak"];
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddComment(int caseId, string text, string? category, CancellationToken ct)
@@ -241,7 +239,7 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
         if (string.IsNullOrWhiteSpace(text))
             return RedirectToAction(nameof(Details), new { id = caseId });
 
-        var resolvedCategory = ValidCaseEventCategories.Contains(category) ? category! : "general";
+        var resolvedCategory = CaseEventCategories.IsWritable(category) ? category! : CaseEventCategories.General;
 
         var c = await _db.BoardCases.AsNoTracking().FirstOrDefaultAsync(x => x.Id == caseId, ct);
         if (c is null) return NotFound();
@@ -476,7 +474,7 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
             Id = caseEvent.Id,
             CaseId = caseId,
             Text = caseEvent.Content,
-            Category = caseEvent.Category == "comment" ? "general" : caseEvent.Category
+            Category = CaseEventCategories.ForDisplay(caseEvent.Category)
         };
 
         return View(vm);
@@ -496,7 +494,7 @@ return RedirectToAction(nameof(Details), new { id = entity.Id });
 
         var caseId = caseEvent.Cases.FirstOrDefault()?.BoardCaseId ?? vm.CaseId;
 
-        var resolvedCategory = ValidCaseEventCategories.Contains(vm.Category) ? vm.Category : "general";
+        var resolvedCategory = CaseEventCategories.IsWritable(vm.Category) ? vm.Category : CaseEventCategories.General;
         var before = new { caseEvent.Id, BoardCaseId = caseId, caseEvent.Category, caseEvent.Content };
 
         caseEvent.Content = vm.Text;

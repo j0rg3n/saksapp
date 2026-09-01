@@ -229,6 +229,7 @@ public class MeetingQueryService : IMeetingQueryService
         {
             MeetingId = meeting.Id,
             MeetingDate = meeting.MeetingDate,
+            MeetingTime = meeting.MeetingTime,
             Year = meeting.Year,
             YearSequenceNumber = meeting.YearSequenceNumber,
             Location = meeting.Location,

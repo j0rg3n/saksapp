@@ -14,6 +14,7 @@ public record AgendaCommentData(
 
 public record PreviousMinutesData(
     DateOnly MeetingDate,
+    TimeOnly? MeetingTime,
     string? OfficialNotes,
     string? DecisionText,
     string? FollowUpText,
@@ -51,6 +52,14 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
         _pdfSequence = pdfSequence;
     }
 
+    /// <summary>
+    /// The instant a meeting starts, used to bound "Historikk siden forrige møte". When no time is
+    /// recorded we take the end of the day rather than an arbitrary hour, so a missing time can
+    /// never silently drop an event registered later that day.
+    /// </summary>
+    internal static DateTimeOffset MeetingBoundary(DateOnly date, TimeOnly? time) =>
+        new(date.ToDateTime(time ?? new TimeOnly(23, 59, 59)), TimeSpan.Zero);
+
     public async Task<AgendaPdfData?> GetAgendaDataAsync(int meetingId, CancellationToken ct = default)
     {
         var meeting = await _db.Meetings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == meetingId, ct);
@@ -87,7 +96,7 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
 
         // Previous minutes entries — find most recent MeetingEventLink for each case before this meeting
         var previousMinutesCandidates = caseIds.Count == 0
-            ? new List<(int CaseEventId, int BoardCaseId, DateOnly MeetingDate, string? OfficialNotes, string? DecisionText, string? FollowUpText)>()
+            ? new List<(int CaseEventId, int BoardCaseId, DateOnly MeetingDate, TimeOnly? MeetingTime, string? OfficialNotes, string? DecisionText, string? FollowUpText)>()
             : await _db.MeetingEventLinks.AsNoTracking()
                 .Include(x => x.Meeting)
                 .Include(x => x.CaseEvent)
@@ -101,6 +110,7 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
                             CaseEventId: mel.CaseEventId,
                             BoardCaseId: cec.BoardCaseId,
                             MeetingDate: mel.Meeting.MeetingDate,
+                            MeetingTime: mel.Meeting.MeetingTime,
                             OfficialNotes: mel.OfficialNotes,
                             DecisionText: mel.DecisionText,
                             FollowUpText: mel.FollowUpText)))
@@ -129,18 +139,19 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
             .GroupBy(x => x.Item1)
             .ToDictionary(g => g.Key, g => g.Select(x => new AgendaAttachmentRef(x.Item2, x.Item3, x.Item4)).ToList());
 
-        // All comment CaseEvents for these cases
-        var allCommentEvents = await _db.CaseEventCases.AsNoTracking()
+        // All case-level CaseEvents for these cases. Must stay in step with the case timeline
+        // in ICaseQueryService — filtering narrower here is what hid every post-Phase-4.5 event.
+        var allCaseEvents = await _db.CaseEventCases.AsNoTracking()
             .Where(x => caseIds.Contains(x.BoardCaseId))
             .Include(x => x.CaseEvent)
-            .Where(x => x.CaseEvent.Category == "comment")
+            .Where(x => CaseEventCategories.CaseLevel.Contains(x.CaseEvent.Category))
             .ToListAsync(ct);
 
-        var commentCaseEventIds = allCommentEvents.Select(x => x.CaseEventId).Distinct().ToList();
-        var commentAttachmentsFull = commentCaseEventIds.Count == 0
+        var eventIds = allCaseEvents.Select(x => x.CaseEventId).Distinct().ToList();
+        var eventAttachmentsFull = eventIds.Count == 0
             ? new List<(int CaseEventId, string FileName, string ContentType, byte[] Content)>()
             : await _db.CaseEventAttachments.AsNoTracking()
-                .Where(x => commentCaseEventIds.Contains(x.CaseEventId))
+                .Where(x => eventIds.Contains(x.CaseEventId))
                 .Join(_db.Attachments.AsNoTracking(),
                     link => link.AttachmentId,
                     att => att.Id,
@@ -148,7 +159,7 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
                 .Select(x => new ValueTuple<int, string, string, byte[]>(x.CaseEventId, x.OriginalFileName, x.ContentType, x.Content))
                 .ToListAsync(ct);
 
-        var commentAttachmentsByCaseEventId = commentAttachmentsFull
+        var eventAttachmentsByCaseEventId = eventAttachmentsFull
             .GroupBy(x => x.Item1)
             .ToDictionary(g => g.Key, g => g.Select(x => new AgendaAttachmentRef(x.Item2, x.Item3, x.Item4)).ToList());
 
@@ -174,11 +185,11 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
             }
 
             var windowStart = previousByCaseId.TryGetValue(row.boardCase.Id, out var p2)
-                ? new DateTimeOffset(p2.MeetingDate.Year, p2.MeetingDate.Month, p2.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero)
+                ? MeetingBoundary(p2.MeetingDate, p2.MeetingTime)
                 : DateTimeOffset.MinValue;
-            var windowEnd = new DateTimeOffset(meeting.MeetingDate.Year, meeting.MeetingDate.Month, meeting.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero);
+            var windowEnd = MeetingBoundary(meeting.MeetingDate, meeting.MeetingTime);
 
-            var betweenEvents = allCommentEvents
+            var betweenEvents = allCaseEvents
                 .Where(cec => cec.BoardCaseId == row.boardCase.Id
                     && cec.CaseEvent.CreatedAt > windowStart
                     && cec.CaseEvent.CreatedAt <= windowEnd)
@@ -186,7 +197,7 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
 
             foreach (var cec in betweenEvents)
             {
-                if (commentAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var atts))
+                if (eventAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var atts))
                 {
                     foreach (var att in atts)
                     {
@@ -209,22 +220,22 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
             if (previousByCaseId.TryGetValue(row.boardCase.Id, out var prev))
             {
                 var prevAtts = prevMinutesAttachmentsByCaseEventId.TryGetValue(prev.CaseEventId, out var list) ? list : new List<AgendaAttachmentRef>();
-                previousMinutes = new PreviousMinutesData(prev.MeetingDate, prev.OfficialNotes, prev.DecisionText, prev.FollowUpText, prevAtts);
+                previousMinutes = new PreviousMinutesData(prev.MeetingDate, prev.MeetingTime, prev.OfficialNotes, prev.DecisionText, prev.FollowUpText, prevAtts);
             }
 
             var windowStart = previousMinutes is not null
-                ? new DateTimeOffset(previousMinutes.MeetingDate.Year, previousMinutes.MeetingDate.Month, previousMinutes.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero)
+                ? MeetingBoundary(previousMinutes.MeetingDate, previousMinutes.MeetingTime)
                 : DateTimeOffset.MinValue;
-            var windowEnd = new DateTimeOffset(meeting.MeetingDate.Year, meeting.MeetingDate.Month, meeting.MeetingDate.Day, 12, 0, 0, TimeSpan.Zero);
+            var windowEnd = MeetingBoundary(meeting.MeetingDate, meeting.MeetingTime);
 
-            var between = allCommentEvents
+            var between = allCaseEvents
                 .Where(cec => cec.BoardCaseId == row.boardCase.Id
                     && cec.CaseEvent.CreatedAt > windowStart
                     && cec.CaseEvent.CreatedAt <= windowEnd)
                 .OrderByDescending(cec => cec.CaseEvent.CreatedAt).ThenByDescending(cec => cec.CaseEventId)
                 .Select(cec =>
                 {
-                    var atts = commentAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var al) ? al : new List<AgendaAttachmentRef>();
+                    var atts = eventAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var al) ? al : new List<AgendaAttachmentRef>();
                     return new AgendaCommentData(cec.CaseEvent.CreatedAt.DateTime, cec.CaseEvent.Content, atts);
                 })
                 .ToList();

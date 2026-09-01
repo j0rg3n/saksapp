@@ -10,7 +10,7 @@
 
 <div class="d-flex justify-content-between align-items-start mb-2">
     <div>
-        <h1 class="mb-0">Referat — @Model.Year/@Model.YearSequenceNumber — @Model.MeetingDate</h1>
+        <h1 class="mb-0">Referat — @Model.Year/@Model.YearSequenceNumber — @SaksAppWeb.Models.MeetingDisplay.Format(Model.MeetingDate, Model.MeetingTime)</h1>
         @if (!string.IsNullOrWhiteSpace(Model.Location))
         {
             <div class="text-muted">@Model.Location</div>

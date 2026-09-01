@@ -92,11 +92,9 @@ namespace SaksAppWeb.Data.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderKey")
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderDisplayName")
@@ -134,11 +132,9 @@ namespace SaksAppWeb.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Value")
@@ -545,7 +541,8 @@ namespace SaksAppWeb.Data.Migrations
                     b.HasIndex("BoardCaseId");
 
                     b.HasIndex("CaseEventId", "BoardCaseId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = 0");
 
                     b.ToTable("CaseEventCases");
                 });
@@ -571,6 +568,9 @@ namespace SaksAppWeb.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("MeetingDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeOnly?>("MeetingTime")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Year")

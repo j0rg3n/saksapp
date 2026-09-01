@@ -153,9 +153,9 @@ public class CaseQueryService : ICaseQueryService
 
             var linkedCases = otherCasesByCaseEventId.TryGetValue(ce.Id, out var lc) ? lc : Array.Empty<LinkedCaseSummary>();
 
-            if (ce.Category is "comment" or "general" or "avvik" or "tiltak")
+            if (CaseEventCategories.IsCaseLevel(ce.Category))
             {
-                var isLegacyComment = ce.Category == "comment";
+                var isLegacyComment = ce.Category == CaseEventCategories.LegacyComment;
                 var attachments = atts.Select(a => new CaseAttachmentVm
                 {
                     LinkKind = isLegacyComment ? CaseAttachmentLinkKind.CommentAttachment : CaseAttachmentLinkKind.BoardEventAttachment,
@@ -174,12 +174,12 @@ public class CaseQueryService : ICaseQueryService
                     CaseEventId = ce.Id,
                     CommentText = ce.Content,
                     CommentAuthorUserId = ce.CreatedByUserId,
-                    EventCategory = ce.Category == "comment" ? "general" : ce.Category,
+                    EventCategory = CaseEventCategories.ForDisplay(ce.Category),
                     LinkedCases = linkedCases,
                     Attachments = attachments
                 });
             }
-            else if (ce.Category == "meeting" && ce.MeetingLink is { } mel)
+            else if (ce.Category == CaseEventCategories.Meeting && ce.MeetingLink is { } mel)
             {
                 var attachments = atts.Select(a => new CaseAttachmentVm
                 {
@@ -199,6 +199,7 @@ public class CaseQueryService : ICaseQueryService
                     MeetingEventLinkId = mel.Id,
                     MeetingId = mel.MeetingId,
                     MeetingDate = mel.Meeting.MeetingDate,
+                    MeetingTime = mel.Meeting.MeetingTime,
                     MeetingYear = mel.Meeting.Year,
                     MeetingYearSequenceNumber = mel.Meeting.YearSequenceNumber,
                     Outcome = mel.Outcome,

@@ -14,7 +14,7 @@ public class CaseEvent : SoftDeletableEntity
     public string Content { get; set; } = "";
 
     [MaxLength(50)]
-    public string Category { get; set; } = "comment";
+    public string Category { get; set; } = CaseEventCategories.General;
 
     [MaxLength(50)]
     public string? Source { get; set; }

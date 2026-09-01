@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.IO.Compression;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -13,10 +15,22 @@ public interface IDatabaseBackupExecutor
 
 public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
 {
+    private const string NamePrefix = "app-";
+    private const string StampFormat = "yyyyMMdd-HHmmss";
+
+    /// <summary>
+    /// Every format a backup has ever been written in. Retention must know about all of them —
+    /// a glob that only matched ".sqlite" is why ~1 GB of ".bz2" was never reclaimed.
+    /// </summary>
+    private static readonly string[] BackupExtensions = [".sqlite", ".sqlite.gz", ".sqlite.bz2"];
+
     private readonly ILogger<DatabaseBackupExecutor> _logger;
     private readonly string _connectionString;
     private readonly string _dbPath;
     private readonly string _backupDir;
+    private readonly int _maxFiles;
+    private readonly long _maxTotalBytes;
+    private readonly bool _compress;
 
     public DatabaseBackupExecutor(
         ILogger<DatabaseBackupExecutor> logger,
@@ -34,6 +48,10 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
         _backupDir = Path.IsPathRooted(dataSource)
             ? Path.Combine(Path.GetDirectoryName(dataSource) ?? "", "Backups")
             : Path.Combine(contentRoot, "db/Backups");
+
+        _maxFiles = Math.Max(1, configuration.GetValue<int?>("Backup:MaxFiles") ?? 48);
+        _maxTotalBytes = Math.Max(1, configuration.GetValue<long?>("Backup:MaxTotalBytes") ?? 2L * 1024 * 1024 * 1024);
+        _compress = configuration.GetValue<bool?>("Backup:Compress") ?? true;
     }
 
     public async Task CreateBackupAsync(CancellationToken ct = default)
@@ -47,43 +65,145 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
         }
 
         var ts = DateTimeOffset.Now;
-        var destPath = Path.Combine(_backupDir, $"app-{ts:yyyyMMdd-HHmmss}.sqlite");
+        var stem = Path.Combine(_backupDir, $"{NamePrefix}{ts.ToString(StampFormat, CultureInfo.InvariantCulture)}.sqlite");
+        var tempPath = stem + ".tmp";
+        var destPath = _compress ? stem + ".gz" : stem;
 
+        try
+        {
+            // BackupDatabase needs a real SQLite file as its destination, so when compressing we
+            // snapshot to a temp file first and gzip that.
+            await WriteSnapshotAsync(_compress ? tempPath : destPath, ct);
+
+            if (_compress)
+            {
+                await using var input = File.OpenRead(tempPath);
+                await using var output = File.Create(destPath);
+                await using var gzip = new GZipStream(output, CompressionLevel.SmallestSize);
+                await input.CopyToAsync(gzip, ct);
+            }
+
+            _logger.LogInformation("Database backup written to {BackupPath}", destPath);
+        }
+        finally
+        {
+            TryDelete(tempPath);
+        }
+
+        ApplyRetention();
+    }
+
+    private async Task WriteSnapshotAsync(string snapshotPath, CancellationToken ct)
+    {
         var srcCs = new SqliteConnectionStringBuilder(_connectionString)
         {
             Mode = SqliteOpenMode.ReadOnly
         }.ToString();
 
+        // Pooling off so the file handle is released as soon as we dispose — we read it back
+        // immediately to compress it.
+        var destCs = new SqliteConnectionStringBuilder
+        {
+            DataSource = snapshotPath,
+            Pooling = false
+        }.ToString();
+
         await using var src = new SqliteConnection(srcCs);
         await src.OpenAsync(ct);
 
-        await using var dest = new SqliteConnection($"Data Source={destPath}");
+        await using var dest = new SqliteConnection(destCs);
         await dest.OpenAsync(ct);
 
         src.BackupDatabase(dest);
-
-        _logger.LogInformation("Database backup written to {BackupPath}", destPath);
-
-        TryApplyRetention(200);
     }
 
-    private void TryApplyRetention(int maxFiles)
+    /// <summary>
+    /// Bounded by file count AND total bytes, whichever binds first. The newest backup is never
+    /// deleted. Ordering is by the timestamp in the filename: filesystem birth time is unreliable
+    /// on Linux and can make the pass delete effectively arbitrary files.
+    /// </summary>
+    private void ApplyRetention()
     {
         try
         {
-            var files = new DirectoryInfo(_backupDir).GetFiles("app-*.sqlite");
-            Array.Sort(files, (a, b) => a.CreationTimeUtc.CompareTo(b.CreationTimeUtc));
-            if (files.Length <= maxFiles) return;
-            var toDelete = files.Length - maxFiles;
-            for (int i = 0; i < toDelete; i++)
+            var dir = new DirectoryInfo(_backupDir);
+            if (!dir.Exists) return;
+
+            var files = dir.EnumerateFiles(NamePrefix + "*.sqlite*")
+                .Where(IsBackupFile)
+                .Select(f => (Info: f, Stamp: ParseStamp(f.Name)))
+                .OrderByDescending(x => x.Stamp)
+                .ThenByDescending(x => x.Info.Name, StringComparer.Ordinal)
+                .ToList();
+
+            var kept = 0;
+            var deleted = 0;
+            long keptBytes = 0;
+            long deletedBytes = 0;
+
+            foreach (var (info, _) in files)
             {
-                try { files[i].Delete(); }
-                catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete old backup {File}", files[i].FullName); }
+                var isNewest = kept == 0;
+                var overCount = kept >= _maxFiles;
+                var overSize = keptBytes + info.Length > _maxTotalBytes;
+
+                if (!isNewest && (overCount || overSize))
+                {
+                    var size = info.Length;
+                    if (TryDelete(info.FullName))
+                    {
+                        deleted++;
+                        deletedBytes += size;
+                    }
+                    continue;
+                }
+
+                kept++;
+                keptBytes += info.Length;
             }
+
+            _logger.LogInformation(
+                "Backup retention: kept {Kept} file(s) ({KeptMb:F1} MB), deleted {Deleted} ({DeletedMb:F1} MB); limits {MaxFiles} files / {MaxMb:F0} MB",
+                kept, keptBytes / 1048576d, deleted, deletedBytes / 1048576d, _maxFiles, _maxTotalBytes / 1048576d);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Backup retention pass failed");
+        }
+    }
+
+    private static bool IsBackupFile(FileInfo f) =>
+        BackupExtensions.Any(e => f.Name.EndsWith(e, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>app-yyyyMMdd-HHmmss.sqlite[.gz|.bz2]. Unparseable names sort oldest so they are pruned first.</summary>
+    public static DateTime ParseStamp(string fileName)
+    {
+        if (fileName.Length >= NamePrefix.Length + StampFormat.Length
+            && DateTime.TryParseExact(
+                fileName.Substring(NamePrefix.Length, StampFormat.Length),
+                StampFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var parsed))
+        {
+            return parsed;
+        }
+
+        return DateTime.MinValue;
+    }
+
+    private bool TryDelete(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return false;
+            File.Delete(path);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete {File}", path);
+            return false;
         }
     }
 

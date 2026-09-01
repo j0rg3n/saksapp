@@ -13,14 +13,14 @@ namespace SaksAppWeb.Controllers;
 [Authorize]
 public class CaseEventsController : Controller
 {
-    private static readonly string[] EditableCategories = ["avvik", "tiltak", "general"];
+    private static readonly string[] EditableCategories = CaseEventCategories.Writable;
 
     private static readonly Dictionary<string, string> CategoryLabels = new()
     {
-        ["avvik"] = "Avvik",
-        ["tiltak"] = "Tiltak",
-        ["general"] = "Generelt",
-        ["comment"] = "Saksmerknad"
+        [CaseEventCategories.Avvik] = "Avvik",
+        [CaseEventCategories.Tiltak] = "Tiltak",
+        [CaseEventCategories.General] = "Generelt",
+        [CaseEventCategories.LegacyComment] = "Saksmerknad"
     };
 
     private readonly ApplicationDbContext _db;
@@ -42,7 +42,7 @@ public class CaseEventsController : Controller
     {
         var q = _db.CaseEvents.AsNoTracking()
             .Include(x => x.Cases).ThenInclude(x => x.BoardCase)
-            .Where(x => x.Category != "meeting");
+            .Where(x => x.Category != CaseEventCategories.Meeting);
 
         if (!string.IsNullOrWhiteSpace(category))
             q = q.Where(x => x.Category == category);
@@ -80,7 +80,7 @@ public class CaseEventsController : Controller
     [HttpGet]
     public IActionResult Create(string? category)
     {
-        return View(new CaseEventCreateVm { Category = category ?? "avvik" });
+        return View(new CaseEventCreateVm { Category = category ?? CaseEventCategories.Avvik });
     }
 
     [HttpPost]

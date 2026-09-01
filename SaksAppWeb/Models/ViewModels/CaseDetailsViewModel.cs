@@ -61,6 +61,8 @@ public class CaseTimelineItemVm
     public int? MeetingId { get; set; }
 
     public DateOnly? MeetingDate { get; set; }
+
+    public TimeOnly? MeetingTime { get; set; }
     public int? MeetingYear { get; set; }
     public int? MeetingYearSequenceNumber { get; set; }
 

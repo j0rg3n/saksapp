@@ -128,8 +128,17 @@ public class AgendaPdfDataServiceTests : IDisposable
         Assert.Equal("Previous note", result.Items[0].PreviousMinutes!.OfficialNotes);
     }
 
-    [Fact]
-    public async Task GetAgendaDataAsync_AssemblesCommentsBetweenMeetings()
+    /// <summary>
+    /// The agenda PDF must include every case-level category, not just the legacy "comment" value.
+    /// It filtered on "comment" alone from Phase 3 until this was fixed, which silently dropped
+    /// every event created after Phase 4.5 switched writes to general/avvik/tiltak.
+    /// </summary>
+    [Theory]
+    [InlineData(CaseEventCategories.General)]
+    [InlineData(CaseEventCategories.Avvik)]
+    [InlineData(CaseEventCategories.Tiltak)]
+    [InlineData(CaseEventCategories.LegacyComment)]
+    public async Task GetAgendaDataAsync_IncludesAllCaseLevelCategories(string category)
     {
         var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
         _db.Meetings.Add(meeting);
@@ -137,18 +146,18 @@ public class AgendaPdfDataServiceTests : IDisposable
         _db.BoardCases.Add(boardCase);
         await _db.SaveChangesAsync();
 
-        var ceMeeting = new CaseEvent { Category = "meeting", Content = "", CreatedAt = DateTimeOffset.UtcNow };
-        var ceComment = new CaseEvent
+        var ceMeeting = new CaseEvent { Category = CaseEventCategories.Meeting, Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ceHistory = new CaseEvent
         {
-            Category = "comment",
+            Category = category,
             Content = "Hello",
             CreatedAt = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero)
         };
-        _db.CaseEvents.AddRange(ceMeeting, ceComment);
+        _db.CaseEvents.AddRange(ceMeeting, ceHistory);
         await _db.SaveChangesAsync();
 
         _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceMeeting.Id, BoardCaseId = boardCase.Id });
-        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceComment.Id, BoardCaseId = boardCase.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceHistory.Id, BoardCaseId = boardCase.Id });
         _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ceMeeting.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
         await _db.SaveChangesAsync();
 
@@ -158,6 +167,92 @@ public class AgendaPdfDataServiceTests : IDisposable
         Assert.Single(result.Items);
         Assert.Single(result.Items[0].CommentsBetweenMeetings);
         Assert.Equal("Hello", result.Items[0].CommentsBetweenMeetings[0].Text);
+    }
+
+    [Fact]
+    public async Task GetAgendaDataAsync_ExcludesMeetingCategoryFromHistory()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        _db.Meetings.Add(meeting);
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Test", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var ceMeeting = new CaseEvent { Category = CaseEventCategories.Meeting, Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        // A second meeting-category event dated inside the window: it is an agenda anchor, not history.
+        var ceOtherMeeting = new CaseEvent
+        {
+            Category = CaseEventCategories.Meeting,
+            Content = "Anchor from another meeting",
+            CreatedAt = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero)
+        };
+        _db.CaseEvents.AddRange(ceMeeting, ceOtherMeeting);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceMeeting.Id, BoardCaseId = boardCase.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceOtherMeeting.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ceMeeting.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.GetAgendaDataAsync(meeting.Id);
+
+        Assert.NotNull(result);
+        Assert.Empty(result.Items[0].CommentsBetweenMeetings);
+    }
+
+    [Theory]
+    // Meeting starts 18:00. An event at 17:00 belongs to this meeting; 19:00 belongs to the next one.
+    [InlineData(17, true)]
+    [InlineData(19, false)]
+    public async Task GetAgendaDataAsync_BoundsHistoryByMeetingTime(int eventHour, bool expectedIncluded)
+    {
+        var meeting = new Meeting
+        {
+            MeetingDate = new DateOnly(2026, 3, 1),
+            MeetingTime = new TimeOnly(18, 0),
+            Year = 2026,
+            YearSequenceNumber = 1
+        };
+        await SeedHistoryEventAsync(meeting, new DateTimeOffset(2026, 3, 1, eventHour, 0, 0, TimeSpan.Zero));
+
+        var result = await _service.GetAgendaDataAsync(meeting.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(expectedIncluded ? 1 : 0, result.Items[0].CommentsBetweenMeetings.Count);
+    }
+
+    /// <summary>
+    /// With no time recorded the window runs to end of day, so a late event is still included.
+    /// The old code anchored to 12:00 UTC and would have dropped this.
+    /// </summary>
+    [Fact]
+    public async Task GetAgendaDataAsync_WithoutMeetingTime_IncludesEventLateOnMeetingDay()
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        await SeedHistoryEventAsync(meeting, new DateTimeOffset(2026, 3, 1, 20, 0, 0, TimeSpan.Zero));
+
+        var result = await _service.GetAgendaDataAsync(meeting.Id);
+
+        Assert.NotNull(result);
+        Assert.Single(result.Items[0].CommentsBetweenMeetings);
+    }
+
+    private async Task SeedHistoryEventAsync(Meeting meeting, DateTimeOffset eventCreatedAt)
+    {
+        _db.Meetings.Add(meeting);
+        var boardCase = new BoardCase { CaseNumber = 1, Title = "Test", Status = CaseStatus.Open };
+        _db.BoardCases.Add(boardCase);
+        await _db.SaveChangesAsync();
+
+        var ceMeeting = new CaseEvent { Category = CaseEventCategories.Meeting, Content = "", CreatedAt = DateTimeOffset.UtcNow };
+        var ceHistory = new CaseEvent { Category = CaseEventCategories.General, Content = "Hello", CreatedAt = eventCreatedAt };
+        _db.CaseEvents.AddRange(ceMeeting, ceHistory);
+        await _db.SaveChangesAsync();
+
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceMeeting.Id, BoardCaseId = boardCase.Id });
+        _db.CaseEventCases.Add(new CaseEventCase { CaseEventId = ceHistory.Id, BoardCaseId = boardCase.Id });
+        _db.MeetingEventLinks.Add(new MeetingEventLink { MeetingId = meeting.Id, CaseEventId = ceMeeting.Id, AgendaOrder = 1, AgendaTextSnapshot = "" });
+        await _db.SaveChangesAsync();
     }
 
     [Fact]

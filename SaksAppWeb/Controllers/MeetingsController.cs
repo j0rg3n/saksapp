@@ -67,6 +67,7 @@ public class MeetingsController : Controller
         var meeting = new Meeting
         {
             MeetingDate = vm.MeetingDate,
+            MeetingTime = vm.MeetingTime,
             Year = vm.MeetingDate.Year,
             YearSequenceNumber = vm.YearSequenceNumber,
             Location = vm.Location
@@ -80,7 +81,7 @@ public class MeetingsController : Controller
             nameof(Meeting),
             meeting.Id.ToString(),
             before: null,
-            after: new { meeting.Id, meeting.MeetingDate, meeting.Year, meeting.YearSequenceNumber, meeting.Location },
+            after: new { meeting.Id, meeting.MeetingDate, meeting.MeetingTime, meeting.Year, meeting.YearSequenceNumber, meeting.Location },
             ct: ct);
 
         return RedirectToAction(nameof(Details), new { id = meeting.Id });
@@ -95,6 +96,7 @@ public class MeetingsController : Controller
         {
             Id = meeting.Id,
             MeetingDate = meeting.MeetingDate,
+            MeetingTime = meeting.MeetingTime,
             YearSequenceNumber = meeting.YearSequenceNumber,
             Location = meeting.Location
         };
@@ -112,9 +114,10 @@ public class MeetingsController : Controller
         var meeting = await _db.Meetings.FindAsync(new object[] { vm.Id }, ct);
         if (meeting is null) return NotFound();
 
-        var before = new { meeting.MeetingDate, meeting.Year, meeting.YearSequenceNumber, meeting.Location };
+        var before = new { meeting.MeetingDate, meeting.MeetingTime, meeting.Year, meeting.YearSequenceNumber, meeting.Location };
 
         meeting.MeetingDate = vm.MeetingDate;
+        meeting.MeetingTime = vm.MeetingTime;
         meeting.Year = vm.MeetingDate.Year;
         meeting.YearSequenceNumber = vm.YearSequenceNumber;
         meeting.Location = vm.Location;
@@ -126,7 +129,7 @@ public class MeetingsController : Controller
             nameof(Meeting),
             meeting.Id.ToString(),
             before: before,
-            after: new { meeting.MeetingDate, meeting.Year, meeting.YearSequenceNumber, meeting.Location },
+            after: new { meeting.MeetingDate, meeting.MeetingTime, meeting.Year, meeting.YearSequenceNumber, meeting.Location },
             ct: ct);
 
         return RedirectToAction(nameof(Details), new { id = meeting.Id });
@@ -167,7 +170,7 @@ public class MeetingsController : Controller
         // Create CaseEvent (Category="meeting")
         var caseEvent = new CaseEvent
         {
-            Category = "meeting",
+            Category = CaseEventCategories.Meeting,
             Content = "",
             CreatedAt = new DateTimeOffset(meeting.MeetingDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
             CreatedByUserId = _audit.GetActorUserId()
@@ -233,7 +236,7 @@ public class MeetingsController : Controller
 
         var caseEvent = new CaseEvent
         {
-            Category = "meeting",
+            Category = CaseEventCategories.Meeting,
             Content = content.Trim(),
             CreatedAt = DateTimeOffset.UtcNow,
             CreatedByUserId = _audit.GetActorUserId()
@@ -434,7 +437,7 @@ public class MeetingsController : Controller
 
         // --- Build PDF ---
         var pdf = _pdfFactory.Create();
-        pdf.Title($"Innkalling styremøte #{meeting.YearSequenceNumber} {meeting.Year} — {meeting.MeetingDate:dd.MM.yyyy}");
+        pdf.Title($"Innkalling styremøte #{meeting.YearSequenceNumber} {meeting.Year} — {MeetingDisplay.Format(meeting)}");
         pdf.Paragraph($"(v{seq})");
         if (!string.IsNullOrWhiteSpace(meeting.Location))
             pdf.Paragraph($"Sted: {meeting.Location}");
@@ -464,7 +467,7 @@ public class MeetingsController : Controller
 
             if (item.PreviousMinutes is { } prev)
             {
-                pdf.Heading3($"Forrige møte ({prev.MeetingDate:dd.MM.yyyy}):");
+                pdf.Heading3($"Forrige møte ({MeetingDisplay.Format(prev.MeetingDate, prev.MeetingTime)}):");
                 if (!string.IsNullOrWhiteSpace(prev.OfficialNotes)) pdf.HeadingInline("Status: ", prev.OfficialNotes);
                 if (!string.IsNullOrWhiteSpace(prev.DecisionText)) pdf.HeadingInline("Vedtak: ", prev.DecisionText);
                 if (!string.IsNullOrWhiteSpace(prev.FollowUpText)) pdf.HeadingInline("Oppfølging: ", prev.FollowUpText);
@@ -597,7 +600,7 @@ public class MeetingsController : Controller
         var seq = await _pdfSequence.AllocateNextAsync(id, PdfDocumentType.AssigneeReminder, ct);
 
         var pdf = _pdfFactory.Create();
-        pdf.Title($"Påminnelse per ansvarlig — {meeting.MeetingDate:dd.MM.yyyy} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
+        pdf.Title($"Påminnelse per ansvarlig — {MeetingDisplay.Format(meeting)} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
         pdf.Paragraph("Kort liste per ansvarlig over saker til møtet.");
 
         pdf.Blank();
@@ -683,7 +686,7 @@ public class MeetingsController : Controller
         var seq = data.Sequence;
 
         var pdf = _pdfFactory.Create();
-        pdf.Title($"Referat — {meeting.MeetingDate:dd.MM.yyyy} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
+        pdf.Title($"Referat — {MeetingDisplay.Format(meeting)} — {meeting.Year}/{meeting.YearSequenceNumber} — v{seq}");
         if (!string.IsNullOrWhiteSpace(meeting.Location))
             pdf.Paragraph($"Sted: {meeting.Location}");
 

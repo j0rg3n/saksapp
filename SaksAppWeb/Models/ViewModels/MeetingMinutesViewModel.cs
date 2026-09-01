@@ -8,6 +8,8 @@ public class MeetingMinutesVm
     public int MeetingId { get; set; }
 
     public DateOnly MeetingDate { get; set; }
+
+    public TimeOnly? MeetingTime { get; set; }
     public int Year { get; set; }
     public int YearSequenceNumber { get; set; }
     public string? Location { get; set; }

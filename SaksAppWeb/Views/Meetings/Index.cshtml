@@ -23,7 +23,7 @@
     @foreach (var m in Model)
     {
         <tr>
-            <td><a asp-action="Details" asp-route-id="@m.Id">@m.MeetingDate</a></td>
+            <td><a asp-action="Details" asp-route-id="@m.Id">@SaksAppWeb.Models.MeetingDisplay.Format(m)</a></td>
             <td>@m.Id</td>
             <td><a asp-action="Details" asp-route-id="@m.Id">@m.Year/@m.YearSequenceNumber</a></td>
             <td>@m.Location</td>

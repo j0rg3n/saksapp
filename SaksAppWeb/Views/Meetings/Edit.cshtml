@@ -11,15 +11,19 @@
     <input type="hidden" asp-for="Id" />
 
     <div class="row">
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <label class="form-label">Møtedato</label>
             <input class="form-control" asp-for="MeetingDate" type="date" />
         </div>
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Klokkeslett</label>
+            <input class="form-control" asp-for="MeetingTime" type="time" />
+        </div>
+        <div class="col-md-3 mb-3">
             <label class="form-label">Løpenummer</label>
             <input class="form-control" asp-for="YearSequenceNumber" type="number" min="1" />
         </div>
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <label class="form-label">Sted</label>
             <input class="form-control" asp-for="Location" />
         </div>

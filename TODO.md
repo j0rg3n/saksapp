@@ -120,6 +120,26 @@ fordi `Meeting.MeetingDate` er en `DateOnly`. Møter planlegges alltid med både
 - [ ] **Task 6.2.3**: Implementer auto-lukk av Avvik når relatert sak lukkes
 - [ ] **Task 6.2.4**: Tillat Avvik uten sak (null CaseId)
 
+### 6.3 Avvik–Tiltak-kobling og status
+
+Lavere prioritet enn de to høyprioriterte sakene øverst.
+
+- [ ] `CaseEventRelation`-entitet (mange-til-mange mellom avvik- og tiltak-hendelser) + migrering,
+      med soft delete og query filter som resten av modellen
+- [ ] Felt på `CaseEvent`: `IsClosed`, `ClosedAt`, `ClosedByUserId` — gjelder kun `avvik`
+- [ ] UI for å koble et tiltak til ett eller flere avvik (og omvendt) fra HMS-visningen og
+      sakstidslinjen; vis koblede motparter som lenker
+- [ ] «Lukk avvik»-handling. Kobling av et tiltak lukker **ikke** avviket automatisk
+- [ ] Statusfilter i HMS-visningen, default åpne avvik
+
+### 6.4 Excel-eksport av avvik og tiltak
+
+- [ ] Velg bibliotek (ClosedXML — MIT, ingen Excel-avhengighet på serveren)
+- [ ] «Eksporter til Excel» i HMS-visningen; eksporter det filtrerte settet
+- [ ] Kolonner: Type, Dato, Innhold, Saksnumre, Status, Lukket dato, Koblede tiltak/avvik,
+      Registrert av
+- [ ] Test: eksport med og uten filter, avvik uten sak, avvik med flere koblede tiltak
+
 ---
 
 ## Phase 6B: Google Drive Backup (slanket)

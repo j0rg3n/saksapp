@@ -239,6 +239,26 @@ A bot is added to one or more WhatsApp groups. Incoming messages are ingested an
 - Can reference related cases
 - Typically does not include meetings (decisions not made there)
 
+**Avvik–Tiltak linking**
+- An `avvik` event can be linked to the `tiltak` event(s) that address it, and a `tiltak` may
+  address more than one `avvik` — many-to-many, via a `CaseEventRelation` join
+- The relation is between CaseEvents and is independent of which cases each event is linked to
+- Both the HMS view and the case timeline show the linked counterpart(s), with links
+
+**Avvik status**
+- An `avvik` is Open or Closed, recorded on the event as `IsClosed`, `ClosedAt`, `ClosedByUserId`
+- Closing is explicit. Linking a `tiltak` does **not** close the `avvik` — a measure is often
+  registered while the deviation is still open
+- The HMS view filters by status and defaults to showing open `avvik`
+- Status applies only to `avvik`; `tiltak` events have no status of their own
+
+**Excel export**
+- The HMS view offers "Eksporter til Excel", producing an `.xlsx` of the currently filtered set
+  (with no filter applied, that is every `avvik` and `tiltak`)
+- One row per event, columns: Type (Avvik/Tiltak), Dato, Innhold, Saksnumre, Status, Lukket dato,
+  Koblede tiltak/avvik, Registrert av
+- Generated server-side; no external service involved
+
 ### PDF Generation
 
 **Unified visual style**
