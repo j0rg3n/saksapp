@@ -14,19 +14,21 @@ uten komprimering. `TryApplyRetention(200)` er hardkodet (`:67`) og glob-mønste
 oppryddingen virker. Nedlastingsarkivet `../SaksApp_backups` er nå **34 GB / 2324 filer**
 (2248 ukomprimerte `.sqlite` = 33 GB, 60 `.bz2` = 999 MB).
 
-- [ ] Gjør oppryddingen konfigurerbar: `Backup:MaxFiles` (48), `Backup:MaxTotalBytes` (2 GB),
+- [x] Gjør oppryddingen konfigurerbar: `Backup:MaxFiles` (48), `Backup:MaxTotalBytes` (2 GB),
       `Backup:Compress` (true)
-- [ ] Gzip hvert snapshot: skriv `app-<ts>.sqlite.tmp`, stream gjennom `GZipStream` til
+- [x] Gzip hvert snapshot: skriv `app-<ts>.sqlite.tmp`, stream gjennom `GZipStream` til
       `app-<ts>.sqlite.gz`, slett temp-fila i `finally`
-- [ ] Skriv om `TryApplyRetention` (`:70-88`): matche `.sqlite`, `.sqlite.gz` og `.sqlite.bz2`;
+      (målt: kun ~12 % spart — databasen er dominert av vedlegg som allerede er komprimert,
+      så det er antalls- og størrelsesgrensene som gjør jobben, ikke komprimeringen)
+- [x] Skriv om `TryApplyRetention` (`:70-88`): matche `.sqlite`, `.sqlite.gz` og `.sqlite.bz2`;
       sortere på tidsstempelet i filnavnet, **ikke** `CreationTimeUtc` (upålitelig på Linux);
       slette eldste ut over `MaxFiles`, deretter til totalen er under `MaxTotalBytes`; alltid
       beholde nyeste
-- [ ] Logg én oppsummeringslinje per runde: filer beholdt, filer slettet, bytes på disk
-- [ ] `deployment/download-backups.sh`: bygg ekskluderingsliste fra lokale filnavn (strippet for
+- [x] Logg én oppsummeringslinje per runde: filer beholdt, filer slettet, bytes på disk
+- [x] `deployment/download-backups.sh`: bygg ekskluderingsliste fra lokale filnavn (strippet for
       `.gz`/`.bz2`) og send til `rsync --exclude-from` — uten dette laster
       `--ignore-existing` ned alt på nytt så snart lokale filer er komprimert
-- [ ] `download-backups.sh`: gjør `LOCAL_PATH` absolutt ut fra skriptets egen plassering, dropp
+- [x] `download-backups.sh`: gjør `LOCAL_PATH` absolutt ut fra skriptets egen plassering, dropp
       duplikate snapshots (hash mot forrige beholdte), gzip nye filer, og prun lokalt arkiv med
       `KEEP_LOCAL` (400) og `MAX_LOCAL_BYTES` (10 GB). Skriv ut før/etter-oppsummering.
       Legg til `set -uo pipefail`
@@ -48,13 +50,13 @@ Teigen) mangler begge. Begge sakene sto sist på agendaen i møte 13 (2026-08-11
 oppdatere denne leseren. **Alle hendelser opprettet etter 2026-05-02 faller ut av innkallingen.**
 Vinduslogikken er ikke skyld i dette.
 
-- [ ] Legg kategorisettet i én delt konstant (ved siden av
+- [x] Legg kategorisettet i én delt konstant (ved siden av
       `CasesController.ValidCaseEventCategories`): skrivbart sett (`general`, `avvik`, `tiltak`)
       og lesbart sett (de tre pluss legacy `comment`)
-- [ ] `IAgendaPdfDataService.cs:136`: filtrer på det lesbare settet
-- [ ] Døp om `allCommentEvents` og `commentAttachments*` til kategorinøytrale navn
-- [ ] Pek `ICaseQueryService.cs:156` på samme konstant
-- [ ] Rett regresjonstesten `AgendaPdfDataServiceTests.cs:132-161` — fixturen bruker
+- [x] `IAgendaPdfDataService.cs:136`: filtrer på det lesbare settet
+- [x] Døp om `allCommentEvents` og `commentAttachments*` til kategorinøytrale navn
+- [x] Pek `ICaseQueryService.cs:156` på samme konstant
+- [x] Rett regresjonstesten `AgendaPdfDataServiceTests.cs:132-161` — fixturen bruker
       `Category = "comment"` og passerer derfor mens produksjonskoden er ødelagt. Parametriser
       over `general`, `avvik`, `tiltak`, `comment`; `meeting` skal ikke med
 
@@ -66,13 +68,13 @@ Vinduslogikken er ikke skyld i dette.
 fordi `Meeting.MeetingDate` er en `DateOnly`. Møter planlegges alltid med både dato og klokkeslett
 — modellen mangler feltet.
 
-- [ ] Legg til `MeetingTime` (`TimeOnly?`) på `Meeting` + migrering. `MeetingDate` forblir
+- [x] Legg til `MeetingTime` (`TimeOnly?`) på `Meeting` + migrering. `MeetingDate` forblir
       `DateOnly` (86 bruksteder)
-- [ ] Klokkeslettfelt i `Views/Meetings/Create.cshtml` og `Edit.cshtml`; vis dato + tid i
+- [x] Klokkeslettfelt i `Views/Meetings/Create.cshtml` og `Edit.cshtml`; vis dato + tid i
       Index/Details/Minutes og i PDF-hodene
-- [ ] Vinduets slutt = `MeetingDate` + `MeetingTime` når satt, ellers slutten av døgnet — aldri
+- [x] Vinduets slutt = `MeetingDate` + `MeetingTime` når satt, ellers slutten av døgnet — aldri
       midt på dagen. Samme behandling for vindusstart mot forrige møte
-- [ ] Tester: hendelse før møtetidspunktet er med; etter er ute; uten tid satt er en hendelse
+- [x] Tester: hendelse før møtetidspunktet er med; etter er ute; uten tid satt er en hendelse
       sent på møtedagen fortsatt med
 
 ---
