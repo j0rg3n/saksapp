@@ -4,22 +4,85 @@
 
 ---
 
+## 🔴 HØY PRIORITET: Backup fyller disken — tjenesteavbrudd
+
+**Symptom**: Cloud-VM-en går tom for diskplass og tjenesten faller ut.
+
+**Rotårsak**: `DatabaseBackupService` tar timesvise snapshots (`DatabaseBackupService.cs:120`)
+uten komprimering. `TryApplyRetention(200)` er hardkodet (`:67`) og glob-mønsteret `app-*.sqlite`
+(`:74`) treffer aldri `.bz2`-filer, så de blir liggende for alltid. 200 × 37 MB = 7,4 GB selv når
+oppryddingen virker. Nedlastingsarkivet `../SaksApp_backups` er nå **34 GB / 2324 filer**
+(2248 ukomprimerte `.sqlite` = 33 GB, 60 `.bz2` = 999 MB).
+
+- [ ] Gjør oppryddingen konfigurerbar: `Backup:MaxFiles` (48), `Backup:MaxTotalBytes` (2 GB),
+      `Backup:Compress` (true)
+- [ ] Gzip hvert snapshot: skriv `app-<ts>.sqlite.tmp`, stream gjennom `GZipStream` til
+      `app-<ts>.sqlite.gz`, slett temp-fila i `finally`
+- [ ] Skriv om `TryApplyRetention` (`:70-88`): matche `.sqlite`, `.sqlite.gz` og `.sqlite.bz2`;
+      sortere på tidsstempelet i filnavnet, **ikke** `CreationTimeUtc` (upålitelig på Linux);
+      slette eldste ut over `MaxFiles`, deretter til totalen er under `MaxTotalBytes`; alltid
+      beholde nyeste
+- [ ] Logg én oppsummeringslinje per runde: filer beholdt, filer slettet, bytes på disk
+- [ ] `deployment/download-backups.sh`: bygg ekskluderingsliste fra lokale filnavn (strippet for
+      `.gz`/`.bz2`) og send til `rsync --exclude-from` — uten dette laster
+      `--ignore-existing` ned alt på nytt så snart lokale filer er komprimert
+- [ ] `download-backups.sh`: gjør `LOCAL_PATH` absolutt ut fra skriptets egen plassering, dropp
+      duplikate snapshots (hash mot forrige beholdte), gzip nye filer, og prun lokalt arkiv med
+      `KEEP_LOCAL` (400) og `MAX_LOCAL_BYTES` (10 GB). Skriv ut før/etter-oppsummering.
+      Legg til `set -uo pipefail`
+- [ ] Engangsopprydding av de 34 GB — først etter at Drive-opplasting er verifisert
+
+---
+
+## 🔴 HØY PRIORITET: Bugfix — Innkalling mangler hendelser siden forrige møte
+
+**Symptom**: Innkallingen tar ikke med hendelser registrert siden forrige møte. Bekreftet mot
+`app-20260901-191631.sqlite` for møte #9 (`Id 14`, 2026-09-29): hendelse **277** (`avvik`, sak 68,
+Isak om sirene/kabler etter service) og hendelse **284** (`tiltak`, sak 19, befaring med Ulf
+Teigen) mangler begge. Begge sakene sto sist på agendaen i møte 13 (2026-08-11), så vinduet er
+`(2026-08-11, 2026-09-29]` og begge hendelsene ligger midt i det.
+
+**Rotårsak**: `SaksAppWeb/Services/IAgendaPdfDataService.cs:136` filtrerer på
+`x.CaseEvent.Category == "comment"` — kun legacy-kategorien. Commit `888c095` (Phase 4.5,
+2026-05-02) endret skrivesiden til `general`/`avvik`/`tiltak` (`CasesController.cs:235`) uten å
+oppdatere denne leseren. **Alle hendelser opprettet etter 2026-05-02 faller ut av innkallingen.**
+Vinduslogikken er ikke skyld i dette.
+
+- [ ] Legg kategorisettet i én delt konstant (ved siden av
+      `CasesController.ValidCaseEventCategories`): skrivbart sett (`general`, `avvik`, `tiltak`)
+      og lesbart sett (de tre pluss legacy `comment`)
+- [ ] `IAgendaPdfDataService.cs:136`: filtrer på det lesbare settet
+- [ ] Døp om `allCommentEvents` og `commentAttachments*` til kategorinøytrale navn
+- [ ] Pek `ICaseQueryService.cs:156` på samme konstant
+- [ ] Rett regresjonstesten `AgendaPdfDataServiceTests.cs:132-161` — fixturen bruker
+      `Category = "comment"` og passerer derfor mens produksjonskoden er ødelagt. Parametriser
+      over `general`, `avvik`, `tiltak`, `comment`; `meeting` skal ikke med
+
+---
+
+## Ad-hoc: Møtetidspunkt — `MeetingTime`
+
+12:00 UTC-ankeret i vindusberegningen (`IAgendaPdfDataService.cs:176-179, 215-218`) er vilkårlig
+fordi `Meeting.MeetingDate` er en `DateOnly`. Møter planlegges alltid med både dato og klokkeslett
+— modellen mangler feltet.
+
+- [ ] Legg til `MeetingTime` (`TimeOnly?`) på `Meeting` + migrering. `MeetingDate` forblir
+      `DateOnly` (86 bruksteder)
+- [ ] Klokkeslettfelt i `Views/Meetings/Create.cshtml` og `Edit.cshtml`; vis dato + tid i
+      Index/Details/Minutes og i PDF-hodene
+- [ ] Vinduets slutt = `MeetingDate` + `MeetingTime` når satt, ellers slutten av døgnet — aldri
+      midt på dagen. Samme behandling for vindusstart mot forrige møte
+- [ ] Tester: hendelse før møtetidspunktet er med; etter er ute; uten tid satt er en hendelse
+      sent på møtedagen fortsatt med
+
+---
+
 ## Ad-hoc: Hjem-side med Markdown-innhold
 
 - [x] Legg til `Markdig` NuGet-pakke
 - [x] Opprett `SaksAppWeb/Content/home.md` med forklaring av appen
 - [x] `HomeController.Index()` leser filen og konverterer til HTML med Markdig
 - [x] `Views/Home/Index.cshtml` rendrer HTML-innholdet
-
----
-
-## Ad-hoc: Bugfix — Agenda mangler hendelser med blå Generelt-badge
-
-- [ ] Undersøk hvorfor CaseEvents med Category="general" (blå badge) utelates fra agenda
-      mens Category="comment" (grå badge) inkluderes; sjekk filtrering i agenda-query
-      og PDF-generator (`MeetingController`, `PdfGeneratorService`, agenda-query i
-      `IMeetingQueryService`)
-- [ ] Fiks filtreringen slik at begge kategorier inkluderes konsekvent
 
 ---
 
@@ -59,37 +122,33 @@
 
 ---
 
-## Phase 6B: Google Drive Backup
+## Phase 6B: Google Drive Backup (slanket)
 
-**Mål**: Automatisk opplasting av SQLite-sikkerhetskopier til brukernes Google Drive, med mulighet for admin-gjenoppretting.
+**Mål**: Offsite-kopier av backupene, slik at lokal oppbevaring kan holdes kort.
 
-**Avhengigheter**: Krever Phase 6A (admin-rolle for restore-tilgang). ✅ 6A er komplett.
+**Merk**: Opprinnelig Phase 6B var overspesifisert (per-bruker Drive-kobling, admin-restore-UI med
+DB-bytte ved oppstart). SPEC.md er skrevet om til: én admin kobler én Drive, restore er en
+dokumentert manuell prosedyre.
 
-### 6B.1 Google OAuth — Drive-tilkobling
-- [ ] Registrer OAuth 2.0-app i Google Cloud Console (scope: `drive.file`)
-- [ ] Legg til `UserDriveToken`-entitet: `UserId`, `AccessToken` (kryptert), `RefreshToken` (kryptert), `TokenExpiry`, `LinkedAt`
-- [ ] EF Core-migrering
-- [ ] Innstillingsside (`/settings`): "Koble til Google Drive"-knapp → OAuth-flyt → lagre tokens kryptert med ASP.NET Data Protection
-- [ ] Vis koblingsstatus og "Koble fra"-knapp
+### 6B.1 Drive-kobling
+- [ ] Registrer OAuth 2.0-app i Google Cloud Console (scope: `drive.file`) — manuelt forarbeid
+- [ ] `DriveToken`-entitet: `UserId`, `AccessToken` (kryptert), `RefreshToken` (kryptert),
+      `TokenExpiry`, `LinkedAt` + migrering
+- [ ] `/settings`-side bak `AdminOnlyFilter`: koble til / koble fra, vis koblingsstatus og siste
+      opplastingsresultat
 - [ ] Krypter tokens med `IDataProtector` (purpose: `"DriveTokens"`)
 
-### 6B.2 Backup-tjeneste
-- [ ] Legg til `DriveBackupLog`-entitet: `AttemptedAt`, `BackupDate`, `UserId`, `Success`, `ErrorMessage`
-- [ ] EF Core-migrering
-- [ ] Implementer `IGoogleDriveUploader` interface + `GoogleDriveUploader`
-- [ ] Legg til `DriveBackupService` (BackgroundService): kjør daglig, bruk SQLite Online Backup API
-- [ ] Konfigurasjon: `GoogleDrive:BackupIntervalDays` (default: 1), `GoogleDrive:ClientId`, `GoogleDrive:ClientSecret`
-- [ ] Logg resultat til `DriveBackupLog`
-
-### 6B.3 Gjenoppretting (kun admin)
-- [ ] Admin-side `/admin/restore`: vis liste over kjente backups fra `DriveBackupLog`
-- [ ] "Gjenopprett"-knapp: krev passordbekreftelse, last ned valgt backup-fil fra Drive
-- [ ] Skriv ned til staging-fil (`/app/db/app.db.pending`), skriv flaggfil `/app/db/restore.pending`
-- [ ] Startup-logikk i `Program.cs`: swap filer og kjør migreringer ved `restore.pending`
-- [ ] Invalider alle sesjoner etter gjenoppretting
-- [ ] Audit-logging av backup- og restore-hendelser
-
----
+### 6B.2 Opplasting
+- [ ] `DriveBackupLog`-entitet: `AttemptedAt`, `BackupDate`, `Success`, `ErrorMessage` + migrering
+- [ ] `IGoogleDriveUploader` / `GoogleDriveUploader`: last opp, list app-opprettede filer, slett
+      etter id
+- [ ] `DriveBackupService` (BackgroundService): sjekk hver `GoogleDrive:BackupIntervalDays`
+      (default 1), last opp **nyeste eksisterende lokale backup** som
+      `saksapp-backup-YYYY-MM-DD.db.gz`, no-op når ingen Drive er koblet
+- [ ] Prun Drive til `GoogleDrive:KeepCount` (default 30)
+- [ ] Konfigurasjon: `GoogleDrive:ClientId`, `GoogleDrive:ClientSecret` (via `auth/secret.env`),
+      `BackupIntervalDays`, `KeepCount`
+- [ ] Logg hvert forsøk til `DriveBackupLog` — både suksess og feil
 
 ## Phase 7: WhatsApp Bot
 

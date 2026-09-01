@@ -26,6 +26,7 @@ A case represents an item to be discussed or decided upon. A case has:
 ### Meeting (Møte)
 A meeting where cases are discussed. A meeting has:
 - **MeetingDate** - Date of the meeting
+- **MeetingTime** - Time of day the meeting starts (optional; meetings are normally planned with both a date and a time)
 - **Year** - Year (derived from MeetingDate)
 - **YearSequenceNumber** - Sequence number within the year (e.g., 1st meeting, 2nd meeting)
 - **Location** - Physical or virtual location
@@ -95,13 +96,13 @@ Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
 
 **List Meetings**
 - View all meetings, sorted by date (newest first)
-- Displayed columns: Date, Year/Sequence, Location
+- Displayed columns: Date (with time when set), Year/Sequence, Location
 
 **Create Meeting**
-- Form with: MeetingDate, YearSequenceNumber, Location
+- Form with: MeetingDate, MeetingTime, YearSequenceNumber, Location
 
 **Edit Meeting**
-- Modify meeting date, sequence number, and location
+- Modify meeting date, meeting time, sequence number, and location
 
 **Meeting Details / Agenda**
 - View meeting with its agenda (scheduled cases)
@@ -256,7 +257,17 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 - Agenda text snapshot (in regular text, if different from description)
 - Tidsfrist
 - Previous meeting follow-up (if applicable)
-- Comments since last meeting
+- Comments since last meeting («Historikk siden forrige møte»)
+  - Includes case-level events in categories `general`, `avvik`, `tiltak`, and legacy `comment`.
+    `meeting` events are excluded (they are the agenda-item anchors themselves). `whatsapp`
+    events are excluded for now.
+  - Window: events created after the most recent meeting at which **that case** appeared on the
+    agenda, up to the start of the current meeting. This is per-case, not "since the previous
+    meeting" globally. A case never previously on an agenda includes its full history.
+  - The window ends at the meeting's `MeetingDate` + `MeetingTime`. When no time is recorded the
+    window ends at the end of that day, so a missing time never silently drops an event.
+  - The category set must match the case timeline (`ICaseQueryService`) — the agenda PDF must
+    never filter on a narrower set.
 - Attachment references
 
 **Minutes PDF**
@@ -292,34 +303,35 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 ### Google Drive Backup
 
 **Overview**
-- Each user can link their own Google Drive account via OAuth 2.0
-- The app uploads a date-stamped SQLite backup to every linked Drive at the configured interval
-- Backup files are named `saksapp-backup-YYYY-MM-DD.db`
-- Only admins can trigger a manual backup or initiate a restore
+- A single admin links one Google Drive account; the app uploads compressed SQLite backups there
+- Offsite copies are what allow local retention to stay short
+- Restore is a documented manual procedure, not a UI feature
 
-**Per-user Drive linking**
-- Settings page: "Koble til Google Drive" button initiates OAuth 2.0 flow (Google identity)
-- OAuth tokens (access + refresh) stored encrypted in DB per user
-- User can unlink their Drive at any time (tokens deleted)
-- Multiple users can have linked Drives; backup is sent to all of them
+**Drive linking**
+- Settings page (`/settings`): "Koble til Google Drive" starts an OAuth 2.0 flow (scope `drive.file`)
+- Admin-only. Access and refresh tokens stored encrypted via ASP.NET Data Protection
+  (`IDataProtector`, purpose `"DriveTokens"`)
+- Shows link status, last upload result, and a "Koble fra" button that deletes the tokens
 
-**Backup schedule**
-- Background service checks daily whether a backup is due
-- Configurable interval: every N days (default: 1, set in appsettings or per-user preference)
-- On trigger: create SQLite backup using Online Backup API → upload to each linked Drive
-- Log each backup attempt (success/failure) to a `DriveBackupLog` table
+**Upload schedule**
+- Background service checks every `GoogleDrive:BackupIntervalDays` (default 1) whether an upload is due
+- Uploads the newest existing local backup — it does not create a separate snapshot
+- Uploaded as `saksapp-backup-YYYY-MM-DD.db.gz`
+- Each attempt recorded in `DriveBackupLog` (`AttemptedAt`, `BackupDate`, `Success`, `ErrorMessage`)
+- No-op when no Drive is linked
 
-**Restore (Admin only)**
-- Admin selects a backup date from the list of known backups (from `DriveBackupLog`)
-- App downloads the backup file from a linked Drive
-- Restore writes the file to a staging path, then performs a graceful DB swap on next startup
-- A `/admin/restore-pending` flag file signals the startup code to swap the DB before migrating
-- After restore, all sessions are invalidated
+**Drive-side retention**
+- Keeps the newest `GoogleDrive:KeepCount` uploads (default 30), deleting older ones
+- The `drive.file` scope only grants access to files this app created, so deletion cannot touch
+  the user's other Drive content
+
+**Restore (manual)**
+- Download the chosen `saksapp-backup-*.db.gz` from Drive, gunzip, stop the container, replace
+  `db/app.db`, start the container. Migrations apply on startup as usual.
+- No restore UI, no staging file, no startup swap flag, no session invalidation logic
 
 **Security**
-- OAuth tokens encrypted at rest using ASP.NET Data Protection
-- Restore is admin-only and requires re-entering password as confirmation
-- Backup/restore operations are logged to the audit log
+- Tokens encrypted at rest; linking and unlinking are admin-only and written to the audit log
 
 ### Audit Log
 
@@ -344,10 +356,10 @@ The unified event model replaces the previous separate entities (CaseComment, Me
 - **ApplicationUser** - Extended identity user
   - `IsApproved` - bool, default false; first user auto-true
   - `IsAdmin` - bool, default false; first user auto-true
-- **UserDriveToken** - Per-user Google Drive OAuth tokens
+- **DriveToken** - The single admin Google Drive link
   - `UserId`, `AccessToken` (encrypted), `RefreshToken` (encrypted), `TokenExpiry`, `LinkedAt`
 - **DriveBackupLog** - Record of each backup upload attempt
-  - `AttemptedAt`, `BackupDate`, `UserId` (Drive owner), `Success`, `ErrorMessage`
+  - `AttemptedAt`, `BackupDate`, `Success`, `ErrorMessage`
 - **BoardCase** - Case information
 - **CaseEvent** - Unified event entry (replaces CaseComment and BoardEvent)
   - Linked to Case via CaseEventCase
@@ -379,7 +391,18 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 - Keys persisted to filesystem
 
 ### Background Services
-- Database backup service - hourly backups using SQLite Online Backup API
+- Database backup service — periodic SQLite Online Backup API snapshots to `db/Backups/`
+  - Interval: `Backup:IntervalMinutes` (default 60)
+  - Each snapshot is gzip-compressed and named `app-<yyyyMMdd-HHmmss>.sqlite.gz`
+  - Retention is bounded by BOTH limits, whichever binds first:
+    - `Backup:MaxFiles` (default 48) — oldest deleted beyond this count
+    - `Backup:MaxTotalBytes` (default 2 GB) — oldest deleted until the folder fits
+  - The newest backup is never deleted, even if it alone exceeds `MaxTotalBytes`
+  - Retention considers `.sqlite`, `.sqlite.gz` and `.sqlite.bz2` so historical formats are swept
+    rather than orphaned
+  - Ordering for deletion is by the timestamp in the filename, not filesystem timestamps
+  - `deployment/download-backups.sh` mirrors these rules for the downloaded archive: it
+    deduplicates and gzips new snapshots and prunes by the same two limits
 - WhatsApp ingest buffer flush service - background timer that flushes pending message groups when the grouping window expires
 
 ### Testing
@@ -561,6 +584,14 @@ Features that have been considered but deprioritised or deferred indefinitely.
 ### Per-sak kommunikasjonskanal
 
 Each case could get its own real-time channel (e.g. a dedicated WhatsApp group or in-app thread) where board members can discuss the case asynchronously. Open question: a board member may be involved in many cases simultaneously, which would create many channels. Deferred; revisit if users express this need explicitly.
+
+### Arkivering av lukkede saker
+
+Closed cases and their events could be moved into separate archive storage, keeping the live
+database small. Attachments are stored as BLOBs in the database by design — they are an integral
+part of the case documentation and are not moving to the filesystem — so archiving closed cases is
+the durable answer to database growth, and therefore to backup size. Deferred for future
+consideration; not designed or scheduled.
 
 ### Jotta-backup (alternativ til Google Drive)
 
