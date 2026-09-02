@@ -1,0 +1,16 @@
+# SAKSAPP_DOMAIN comes from auth/caddy.env. Defaulting to localhost means a local
+# `docker compose up` gets a working HTTPS site from Caddy's internal CA, with no ACME calls.
+#
+# No global `email` option: an unset ACME_EMAIL expands to a bare `email` directive, which is a
+# parse error and crash-loops the proxy. Caddy registers with Let's Encrypt without a contact
+# address. Add `email you@example.com` inside a global block if you want expiry notices.
+{$SAKSAPP_DOMAIN:localhost} {
+	encode zstd gzip
+
+	# The app listens on plain HTTP inside the compose network; only Caddy is reachable publicly.
+	reverse_proxy saksappweb:8080
+
+	log {
+		output stdout
+	}
+}

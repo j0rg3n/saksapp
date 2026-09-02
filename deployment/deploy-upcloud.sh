@@ -16,9 +16,16 @@ docker save saksappweb:latest -o "$(dirname "$0")/../saksappweb.tar"
 echo "Transferring image to VM..."
 scp "$(dirname "$0")/../saksappweb.tar" ${VM_HOST}:${VM_PATH}/
 
-# 2. Transfer docker-compose.yml
-echo "Transferring docker-compose.yml..."
+# 2. Transfer docker-compose.yml and the proxy config
+echo "Transferring docker-compose.yml and Caddyfile..."
 scp "$(dirname "$0")/../docker-compose.yml" ${VM_HOST}:${VM_PATH}/
+scp "$(dirname "$0")/../Caddyfile" ${VM_HOST}:${VM_PATH}/
+
+# 2b. Sync auth/ so the compose env_file entries resolve on the VM. Previously these were placed
+# by hand, which meant a fresh VM could not be brought up from this script alone.
+echo "Syncing auth/ ..."
+ssh ${VM_HOST} "mkdir -p ${VM_PATH}/auth"
+rsync -av "$(dirname "$0")/../auth/" ${VM_HOST}:${VM_PATH}/auth/
 
 # 3. Sync deployment folder (service file, helper scripts)
 echo "Syncing deployment folder..."

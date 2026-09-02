@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SaksAppWeb.Data;
@@ -26,6 +28,37 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.S
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders()
     .AddDefaultUI();
+
+// Behind the Caddy proxy the app sees plain HTTP, so it needs the forwarded headers to know the
+// request actually arrived over HTTPS — otherwise redirects and secure cookies get it wrong.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    // The proxy's address on the compose network is not fixed, so it cannot be pinned here.
+    // Trusting any upstream is only acceptable because the app publishes no public port: the
+    // proxy is the sole route in. Pin KnownProxies if that ever stops being true.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+if (!builder.Environment.IsDevelopment())
+{
+    // Never send the auth cookie over plain HTTP in production. Left at the default
+    // (SameAsRequest) it would travel unencrypted on any HTTP request that slipped through.
+    builder.Services.ConfigureApplicationCookie(options =>
+    {
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.HttpOnly = true;
+    });
+
+    // ConfigureApplicationCookie only covers the Identity cookie. The antiforgery and temp-data
+    // cookies are issued separately and default to SameAsRequest, so they need marking too.
+    builder.Services.AddAntiforgery(options => options.Cookie.SecurePolicy = CookieSecurePolicy.Always);
+    builder.Services.Configure<CookieTempDataProviderOptions>(
+        options => options.Cookie.SecurePolicy = CookieSecurePolicy.Always);
+}
 
 builder.Services.AddScoped<UserManager<ApplicationUser>, AppUserManager>();
 
@@ -60,6 +93,9 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 }
+
+// Must run before anything that inspects the scheme or the client address.
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

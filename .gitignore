@@ -10,3 +10,5 @@ auth/
 *.sqlite
 backups/
 db_old_delete_me/
+caddy_data/
+caddy_config/

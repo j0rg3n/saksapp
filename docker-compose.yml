@@ -1,11 +1,32 @@
 services:
+  # TLS termination. Obtains and renews Let's Encrypt certificates automatically and redirects
+  # HTTP to HTTPS. Port 80 stays open only for the ACME challenge and that redirect.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+    env_file:
+      # Deliberately not auth/secret.env: the proxy has no business holding SMTP credentials.
+      - auth/caddy.env
+    depends_on:
+      - saksappweb
+
   saksappweb:
     image: saksappweb
     build:
       context: .
       dockerfile: SaksAppWeb/Dockerfile
+    # Loopback only. The app must not be reachable except through the proxy; this binding exists
+    # for local debugging and is not exposed off the host.
     ports:
-      - "0.0.0.0:80:8080"
+      - "127.0.0.1:8080:8080"
     dns:
       - 8.8.8.8
       - 8.8.4.4

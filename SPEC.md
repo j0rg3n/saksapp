@@ -421,6 +421,23 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 - SMTP configuration for sending emails
 - Used for password reset functionality
 
+### Transport security
+
+- The application is served over **HTTPS only**, in front of a **Caddy** reverse proxy that obtains
+  and renews Let's Encrypt certificates automatically.
+- The hostname comes from `SAKSAPP_DOMAIN` (set in `auth/secret.env`); an A record for it must
+  point at the VM. A bare IP address cannot be used: Let's Encrypt will not certify one and Google
+  rejects it as an OAuth redirect host.
+- Caddy publishes ports 80 and 443. Port 80 exists only to satisfy the ACME HTTP challenge and to
+  redirect to HTTPS; Caddy does both by default.
+- The application container does **not** publish a public port. It binds `127.0.0.1:8080` on the
+  host for local debugging only, so the only public path in is through the proxy.
+- The app trusts `X-Forwarded-For` and `X-Forwarded-Proto` via `UseForwardedHeaders`. Trusting
+  them unconditionally is safe *because* the app port is not publicly reachable — if that ever
+  changes, the proxy must be pinned with `KnownProxies` instead.
+- Authentication cookies are marked `Secure` outside Development, and HSTS is enabled. HSTS was
+  previously a no-op: browsers ignore the header when it arrives over plain HTTP.
+
 ### Data Protection
 - ASP.NET Data Protection for antiforgery tokens
 - Keys persisted to filesystem

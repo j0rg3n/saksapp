@@ -1,0 +1,16 @@
+# Local development only, mounted by docker-compose.override.yml.
+#
+# `tls internal` forces Caddy's own CA. Without it Caddy attempts real ACME for whatever hostname
+# is configured, which fails for non-public names and burns Let's Encrypt rate limits from a dev
+# machine. Using a non-localhost name here also lets HSTS be exercised: ASP.NET Core excludes
+# localhost from HSTS by default, so localhost alone cannot prove the header works.
+{$SAKSAPP_DOMAIN:saksapp.test} {
+	tls internal
+
+	encode zstd gzip
+	reverse_proxy saksappweb:8080
+
+	log {
+		output stdout
+	}
+}

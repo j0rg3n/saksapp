@@ -34,6 +34,31 @@ på `MeetingsController.cs:769`.
 
 ---
 
+## 🔴 HØY PRIORITET: TLS — appen kjører på ufortrolig HTTP
+
+**Symptom**: Produksjon serveres over `http://<ip>` (port 80, `docker-compose.yml`). Passord ved
+innlogging og selve auth-cookien går ukryptert over nettet. `Program.cs:72` kaller `UseHsts()`, men
+det er en no-op: nettlesere ignorerer HSTS-headeren når den kommer over HTTP, og det finnes ingen
+`UseHttpsRedirection`. Enhver på nettverket mellom et styremedlem og VM-en kan lese
+innloggingsdetaljer og kapre sesjonen.
+
+**Blokkerer også Phase 6B**: Google krever HTTPS for OAuth-redirect-URI-er og godtar ikke bare
+IP-adresser som redirect-vert.
+
+- [x] `SAKSAPP_DOMAIN` lagt i `auth/caddy.env` (egen fil — proxyen skal ikke ha SMTP-credentials)
+- [ ] **Gjenstår hos deg**: pek en A-record for `bergstien12.fabeljet.com` mot VM-ens IP
+- [x] `Caddyfile` med automatisk Let's Encrypt; Caddy publiserer 80 og 443
+- [x] `docker-compose.yml`: legg til `caddy`-tjenesten; appen slutter å publisere offentlig port og
+      binder bare `127.0.0.1:8080` for lokal debugging
+- [x] `Program.cs`: `UseForwardedHeaders` (`X-Forwarded-For`, `X-Forwarded-Proto`) først i
+      pipelinen, og `Cookie.SecurePolicy = Always` utenfor Development
+- [x] `deployment/deploy-upcloud.sh`: overfør `Caddyfile` og `auth/secret.env`-avhengige variabler
+- [ ] Åpne port 443 i VM-ens brannmur
+- [x] Verifiser lokalt med `SAKSAPP_DOMAIN=localhost` (Caddy bruker intern CA, ingen ACME), og i
+      produksjon at HTTP redirigerer til HTTPS og at sertifikatet er gyldig
+
+---
+
 ## Pre-deploy-review 2026-09-02 (runde 2) — funn fra PDF-endringene
 
 Review av innkalling-badges + sidetallsfiksen. Ingen funn blokkerer utrulling.
@@ -74,7 +99,7 @@ Review av 67884be..c4ba898 før utrulling. Se CLAUDE.md «Pre-deployment review�
 
 ### Sikkerhet
 
-- [ ] **HØY: Hemmeligheter og Data Protection-nøkler havner i Docker build-laget.**
+- [x] **HØY: Hemmeligheter og Data Protection-nøkler havner i Docker build-laget.**
       `.dockerignore` ekskluderer `**/.env`, som *ikke* matcher `auth/secret.env`, og hverken
       `db/` eller `dp_keys/`. Build-steget inneholder SMTP-credentials, VM-host, tre ukrypterte
       DP-nøkler, live-databasen og 830 MB backups (build-image: 4,43 GB, kontekst 1,2 GB).

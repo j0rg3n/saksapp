@@ -1,0 +1,10 @@
+# Local development only. Compose loads this automatically when present; the deploy script sends
+# just docker-compose.yml and Caddyfile to the VM, so production is unaffected.
+services:
+  caddy:
+    environment:
+      SAKSAPP_DOMAIN: saksapp.test
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
