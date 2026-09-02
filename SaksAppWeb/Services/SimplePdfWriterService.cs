@@ -42,6 +42,27 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
         public int TargetPageNumber { get; init; }
     }
 
+    /// <summary>
+    /// A TOC line written before its attachment existed, so its page number is not yet known.
+    /// Both the printed number and the link target are filled in by
+    /// <see cref="ApplyAttachmentTocPageNumbers"/> once the attachments have been appended.
+    /// </summary>
+    private sealed class DeferredTocPageNumber
+    {
+        /// <summary>
+        /// The graphics context that was live for this page. PdfSharp allows only one XGraphics per
+        /// page at a time and the writer never disposes them, so the original must be reused.
+        /// </summary>
+        public required XGraphics Gfx { get; init; }
+        public required int TocPageNumber { get; init; }
+        public required double Y { get; init; }
+        public required double Width { get; init; }
+        public required double Height { get; init; }
+        public required double GutterWidth { get; init; }
+        public required int AttachmentNumber { get; init; }
+    }
+
+    private readonly List<DeferredTocPageNumber> _deferredTocPageNumbers = new();
     private readonly List<PendingLink> _pendingLinks = new();
     private readonly List<PendingTocLink> _pendingTocLinks = new();
     private readonly Dictionary<int, int> _attachmentPageNumbers = new();
@@ -69,6 +90,69 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
         WriteWrapped(firstLine, font, extraBottom: 0);
         if (!string.IsNullOrWhiteSpace(continuation))
             WriteWrapped(continuation, font, extraBottom: 6, indent: true);
+    }
+
+    /// <summary>
+    /// Writes "&lt;prefix&gt; [badge] &lt;firstLine&gt;" on one line, continuation indented beneath.
+    /// The badge sits inline after the prefix (the datestamp): a badge on its own line costs a whole
+    /// line per entry, which is wasteful in a long history list.
+    ///
+    /// With no badge this degrades to "&lt;prefix&gt;: &lt;firstLine&gt;" — exactly what
+    /// <see cref="ParagraphFirstLine"/> would have produced.
+    /// </summary>
+    public void ParagraphFirstLineWithBadge(string prefix, string? badgeLabel, string? badgeColorHex, string firstLine, string continuation, bool isItalic = false)
+    {
+        var font = isItalic ? _pItalicFont : _pFont;
+
+        if (string.IsNullOrEmpty(badgeLabel) || string.IsNullOrEmpty(badgeColorHex))
+        {
+            ParagraphFirstLine($"{prefix}: {firstLine}", continuation, isItalic);
+            return;
+        }
+
+        var fontHeight = font.GetHeight();
+        EnsureSpace(fontHeight + LineGap);
+
+        var x = Margin;
+
+        var prefixWidth = _gfx.MeasureString(prefix, font).Width;
+        _gfx.DrawString(prefix, font, XBrushes.Black,
+            new XRect(x, _y, prefixWidth, fontHeight + LineGap), XStringFormats.TopLeft);
+        x += prefixWidth + 5;
+
+        x += DrawInlineBadge(badgeLabel, badgeColorHex, x, _y);
+
+        _gfx.DrawString(firstLine, font, XBrushes.Black,
+            new XRect(x, _y, _page.Width - x - Margin, fontHeight + LineGap), XStringFormats.TopLeft);
+        _y += fontHeight + LineGap;
+
+        if (!string.IsNullOrWhiteSpace(continuation))
+            WriteWrapped(continuation, font, extraBottom: 6, indent: true);
+        else
+            _y += 6;
+    }
+
+    /// <summary>Draws a coloured dot plus label at (x, y). Returns the horizontal space consumed.</summary>
+    private double DrawInlineBadge(string label, string colorHex, double x, double y)
+    {
+        var r = Convert.ToInt32(colorHex.Substring(1, 2), 16);
+        var g = Convert.ToInt32(colorHex.Substring(3, 2), 16);
+        var b = Convert.ToInt32(colorHex.Substring(5, 2), 16);
+        var brush = new XSolidBrush(XColor.FromArgb(r, g, b));
+
+        var fontHeight = _pFont.GetHeight();
+        var radius = fontHeight * 0.28;
+        const double dotToLabel = 3;
+        const double labelToText = 6;
+
+        _gfx.DrawEllipse(brush, x, y + fontHeight * 0.25, radius * 2, radius * 2);
+
+        var labelX = x + radius * 2 + dotToLabel;
+        var labelWidth = _gfx.MeasureString(label, _h3Font).Width;
+        _gfx.DrawString(label, _h3Font, XBrushes.Black,
+            new XRect(labelX, y, labelWidth, fontHeight + LineGap), XStringFormats.TopLeft);
+
+        return radius * 2 + dotToLabel + labelWidth + labelToText;
     }
 
     public void HeadingInline(string heading, string text)
@@ -229,6 +313,66 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
         _y += fontHeight + LineGap + 4;
     }
 
+    /// <summary>
+    /// Writes a TOC line, reserving a gutter for the page number. Writing the number up front
+    /// cannot work: the attachments have not been appended yet, so every entry would receive the
+    /// same value — which is exactly the bug this replaces.
+    /// </summary>
+    public void WriteAttachmentTocEntryDeferred(int attachmentNumber, string label, string fileName)
+    {
+        var text = $"Vedlegg {label}: {fileName}";
+        var fontHeight = _pFont.GetHeight();
+        var gutterWidth = _gfx.MeasureString("0000: ", _pFont).Width;
+        var textWidth = _gfx.MeasureString(text, _pFont).Width;
+
+        EnsureSpace(fontHeight + LineGap);
+
+        _gfx.DrawString(text, _pFont, XBrushes.Black,
+            new XRect(Margin + gutterWidth, _y, textWidth, fontHeight + LineGap), XStringFormats.TopLeft);
+
+        _deferredTocPageNumbers.Add(new DeferredTocPageNumber
+        {
+            Gfx = _gfx,
+            TocPageNumber = _doc.PageCount,
+            Y = _y,
+            Width = gutterWidth + textWidth,
+            Height = fontHeight + LineGap,
+            GutterWidth = gutterWidth,
+            AttachmentNumber = attachmentNumber
+        });
+
+        _y += fontHeight + LineGap + 4;
+    }
+
+    /// <summary>
+    /// Fills each reserved gutter with its attachment's real start page, and registers the TOC
+    /// hyperlink against that page. Call once every attachment has been appended.
+    /// </summary>
+    public void ApplyAttachmentTocPageNumbers()
+    {
+        foreach (var entry in _deferredTocPageNumbers)
+        {
+            if (!_attachmentPageNumbers.TryGetValue(entry.AttachmentNumber, out var pageNumber))
+                continue;
+
+            entry.Gfx.DrawString($"{pageNumber}:", _pFont, XBrushes.Black,
+                new XRect(Margin, entry.Y, entry.GutterWidth - 6, entry.Height), XStringFormats.TopRight);
+
+            // The link target was previously the same guessed page for every entry, so the TOC
+            // hyperlinks were as wrong as the printed numbers.
+            _pendingTocLinks.Add(new PendingTocLink
+            {
+                PageNumber = entry.TocPageNumber,
+                Y = entry.Y,
+                Width = entry.Width,
+                Height = entry.Height,
+                TargetPageNumber = pageNumber
+            });
+        }
+
+        _deferredTocPageNumbers.Clear();
+    }
+
     public int AddPdfAttachmentStart()
     {
         return _doc.PageCount + 1;
@@ -308,9 +452,15 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
             var pageHeight = _doc.Pages[link.PageNumber - 1].Height;
             var pdfY = pageHeight - link.Y - link.Height;
 
-            var pdfRect = new PdfRectangle(new XPoint(link.Y, pdfY), new XPoint(link.Y + link.Width, pdfY + link.Height));
+            // The X coordinates were taken from link.Y, which put the clickable box at a horizontal
+            // offset equal to the line's vertical position. The line starts at the left margin.
+            var pdfRect = new PdfRectangle(
+                new XPoint(Margin, pdfY),
+                new XPoint(Margin + link.Width, pdfY + link.Height));
 
-            var annotation = PdfLinkAnnotation.CreateDocumentLink(pdfRect, link.TargetPageNumber - 1);
+            // CreateDocumentLink takes a one-based page number, and TargetPageNumber already is one,
+            // so the previous "- 1" landed every link one page early.
+            var annotation = PdfLinkAnnotation.CreateDocumentLink(pdfRect, link.TargetPageNumber);
             _doc.Pages[link.PageNumber - 1].Annotations.Add(annotation);
         }
     }

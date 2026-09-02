@@ -57,7 +57,17 @@ public static class FontResolverBootstrap
     public static void Initialize()
     {
         if (_initialized) return;
-        GlobalFontSettings.FontResolver = new LinuxFontResolver();
         _initialized = true;
+
+        try
+        {
+            GlobalFontSettings.FontResolver = new LinuxFontResolver();
+        }
+        catch (InvalidOperationException)
+        {
+            // PdfSharp refuses to swap the resolver once it has been used. That can only happen if
+            // something rendered before startup got here, in which case a resolver is already in
+            // place — not a reason to fail startup.
+        }
     }
 }

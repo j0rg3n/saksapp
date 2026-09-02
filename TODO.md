@@ -25,12 +25,51 @@ innholdsfortegnelsen, *før* vedleggene er lagt til. `GetCurrentPageNumber()` en
 TOC-linjene skrives på samme side, så hver oppføring får samme verdi. Samme feil i referat-PDF-en
 på `MeetingsController.cs:769`.
 
-- [ ] Legg til vedleggene først for å finne faktisk startside per vedlegg, og skriv TOC-en etterpå
+- [x] Legg til vedleggene først for å finne faktisk startside per vedlegg, og skriv TOC-en etterpå
       — eller beregn sideantall per vedlegg på forhånd. `ISimplePdfWriter` har allerede
       `GetAttachmentPageNumbers()` og `AddPdfAttachmentStart()` som ser ut til å være ment for
       nettopp dette; sjekk om de kan brukes
-- [ ] Rett begge steder (innkalling og referat)
-- [ ] Test: innkalling med minst tre flersidige PDF-vedlegg skal gi stigende, korrekte sidetall
+- [x] Rett begge steder (innkalling og referat)
+- [x] Test: innkalling med minst tre flersidige PDF-vedlegg skal gi stigende, korrekte sidetall
+
+---
+
+## Pre-deploy-review 2026-09-02 (runde 2) — funn fra PDF-endringene
+
+Review av innkalling-badges + sidetallsfiksen. Ingen funn blokkerer utrulling.
+
+### Pålitelighet
+
+- [ ] **Vedlegg som verken er PDF eller bilde får en TOC-linje, men legges aldri inn.**
+      Append-løkkene (`MeetingsController.cs:560, 793`) håndterer bare `application/pdf` og
+      `image/*`; alt annet (f.eks. `.docx`, `.xlsx`) hoppes over — men TOC-linjen er allerede
+      skrevet. Før viste den et feil sidetall, nå står feltet tomt. Enten filtrer slike vedlegg ut
+      av TOC-en, eller merk dem «(ikke innlemmet)». Eksisterende feil, nå synlig
+- [ ] `FontResolverBootstrap.Initialize` svelger «already used»-unntaket uten logging (statisk
+      klasse, ingen logger). Feiler resolveren reelt, dukker det opp senere som en uklar font-feil
+
+### Code smells
+
+- [ ] **`WriteAttachmentTocEntry` og `WriteAttachmentTocEntryLabel` er nå ubrukte** — den siste ble
+      foreldreløs av sidetallsfiksen. Bør fjernes, men gjør det som en egen, forsiktig endring:
+      et forsøk under denne runden kuttet for bredt og tok med `OutcomeBadge` og
+      `DeferredTocPageNumber`; ble rullet tilbake
+- [ ] **`ApplyPendingLinks` / `_pendingLinks` / `WriteTextWithAttachmentLinks` /
+      `AddPdfAttachmentStart` er ubrukt.** `ApplyPendingLinks` har dessuten de *samme* to feilene
+      som nettopp ble rettet i TOC-stien: `TargetPageNumber - 1` (peker én side for tidlig) og
+      `new XPoint(link.Y, ...)` som bruker Y som X-koordinat. Kobles den noen gang på, er den feil
+      fra dag én. Fjern, eller rett samtidig
+- [ ] `DrawInlineBadge` parser fargen med `Convert.ToInt32(colorHex.Substring(...))` uten
+      validering. Kalles kun med hardkodede literaler i dag; kaster ved ugyldig input
+
+### Vurdert uten funn
+
+- **Sikkerhet**: ingen ny angrepsflate. Brukertekst og filnavn tegnes via `DrawString`; ingen
+  injeksjonsvei i PDF-tekst
+- **Responsivitet**: uendret kostnad; `ApplyAttachmentTocPageNumbers` er O(oppføringer)
+- **Ytelse**: forbedring — `labeledAttachments.IndexOf(...)` i referat-PDF-en var O(n²) og ga feil
+  sekvensnummer for duplikater; erstattet med en teller
+- **Stabilitet**: TOC-renna er dimensjonert for «0000: », dvs. sidetall opp til 9999
 
 ---
 

@@ -1,5 +1,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0
 
+# Same fonts as the app image. Without these, SimplePdfWriter cannot be constructed at all, which
+# is why the PDF layout code had no test coverage and the attachment page-number bug went unnoticed.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /src
 
 COPY SaksAppWeb.Tests/SaksAppWeb.Tests.csproj SaksAppWeb.Tests/

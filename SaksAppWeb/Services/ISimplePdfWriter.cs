@@ -11,6 +11,7 @@ public interface ISimplePdfWriter
     void ParagraphIndented(string text);
     void ParagraphItalicIndented(string text);
     void ParagraphFirstLine(string firstLine, string continuation, bool isItalic = false);
+    void ParagraphFirstLineWithBadge(string prefix, string? badgeLabel, string? badgeColorHex, string firstLine, string continuation, bool isItalic = false);
     void HeadingInline(string heading, string text);
     void WriteTextWithAttachmentLinks(string text);
     void ApplyPendingLinks();
@@ -19,6 +20,8 @@ public interface ISimplePdfWriter
     void Blank(double points = 8);
     void WriteAttachmentTocEntry(int pageNumber, int attachmentNumber, string fileName);
     void WriteAttachmentTocEntryLabel(int pageNumber, string label, string fileName);
+    void WriteAttachmentTocEntryDeferred(int attachmentNumber, string label, string fileName);
+    void ApplyAttachmentTocPageNumbers();
     int AddPdfAttachmentStart();
     void AddPdfAttachment(byte[] pdfContent, string fileName, int number);
     void AddImageAttachment(byte[] imageContent, string fileName, int number);

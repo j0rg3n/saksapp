@@ -497,39 +497,40 @@ public class MeetingsController : Controller
                 {
                     // Deviations and measures get a badge so they stand out in a long history list.
                     // Ordinary events deliberately get none — badging everything defeats the point.
-                    switch (com.Category)
+                    var (badgeLabel, badgeColor) = com.Category switch
                     {
-                        case CaseEventCategories.Avvik:
-                            pdf.OutcomeBadge("Avvik", "#DC3545");
-                            break;
-                        case CaseEventCategories.Tiltak:
-                            pdf.OutcomeBadge("Tiltak", "#FFC107");
-                            break;
-                    }
+                        CaseEventCategories.Avvik => ("Avvik", "#DC3545"),
+                        CaseEventCategories.Tiltak => ("Tiltak", "#FFC107"),
+                        _ => (null, null)
+                    };
 
-                    var fullText = $"{com.CreatedAt:yyyy-MM-dd}: {com.Text}";
-                    var firstLineMaxLen = 50;
+                    // The datestamp is drawn separately so the badge can sit inline after it.
+                    var datePrefix = $"{com.CreatedAt:yyyy-MM-dd}";
+                    var body = com.Text ?? "";
+
+                    // A badge eats horizontal space on the first line, so split earlier when present.
+                    var firstLineMaxLen = badgeLabel is null ? 38 : 28;
                     string firstLine, continuation;
-                    if (fullText.Length <= firstLineMaxLen)
+                    if (body.Length <= firstLineMaxLen)
                     {
-                        firstLine = fullText;
+                        firstLine = body;
                         continuation = "";
                     }
                     else
                     {
-                        var splitIdx = fullText.LastIndexOf(' ', firstLineMaxLen);
+                        var splitIdx = body.LastIndexOf(' ', Math.Min(firstLineMaxLen, body.Length - 1));
                         if (splitIdx > 10)
                         {
-                            firstLine = fullText.Substring(0, splitIdx);
-                            continuation = fullText.Substring(splitIdx + 1);
+                            firstLine = body.Substring(0, splitIdx);
+                            continuation = body.Substring(splitIdx + 1);
                         }
                         else
                         {
-                            firstLine = fullText;
+                            firstLine = body;
                             continuation = "";
                         }
                     }
-                    pdf.ParagraphFirstLine(firstLine, continuation, isItalic: true);
+                    pdf.ParagraphFirstLineWithBadge(datePrefix, badgeLabel, badgeColor, firstLine, continuation, isItalic: true);
                     if (com.Attachments.Count > 0)
                     {
                         var attRefs = string.Join(", ", com.Attachments.Select(a => $"Vedlegg {data.AttachmentLabelByFileName[a.FileName]}"));
@@ -550,7 +551,7 @@ public class MeetingsController : Controller
             foreach (var att in data.AttachmentsInOrder)
             {
                 var label = data.AttachmentLabelByFileName[att.FileName];
-                pdf.WriteAttachmentTocEntryLabel(pdf.GetCurrentPageNumber() + 1, label, att.FileName);
+                pdf.WriteAttachmentTocEntryDeferred(attachmentNumber, label, att.FileName);
                 attachmentNumber++;
             }
             attachmentNumber = 1;
@@ -562,6 +563,9 @@ public class MeetingsController : Controller
                     pdf.AddImageAttachment(att.Content, att.FileName, attachmentNumber);
                 attachmentNumber++;
             }
+
+            // Now that every attachment has a real start page, fill in the reserved gutters.
+            pdf.ApplyAttachmentTocPageNumbers();
         }
 
         var bytes = pdf.ToBytes();
@@ -777,17 +781,23 @@ public class MeetingsController : Controller
             pdf.Blank(12);
             pdf.Heading("Vedlegg");
 
+            var seqNum = 1;
             foreach (var (label, att) in labeledAttachments)
-                pdf.WriteAttachmentTocEntryLabel(pdf.GetCurrentPageNumber() + 1, label, att.FileName);
+                pdf.WriteAttachmentTocEntryDeferred(seqNum++, label, att.FileName);
 
+            // IndexOf returned the first structural match, so duplicate entries were numbered
+            // wrongly and it was O(n^2) besides. Count instead.
+            seqNum = 1;
             foreach (var (label, att) in labeledAttachments)
             {
-                var seqNum = labeledAttachments.IndexOf((label, att)) + 1;
                 if (att.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
                     pdf.AddPdfAttachment(att.Content, att.FileName, seqNum);
                 else if (att.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
                     pdf.AddImageAttachment(att.Content, att.FileName, seqNum);
+                seqNum++;
             }
+
+            pdf.ApplyAttachmentTocPageNumbers();
         }
 
         var bytes = pdf.ToBytes();
