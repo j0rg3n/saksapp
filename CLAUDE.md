@@ -44,6 +44,22 @@ dotnet ef database update
 - Tasks within each group can be done in parallel
 - **Before any ad-hoc fix or change**: update SPEC.md (behaviour/design) and TODO.md (task entry) first, then implement. No exceptions.
 
+## Pre-deployment review
+
+Before deploying at the end of a milestone, review the changes going out across all of:
+
+- **Security** — authn/authz gaps, injection, secrets or tokens at rest, CSRF, IDOR, data exposure
+- **Reliability** — error handling, retries, partial failure, migration and startup safety, backup/restore paths
+- **Stability** — regressions, breaking schema or API changes, resource exhaustion (disk, memory, handles)
+- **Responsiveness** — UI latency, blocking calls on request paths, phone and desktop layouts
+- **Performance** — N+1 queries, unbounded result sets, work done in memory that belongs in the query
+- **Code smells** — duplication, drift between related call sites, dead code, tests that pass for the wrong reason
+
+Record anything found in SPEC.md and TODO.md before fixing it, per the Planning rule above.
+Deploy only once the findings are either fixed or explicitly accepted.
+
+`/security-review` and `/code-review` cover parts of this; neither is a substitute for the whole list.
+
 ## Daily routines
 
 - **todoist-triage**: `/todoist-triage styret/saksapp` — run daily to pull new tasks from Todoist into this repo.
