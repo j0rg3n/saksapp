@@ -410,6 +410,13 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 - ASP.NET Data Protection for antiforgery tokens
 - Keys persisted to filesystem
 
+### Build context
+- The Docker build context must exclude `auth/`, `db/`, `dp_keys/` and `*.tar`. These are already
+  excluded from git; `.dockerignore` must mirror `.gitignore` so credentials, Data Protection keys
+  and the live database never enter a build layer.
+- Only the final multi-stage image is deployed, but intermediate layers are readable by anyone
+  with access to the Docker daemon.
+
 ### Background Services
 - Database backup service — periodic SQLite Online Backup API snapshots to `db/Backups/`
   - Interval: `Backup:IntervalMinutes` (default 60)

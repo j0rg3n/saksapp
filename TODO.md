@@ -4,6 +4,65 @@
 
 ---
 
+## 🔴 Pre-deploy-review 2026-09-02 — funn
+
+Review av 67884be..c4ba898 før utrulling. Se CLAUDE.md «Pre-deployment review».
+
+### Sikkerhet
+
+- [ ] **HØY: Hemmeligheter og Data Protection-nøkler havner i Docker build-laget.**
+      `.dockerignore` ekskluderer `**/.env`, som *ikke* matcher `auth/secret.env`, og hverken
+      `db/` eller `dp_keys/`. Build-steget inneholder SMTP-credentials, VM-host, tre ukrypterte
+      DP-nøkler, live-databasen og 830 MB backups (build-image: 4,43 GB, kontekst 1,2 GB).
+      Runtime-imaget er rent — multi-stage, og `docker save saksappweb:latest` tar kun siste steg
+      — så det utrullede artefaktet er ikke berørt. Men laget er lesbart lokalt, og DP-nøklene
+      beskytter antiforgery-tokens i dag og `"DriveTokens"` etter Phase 6B.
+      `.gitignore` dekker alt dette allerede; `.dockerignore` har aldri blitt oppdatert i takt.
+      Fiks: legg til `auth/`, `**/db/`, `**/dp_keys/`, `*.tar` i `.dockerignore`
+
+### Pålitelighet
+
+- [ ] **Opprydding kjører aldri når snapshot-skrivingen feiler.** `ApplyRetention()` kalles etter
+      try/finally, så en exception fra `WriteSnapshotAsync` hopper over pruning. Full disk er
+      nettopp tilfellet der skrivingen feiler *og* der pruning trengs mest — tjenesten kan ikke
+      redde sin egen disk. Fiks: kjør opprydding også før snapshot
+- [ ] **Delvis `.gz` blir liggende ved avbrudd.** Faller cancellation-token under `CopyToAsync`,
+      etterlates en avkortet `.gz` under sitt endelige navn, umulig å skille fra en gyldig backup;
+      oppryddingen beholder den og sletter eldre, gyldige. Fiks: gzip til `.gz.tmp` og
+      `File.Move` på plass
+
+### Stabilitet
+
+- [ ] **Backup-filnavn bruker `DateTimeOffset.Now`, resten av koden `UtcNow`.** Harmløst i dag
+      (container-TZ er UTC), men oppryddingen sorterer nå på tidsstempelet i filnavnet. Settes TZ,
+      gir vintertidsomstilling ikke-monotone navn og feil filer slettes. Fiks: bruk `UtcNow`
+
+### Korrekthet (innført i denne milepælen)
+
+- [ ] **`MeetingTime` tolkes som UTC, men fylles ut som lokal klokkeslett.** `MeetingBoundary`
+      bygger `DateTimeOffset` med `TimeSpan.Zero`, mens `<input type="time">` gir norsk lokaltid og
+      `CreatedAt` er `UtcNow`. Møte 18:00 lokalt er 16:00 UTC, så vinduet strekker seg ~2 t
+      (1 t om vinteren) forbi reell møtestart og tar med hendelser registrert under møtet.
+      Feiler i trygg retning — ingenting droppes — men semantikken er feil
+
+### Ytelse
+
+- [ ] **Agenda-PDF materialiserer 12 MB vedlegg per generering** (7 MB med gammelt filter;
+      17 vedlegg, største 3 MB) som `byte[]` i minnet, uten minnegrenser på containeren.
+      Utvidelsen av kategorifilteret nær doblet dette, og det vokser med hvert vedlegg
+- [ ] `previousMinutesCandidates` laster alle eldre `MeetingEventLink` (130 rader i dag) før
+      filtrering. Vokser med møter × agendapunkter. Eksisterende, ikke haster
+
+### Vurdert uten funn
+
+- **Responsivitet**: ingen regresjon. PDF-generering er synkron på request-stien (eksisterende);
+  møteskjemaet gikk fra 3 til 4 `col-md-3`-kolonner og stables riktig på mobil
+- **Code smells**: rent. Ingen etterlatte navn, kategoriliteraler er samlet, duplisert testklasse
+  fjernet. Merk at `.dockerignore`/`.gitignore`-driften i sikkerhetsfunnet er samme type drift som
+  forårsaket innkallings-feilen
+
+---
+
 ## 🔴 HØY PRIORITET: Backup fyller disken — tjenesteavbrudd
 
 **Symptom**: Cloud-VM-en går tom for diskplass og tjenesten faller ut.
