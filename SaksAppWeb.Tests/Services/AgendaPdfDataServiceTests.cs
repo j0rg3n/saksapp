@@ -30,8 +30,16 @@ public class AgendaPdfDataServiceTests : IDisposable
         _pdfSequenceMock.Setup(x => x.AllocateNextAsync(It.IsAny<int>(), It.IsAny<PdfDocumentType>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        _service = new AgendaPdfDataService(_db, _userManager, _pdfSequenceMock.Object);
+        _service = CreateService(TimeZoneInfo.Utc);
     }
+
+    private sealed class FixedTimeZoneProvider(TimeZoneInfo tz) : IAppTimeZoneProvider
+    {
+        public TimeZoneInfo Local { get; } = tz;
+    }
+
+    private AgendaPdfDataService CreateService(TimeZoneInfo tz) =>
+        new(_db, _userManager, _pdfSequenceMock.Object, new FixedTimeZoneProvider(tz));
 
     public void Dispose()
     {
@@ -169,6 +177,48 @@ public class AgendaPdfDataServiceTests : IDisposable
         Assert.Equal("Hello", result.Items[0].CommentsBetweenMeetings[0].Text);
     }
 
+    /// <summary>The PDF layer badges avvik/tiltak, so the category has to survive the projection.</summary>
+    [Theory]
+    [InlineData(CaseEventCategories.Avvik)]
+    [InlineData(CaseEventCategories.Tiltak)]
+    [InlineData(CaseEventCategories.General)]
+    public async Task GetAgendaDataAsync_ExposesCategoryForBadging(string category)
+    {
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 3, 1), Year = 2026, YearSequenceNumber = 1 };
+        await SeedHistoryEventAsync(meeting, new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero), category);
+
+        var result = await _service.GetAgendaDataAsync(meeting.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(category, Assert.Single(result.Items[0].CommentsBetweenMeetings).Category);
+    }
+
+    /// <summary>
+    /// MeetingTime is local wall-clock. In July Oslo is UTC+2, so an 18:00 meeting starts at
+    /// 16:00 UTC and an event at 17:00 UTC happened *during* the meeting. The earlier UTC-naive
+    /// boundary would have included it.
+    /// </summary>
+    [Theory]
+    [InlineData(15, true)]
+    [InlineData(17, false)]
+    public async Task GetAgendaDataAsync_ResolvesMeetingTimeInLocalZone(int eventHourUtc, bool expectedIncluded)
+    {
+        var oslo = TimeZoneInfo.FindSystemTimeZoneById("Europe/Oslo");
+        var meeting = new Meeting
+        {
+            MeetingDate = new DateOnly(2026, 7, 1),
+            MeetingTime = new TimeOnly(18, 0),
+            Year = 2026,
+            YearSequenceNumber = 1
+        };
+        await SeedHistoryEventAsync(meeting, new DateTimeOffset(2026, 7, 1, eventHourUtc, 0, 0, TimeSpan.Zero));
+
+        var result = await CreateService(oslo).GetAgendaDataAsync(meeting.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(expectedIncluded ? 1 : 0, result.Items[0].CommentsBetweenMeetings.Count);
+    }
+
     [Fact]
     public async Task GetAgendaDataAsync_ExcludesMeetingCategoryFromHistory()
     {
@@ -237,7 +287,10 @@ public class AgendaPdfDataServiceTests : IDisposable
         Assert.Single(result.Items[0].CommentsBetweenMeetings);
     }
 
-    private async Task SeedHistoryEventAsync(Meeting meeting, DateTimeOffset eventCreatedAt)
+    private async Task SeedHistoryEventAsync(
+        Meeting meeting,
+        DateTimeOffset eventCreatedAt,
+        string category = CaseEventCategories.General)
     {
         _db.Meetings.Add(meeting);
         var boardCase = new BoardCase { CaseNumber = 1, Title = "Test", Status = CaseStatus.Open };
@@ -245,7 +298,7 @@ public class AgendaPdfDataServiceTests : IDisposable
         await _db.SaveChangesAsync();
 
         var ceMeeting = new CaseEvent { Category = CaseEventCategories.Meeting, Content = "", CreatedAt = DateTimeOffset.UtcNow };
-        var ceHistory = new CaseEvent { Category = CaseEventCategories.General, Content = "Hello", CreatedAt = eventCreatedAt };
+        var ceHistory = new CaseEvent { Category = category, Content = "Hello", CreatedAt = eventCreatedAt };
         _db.CaseEvents.AddRange(ceMeeting, ceHistory);
         await _db.SaveChangesAsync();
 

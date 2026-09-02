@@ -495,6 +495,18 @@ public class MeetingsController : Controller
                 pdf.Heading3("Historikk siden forrige møte:");
                 foreach (var com in item.CommentsBetweenMeetings)
                 {
+                    // Deviations and measures get a badge so they stand out in a long history list.
+                    // Ordinary events deliberately get none — badging everything defeats the point.
+                    switch (com.Category)
+                    {
+                        case CaseEventCategories.Avvik:
+                            pdf.OutcomeBadge("Avvik", "#DC3545");
+                            break;
+                        case CaseEventCategories.Tiltak:
+                            pdf.OutcomeBadge("Tiltak", "#FFC107");
+                            break;
+                    }
+
                     var fullText = $"{com.CreatedAt:yyyy-MM-dd}: {com.Text}";
                     var firstLineMaxLen = 50;
                     string firstLine, continuation;

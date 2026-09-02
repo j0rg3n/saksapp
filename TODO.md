@@ -4,6 +4,36 @@
 
 ---
 
+## Ad-hoc: Innkalling — badge for Avvik og Tiltak i historikken
+
+- [x] Ta med `Category` i `AgendaCommentData` og fyll den i `AgendaPdfDataService`
+- [x] I «Historikk siden forrige møte»: tegn badge foran hendelser med `avvik` (#DC3545) og
+      `tiltak` (#FFC107) via eksisterende `ISimplePdfWriter.OutcomeBadge`. Vanlige hendelser
+      (`general`, legacy `comment`) får **ingen** badge
+- [x] Test: avvik og tiltak gir badge, general og comment gir ingen
+
+---
+
+## Ad-hoc: Bugfix — Sidetall for vedlegg i innkallingen er alle like
+
+**Symptom**: Alle vedlegg i innkallingens vedleggsliste viser samme sidetall — sidetallet for den
+første siden som inneholder vedlegg.
+
+**Rotårsak**: `MeetingsController.cs:541` kaller
+`pdf.WriteAttachmentTocEntryLabel(pdf.GetCurrentPageNumber() + 1, ...)` inne i løkken som skriver
+innholdsfortegnelsen, *før* vedleggene er lagt til. `GetCurrentPageNumber()` endrer seg ikke mens
+TOC-linjene skrives på samme side, så hver oppføring får samme verdi. Samme feil i referat-PDF-en
+på `MeetingsController.cs:769`.
+
+- [ ] Legg til vedleggene først for å finne faktisk startside per vedlegg, og skriv TOC-en etterpå
+      — eller beregn sideantall per vedlegg på forhånd. `ISimplePdfWriter` har allerede
+      `GetAttachmentPageNumbers()` og `AddPdfAttachmentStart()` som ser ut til å være ment for
+      nettopp dette; sjekk om de kan brukes
+- [ ] Rett begge steder (innkalling og referat)
+- [ ] Test: innkalling med minst tre flersidige PDF-vedlegg skal gi stigende, korrekte sidetall
+
+---
+
 ## 🔴 Pre-deploy-review 2026-09-02 — funn
 
 Review av 67884be..c4ba898 før utrulling. Se CLAUDE.md «Pre-deployment review».
@@ -22,24 +52,24 @@ Review av 67884be..c4ba898 før utrulling. Se CLAUDE.md «Pre-deployment review�
 
 ### Pålitelighet
 
-- [ ] **Opprydding kjører aldri når snapshot-skrivingen feiler.** `ApplyRetention()` kalles etter
+- [x] **Opprydding kjører aldri når snapshot-skrivingen feiler.** `ApplyRetention()` kalles etter
       try/finally, så en exception fra `WriteSnapshotAsync` hopper over pruning. Full disk er
       nettopp tilfellet der skrivingen feiler *og* der pruning trengs mest — tjenesten kan ikke
       redde sin egen disk. Fiks: kjør opprydding også før snapshot
-- [ ] **Delvis `.gz` blir liggende ved avbrudd.** Faller cancellation-token under `CopyToAsync`,
+- [x] **Delvis `.gz` blir liggende ved avbrudd.** Faller cancellation-token under `CopyToAsync`,
       etterlates en avkortet `.gz` under sitt endelige navn, umulig å skille fra en gyldig backup;
       oppryddingen beholder den og sletter eldre, gyldige. Fiks: gzip til `.gz.tmp` og
       `File.Move` på plass
 
 ### Stabilitet
 
-- [ ] **Backup-filnavn bruker `DateTimeOffset.Now`, resten av koden `UtcNow`.** Harmløst i dag
+- [x] **Backup-filnavn bruker `DateTimeOffset.Now`, resten av koden `UtcNow`.** Harmløst i dag
       (container-TZ er UTC), men oppryddingen sorterer nå på tidsstempelet i filnavnet. Settes TZ,
       gir vintertidsomstilling ikke-monotone navn og feil filer slettes. Fiks: bruk `UtcNow`
 
 ### Korrekthet (innført i denne milepælen)
 
-- [ ] **`MeetingTime` tolkes som UTC, men fylles ut som lokal klokkeslett.** `MeetingBoundary`
+- [x] **`MeetingTime` tolkes som UTC, men fylles ut som lokal klokkeslett.** `MeetingBoundary`
       bygger `DateTimeOffset` med `TimeSpan.Zero`, mens `<input type="time">` gir norsk lokaltid og
       `CreatedAt` er `UtcNow`. Møte 18:00 lokalt er 16:00 UTC, så vinduet strekker seg ~2 t
       (1 t om vinteren) forbi reell møtestart og tar med hendelser registrert under møtet.

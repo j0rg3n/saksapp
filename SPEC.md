@@ -286,8 +286,16 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
     meeting" globally. A case never previously on an agenda includes its full history.
   - The window ends at the meeting's `MeetingDate` + `MeetingTime`. When no time is recorded the
     window ends at the end of that day, so a missing time never silently drops an event.
+  - `MeetingTime` is wall-clock local time, entered and displayed as such. It is converted to an
+    absolute instant using the `App:TimeZone` setting (default `Europe/Oslo`) before comparison
+    against `CaseEvent.CreatedAt`, which is UTC. If the configured zone cannot be resolved the app
+    falls back to UTC and logs a warning rather than failing to start.
   - The category set must match the case timeline (`ICaseQueryService`) — the agenda PDF must
     never filter on a narrower set.
+  - Events in categories `avvik` and `tiltak` are preceded by a coloured badge naming the
+    category, using the same palette as the web UI: Avvik `#DC3545`, Tiltak `#FFC107`.
+    `general` and legacy `comment` events get **no** badge — they are the ordinary case, and
+    badging them would defeat the point of making deviations and measures stand out.
 - Attachment references
 
 **Minutes PDF**
@@ -425,6 +433,10 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
     - `Backup:MaxFiles` (default 48) — oldest deleted beyond this count
     - `Backup:MaxTotalBytes` (default 2 GB) — oldest deleted until the folder fits
   - The newest backup is never deleted, even if it alone exceeds `MaxTotalBytes`
+  - A snapshot is compressed to a temporary name and moved into place atomically, so an
+    interrupted run can never leave a truncated file that looks like a valid backup
+  - Retention runs both before and after taking a snapshot: pruning first is what lets the service
+    reclaim space on a full disk, which is precisely when the snapshot write would otherwise fail
   - Retention considers `.sqlite`, `.sqlite.gz` and `.sqlite.bz2` so historical formats are swept
     rather than orphaned
   - Ordering for deletion is by the timestamp in the filename, not filesystem timestamps

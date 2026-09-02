@@ -64,30 +64,48 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
             return;
         }
 
-        var ts = DateTimeOffset.Now;
+        // Prune before writing. On a full disk this is what frees the space the snapshot needs;
+        // pruning only afterwards means the one failure that matters most is the one that skips it.
+        ApplyRetention();
+
+        // UtcNow, not Now: retention orders by the timestamp parsed out of the filename, so a
+        // machine with a local time zone would emit non-monotonic names across a DST transition.
+        var ts = DateTimeOffset.UtcNow;
         var stem = Path.Combine(_backupDir, $"{NamePrefix}{ts.ToString(StampFormat, CultureInfo.InvariantCulture)}.sqlite");
-        var tempPath = stem + ".tmp";
         var destPath = _compress ? stem + ".gz" : stem;
+        var snapshotPath = stem + ".tmp";
+        var stagedPath = destPath + ".part";
 
         try
         {
-            // BackupDatabase needs a real SQLite file as its destination, so when compressing we
-            // snapshot to a temp file first and gzip that.
-            await WriteSnapshotAsync(_compress ? tempPath : destPath, ct);
+            // BackupDatabase needs a real SQLite file as its destination, so we always snapshot to
+            // a temp file and only then produce the final artefact.
+            await WriteSnapshotAsync(snapshotPath, ct);
 
             if (_compress)
             {
-                await using var input = File.OpenRead(tempPath);
-                await using var output = File.Create(destPath);
-                await using var gzip = new GZipStream(output, CompressionLevel.SmallestSize);
-                await input.CopyToAsync(gzip, ct);
+                await using (var input = File.OpenRead(snapshotPath))
+                await using (var output = File.Create(stagedPath))
+                await using (var gzip = new GZipStream(output, CompressionLevel.SmallestSize))
+                {
+                    await input.CopyToAsync(gzip, ct);
+                }
+
+                // Move into place only once fully written: an interrupted run must never leave a
+                // truncated file under a name that retention will treat as a good backup.
+                File.Move(stagedPath, destPath, overwrite: true);
+            }
+            else
+            {
+                File.Move(snapshotPath, destPath, overwrite: true);
             }
 
             _logger.LogInformation("Database backup written to {BackupPath}", destPath);
         }
         finally
         {
-            TryDelete(tempPath);
+            TryDelete(snapshotPath);
+            TryDelete(stagedPath);
         }
 
         ApplyRetention();

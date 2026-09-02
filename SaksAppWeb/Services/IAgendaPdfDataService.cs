@@ -10,6 +10,7 @@ public record AgendaAttachmentRef(string FileName, string ContentType, byte[] Co
 public record AgendaCommentData(
     DateTime CreatedAt,
     string Text,
+    string Category,
     IReadOnlyList<AgendaAttachmentRef> Attachments);
 
 public record PreviousMinutesData(
@@ -44,21 +45,33 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPdfSequenceService _pdfSequence;
+    private readonly IAppTimeZoneProvider _timeZone;
 
-    public AgendaPdfDataService(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IPdfSequenceService pdfSequence)
+    public AgendaPdfDataService(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        IPdfSequenceService pdfSequence,
+        IAppTimeZoneProvider timeZone)
     {
         _db = db;
         _userManager = userManager;
         _pdfSequence = pdfSequence;
+        _timeZone = timeZone;
     }
 
     /// <summary>
     /// The instant a meeting starts, used to bound "Historikk siden forrige møte". When no time is
     /// recorded we take the end of the day rather than an arbitrary hour, so a missing time can
     /// never silently drop an event registered later that day.
+    ///
+    /// MeetingTime is wall-clock local, CreatedAt is UTC, so the local time is resolved through the
+    /// configured zone (including its DST offset) before the two are compared.
     /// </summary>
-    internal static DateTimeOffset MeetingBoundary(DateOnly date, TimeOnly? time) =>
-        new(date.ToDateTime(time ?? new TimeOnly(23, 59, 59)), TimeSpan.Zero);
+    internal DateTimeOffset MeetingBoundary(DateOnly date, TimeOnly? time)
+    {
+        var local = date.ToDateTime(time ?? TimeOnly.MaxValue);
+        return new DateTimeOffset(local, _timeZone.Local.GetUtcOffset(local));
+    }
 
     public async Task<AgendaPdfData?> GetAgendaDataAsync(int meetingId, CancellationToken ct = default)
     {
@@ -236,7 +249,7 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
                 .Select(cec =>
                 {
                     var atts = eventAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var al) ? al : new List<AgendaAttachmentRef>();
-                    return new AgendaCommentData(cec.CaseEvent.CreatedAt.DateTime, cec.CaseEvent.Content, atts);
+                    return new AgendaCommentData(cec.CaseEvent.CreatedAt.DateTime, cec.CaseEvent.Content, cec.CaseEvent.Category, atts);
                 })
                 .ToList();
 

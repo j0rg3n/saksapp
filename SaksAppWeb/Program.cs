@@ -39,6 +39,7 @@ builder.Services.AddScoped<IHtmlCaseImporter, HtmlCaseImporter>();
 builder.Services.AddScoped<IUserDisplayService, UserDisplayService>();
 builder.Services.AddScoped<ICaseQueryService, CaseQueryService>();
 builder.Services.AddScoped<IMeetingQueryService, MeetingQueryService>();
+builder.Services.AddSingleton<IAppTimeZoneProvider, AppTimeZoneProvider>();
 builder.Services.AddSingleton<ISimplePdfWriterFactory, SimplePdfWriterFactory>();
 builder.Services.AddScoped<IAgendaPdfDataService, AgendaPdfDataService>();
 builder.Services.AddScoped<IMinutesPdfDataService, MinutesPdfDataService>();
