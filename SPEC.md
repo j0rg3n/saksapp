@@ -91,6 +91,13 @@ Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
 **Add Attachment**
 - Upload files (max 10MB) to any editable case event
 - Files stored in database
+- **Only PDF and image content types are accepted.** Enforced at upload time on every path that
+  creates an attachment (`CasesController.IsAllowedContentType`, reused by the meeting and
+  Hendelseslogg upload actions); signed minutes must specifically be a PDF.
+- This is an invariant the PDF generators depend on: the agenda and minutes embed attachments by
+  appending PDF pages or drawing images, so any other type would be listed in the attachment index
+  without appearing in the document. Relaxing the accepted types requires handling them there
+  first.
 
 ### Meeting Management
 

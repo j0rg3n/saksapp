@@ -40,11 +40,6 @@ Review av innkalling-badges + sidetallsfiksen. Ingen funn blokkerer utrulling.
 
 ### Pålitelighet
 
-- [ ] **Vedlegg som verken er PDF eller bilde får en TOC-linje, men legges aldri inn.**
-      Append-løkkene (`MeetingsController.cs:560, 793`) håndterer bare `application/pdf` og
-      `image/*`; alt annet (f.eks. `.docx`, `.xlsx`) hoppes over — men TOC-linjen er allerede
-      skrevet. Før viste den et feil sidetall, nå står feltet tomt. Enten filtrer slike vedlegg ut
-      av TOC-en, eller merk dem «(ikke innlemmet)». Eksisterende feil, nå synlig
 - [ ] `FontResolverBootstrap.Initialize` svelger «already used»-unntaket uten logging (statisk
       klasse, ingen logger). Feiler resolveren reelt, dukker det opp senere som en uklar font-feil
 
