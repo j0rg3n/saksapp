@@ -421,6 +421,16 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 - SMTP configuration for sending emails
 - Used for password reset functionality
 
+### Deployment hygiene
+
+- `deployment/deploy-upcloud.sh` removes the transferred image tarball after `docker load` and
+  prunes dangling images. Without this each deploy left ~1 GB of untagged image plus a 121 MB
+  tarball behind; that accumulation, not the backups, was the largest consumer when the disk
+  filled on 2026-09-08.
+- Disk headroom is a standing operational concern: SQLite reports a full disk as
+  `SQLITE_READONLY` ("attempt to write a readonly database"), which reads like a permissions
+  fault and sends diagnosis in the wrong direction.
+
 ### Transport security
 
 - The application is served over **HTTPS only**, in front of a **Caddy** reverse proxy that obtains
@@ -464,6 +474,12 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
   - Retention considers `.sqlite`, `.sqlite.gz` and `.sqlite.bz2` so historical formats are swept
     rather than orphaned
   - Ordering for deletion is by the timestamp in the filename, not filesystem timestamps
+  - **Free-space floor**: if writing a snapshot would leave less than `Backup:MinFreeBytes`
+    (default 1 GB) available on the backup volume, the backup is skipped and a warning logged.
+    The backup system must never be the thing that fills the disk it is protecting.
+  - Sizing note: the budget is a share of a small volume. The production VM has a 9.8 GB disk and
+    the database grows roughly 8 MB/week from attachments, so `MaxTotalBytes` must be set per
+    deployment rather than relying on the default
   - `deployment/download-backups.sh` mirrors these rules for the downloaded archive: it
     deduplicates and gzips new snapshots and prunes by the same two limits
 - WhatsApp ingest buffer flush service - background timer that flushes pending message groups when the grouping window expires

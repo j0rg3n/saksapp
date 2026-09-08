@@ -30,6 +30,7 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
     private readonly string _backupDir;
     private readonly int _maxFiles;
     private readonly long _maxTotalBytes;
+    private readonly long _minFreeBytes;
     private readonly bool _compress;
 
     public DatabaseBackupExecutor(
@@ -49,8 +50,9 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
             ? Path.Combine(Path.GetDirectoryName(dataSource) ?? "", "Backups")
             : Path.Combine(contentRoot, "db/Backups");
 
-        _maxFiles = Math.Max(1, configuration.GetValue<int?>("Backup:MaxFiles") ?? 48);
-        _maxTotalBytes = Math.Max(1, configuration.GetValue<long?>("Backup:MaxTotalBytes") ?? 2L * 1024 * 1024 * 1024);
+        _maxFiles = Math.Max(1, configuration.GetValue<int?>("Backup:MaxFiles") ?? 24);
+        _maxTotalBytes = Math.Max(1, configuration.GetValue<long?>("Backup:MaxTotalBytes") ?? 1L * 1024 * 1024 * 1024);
+        _minFreeBytes = Math.Max(0, configuration.GetValue<long?>("Backup:MinFreeBytes") ?? 1L * 1024 * 1024 * 1024);
         _compress = configuration.GetValue<bool?>("Backup:Compress") ?? true;
     }
 
@@ -67,6 +69,13 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
         // Prune before writing. On a full disk this is what frees the space the snapshot needs;
         // pruning only afterwards means the one failure that matters most is the one that skips it.
         ApplyRetention();
+
+        // Refuse to write if doing so would eat the last of the disk. On 2026-09-08 the volume
+        // filled and SQLite began reporting "attempt to write a readonly database" for every write
+        // in the app — the backup system must not be able to cause the outage it exists to insure
+        // against. Skipping a snapshot loses one point in time; filling the disk loses the service.
+        if (!HasRoomForBackup())
+            return;
 
         // UtcNow, not Now: retention orders by the timestamp parsed out of the filename, so a
         // machine with a local time zone would emit non-monotonic names across a DST transition.
@@ -109,6 +118,40 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
         }
 
         ApplyRetention();
+    }
+
+    /// <summary>
+    /// True when a snapshot can be written while still leaving <c>Backup:MinFreeBytes</c> free.
+    /// A snapshot needs roughly the database's size, and while compressing, briefly about twice
+    /// that (the plain temp file plus the gzip output).
+    /// </summary>
+    private bool HasRoomForBackup()
+    {
+        if (_minFreeBytes == 0) return true;
+
+        long available;
+        try
+        {
+            available = new DriveInfo(_backupDir).AvailableFreeSpace;
+        }
+        catch (Exception ex)
+        {
+            // Cannot read the volume: proceed rather than silently stop backing up, since a failed
+            // write is recoverable and a silently disabled backup is not.
+            _logger.LogWarning(ex, "Could not determine free space for {BackupDir}; continuing.", _backupDir);
+            return true;
+        }
+
+        var dbSize = new FileInfo(_dbPath).Length;
+        var needed = _compress ? dbSize * 2 : dbSize;
+
+        if (available - needed >= _minFreeBytes)
+            return true;
+
+        _logger.LogWarning(
+            "Skipping backup: {AvailableMb:F0} MB free, snapshot needs ~{NeededMb:F0} MB and {FloorMb:F0} MB must remain. Free disk space or lower Backup:MinFreeBytes.",
+            available / 1048576d, needed / 1048576d, _minFreeBytes / 1048576d);
+        return false;
     }
 
     private async Task WriteSnapshotAsync(string snapshotPath, CancellationToken ct)
@@ -180,9 +223,16 @@ public sealed class DatabaseBackupExecutor : IDatabaseBackupExecutor
                 keptBytes += info.Length;
             }
 
+            // Free space is logged every pass on purpose: the 2026-09-08 outage surfaced as
+            // "attempt to write a readonly database", which reads like a permissions fault. Having
+            // the headroom in the log next to the backup sizes points at the real cause immediately.
+            double? freeMb = null;
+            try { freeMb = new DriveInfo(_backupDir).AvailableFreeSpace / 1048576d; } catch { }
+
             _logger.LogInformation(
-                "Backup retention: kept {Kept} file(s) ({KeptMb:F1} MB), deleted {Deleted} ({DeletedMb:F1} MB); limits {MaxFiles} files / {MaxMb:F0} MB",
-                kept, keptBytes / 1048576d, deleted, deletedBytes / 1048576d, _maxFiles, _maxTotalBytes / 1048576d);
+                "Backup retention: kept {Kept} file(s) ({KeptMb:F1} MB), deleted {Deleted} ({DeletedMb:F1} MB); limits {MaxFiles} files / {MaxMb:F0} MB; disk free {FreeMb}",
+                kept, keptBytes / 1048576d, deleted, deletedBytes / 1048576d, _maxFiles, _maxTotalBytes / 1048576d,
+                freeMb is null ? "unknown" : $"{freeMb:F0} MB");
         }
         catch (Exception ex)
         {

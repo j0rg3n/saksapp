@@ -38,6 +38,14 @@ services:
     environment:
       - SMTP__HOST=send.one.com
       - SMTP__PORT=465
+      # Sized for the production VM's 9.8 GB disk, not left to the defaults. The database is ~45 MB
+      # and grows ~8 MB/week from attachments, so a snapshot compresses to roughly 40 MB.
+      # 24 hourly snapshots is short-term insurance only; Phase 6B moves the archive to Drive.
+      - Backup__MaxFiles=24
+      - Backup__MaxTotalBytes=805306368   # 768 MB
+      # Never let a snapshot take the disk below this. A full disk makes SQLite report every write
+      # as "attempt to write a readonly database", which is what took the app down on 2026-09-08.
+      - Backup__MinFreeBytes=1610612736   # 1.5 GB
 
   test:
     build:

@@ -34,6 +34,39 @@ på `MeetingsController.cs:769`.
 
 ---
 
+## Hendelse 2026-09-08: full disk tok ned appen
+
+**Symptom**: «An error occurred while processing your request» på alle sider som skriver.
+Loggen viste `SQLite Error 8: 'attempt to write a readonly database'` — som ser ut som et
+rettighetsproblem, men var full disk (96 % brukt, 401 MB ledig av 9,8 GB). Rettighetene var
+korrekte (`1654:1654`, samme som container-brukeren).
+
+**Løst akutt** ved å frigjøre 2,4 GB: `docker image prune -f` (2,16 GB dangling images),
+slette `/root/saksappweb.tar` (121 MB) og `apt-get clean` (~400 MB). Disk 96 % → 70 %.
+
+**Rotårsaker**
+
+1. **Deploy-skriptet ryddet ikke.** Hver utrulling la igjen tarballen *og* gjorde forrige image
+   dangling — ~1 GB per deploy. Dette, ikke backupene, var største forbruker.
+2. **Backup-budsjettet var feil dimensjonert.** `MaxTotalBytes` default 2 GB på en 9,8 GB disk;
+   48 filer x ~40 MB = 1,9 GB, altsa 20 % av disken. Oppryddingen gjorde noyaktig det den var
+   konfigurert til - konfigurasjonen var gal.
+3. **Databasen vokser** ~8 MB/uke fra vedlegg: 19 MB (mai) -> 37 MB (1. sep) -> 45 MB (8. sep).
+   Et fast budsjett blir feil over tid.
+
+- [x] `deployment/deploy-upcloud.sh`: slett tarballen etter `docker load`, og kjor
+      `docker image prune -f` etter vellykket start
+- [x] `Backup:MinFreeBytes` (default 1 GB): hopp over snapshot og logg advarsel hvis skrivingen
+      ville etterlate mindre ledig plass. Backup-systemet skal aldri kunne fylle disken det
+      beskytter
+- [x] Senk `Backup:MaxTotalBytes`-default og sett en eksplisitt verdi for produksjon som passer
+      9,8 GB
+- [x] Logg ledig diskplass ved hver oppryddingsrunde, slik at neste hendelse ikke starter med et
+      misvisende «readonly database»
+- [ ] Phase 6B (Drive-opplasting) er den varige losningen: kort lokal oppbevaring, historikk offsite
+
+---
+
 ## 🔴 HØY PRIORITET: TLS — appen kjører på ufortrolig HTTP
 
 **Symptom**: Produksjon serveres over `http://<ip>` (port 80, `docker-compose.yml`). Passord ved

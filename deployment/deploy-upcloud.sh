@@ -41,5 +41,16 @@ ssh ${VM_HOST} "systemctl stop saksapp || true"
 ssh ${VM_HOST} "docker load -i ${VM_PATH}/saksappweb.tar"
 ssh ${VM_HOST} "systemctl start saksapp"
 
+# 6. Clean up. Every deploy used to leave the tarball behind AND turn the previous image into a
+# dangling one — roughly 1 GB per deploy. That accumulation, not the backups, filled the 9.8 GB
+# disk on 2026-09-08 and took the app down with SQLITE_READONLY on every write.
+echo "Cleaning up deploy artefacts..."
+ssh ${VM_HOST} "rm -f ${VM_PATH}/saksappweb.tar"
+ssh ${VM_HOST} "docker image prune -f"
+rm -f "$(dirname "$0")/../saksappweb.tar"
+
 echo "=== Deployment complete ==="
 ssh ${VM_HOST} "systemctl status saksapp --no-pager"
+echo ""
+echo "Disk headroom on the VM:"
+ssh ${VM_HOST} "df -h / | tail -1"

@@ -38,7 +38,8 @@ public class DatabaseBackupExecutorTests : IDisposable
     private DatabaseBackupExecutor CreateExecutor(
         int maxFiles = 48,
         long maxTotalBytes = 2L * 1024 * 1024 * 1024,
-        bool compress = true)
+        bool compress = true,
+        long minFreeBytes = 0)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -46,6 +47,7 @@ public class DatabaseBackupExecutorTests : IDisposable
                 ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}",
                 ["Backup:MaxFiles"] = maxFiles.ToString(),
                 ["Backup:MaxTotalBytes"] = maxTotalBytes.ToString(),
+                ["Backup:MinFreeBytes"] = minFreeBytes.ToString(),
                 ["Backup:Compress"] = compress.ToString()
             })
             .Build();
@@ -164,6 +166,45 @@ public class DatabaseBackupExecutorTests : IDisposable
 
         var backup = Assert.Single(BackupFiles());
         Assert.DoesNotContain("20200101", backup);
+    }
+
+    /// <summary>
+    /// A full disk makes SQLite report every write in the app as "attempt to write a readonly
+    /// database", which is what took production down on 2026-09-08. The backup must stand down
+    /// rather than consume the last of the volume it exists to insure.
+    /// </summary>
+    [Fact]
+    public async Task CreateBackupAsync_SkipsWhenItWouldBreachTheFreeSpaceFloor()
+    {
+        await CreateExecutor(minFreeBytes: long.MaxValue / 2).CreateBackupAsync();
+
+        Assert.Empty(BackupFiles());
+    }
+
+    /// <summary>
+    /// Retention runs before the floor check, so a volume that is already tight still gets old
+    /// snapshots reclaimed even though the new one is skipped.
+    /// </summary>
+    [Fact]
+    public async Task CreateBackupAsync_StillPrunesWhenSkippingForSpace()
+    {
+        Seed("app-20200101-000000.sqlite.gz");
+        Seed("app-20200102-000000.sqlite.gz");
+        Seed("app-20200103-000000.sqlite.gz");
+
+        await CreateExecutor(maxFiles: 1, minFreeBytes: long.MaxValue / 2).CreateBackupAsync();
+
+        var remaining = Assert.Single(BackupFiles());
+        Assert.StartsWith("app-20200103", remaining);
+    }
+
+    [Fact]
+    public async Task CreateBackupAsync_WritesNormally_WhenFloorIsSatisfied()
+    {
+        // A 1 KB floor is trivially satisfiable on any volume the tests can run on.
+        await CreateExecutor(minFreeBytes: 1024).CreateBackupAsync();
+
+        Assert.Single(BackupFiles());
     }
 
     [Fact]
