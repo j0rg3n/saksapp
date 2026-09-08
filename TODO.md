@@ -34,6 +34,61 @@ på `MeetingsController.cs:769`.
 
 ---
 
+## Pre-deploy-review 2026-09-08 — funn (TLS + disksikring)
+
+Review av `c19e6d6..6677755`. TLS-endringen er allerede ute; den fikk aldri sin egen review-runde,
+så den er dekket her. Ingen funn blokkerer utrulling.
+
+### Sikkerhet
+
+- [ ] `auth/secret.env` har modus 0644 og `caddy.env` 0664. Deploy-skriptet bruker `rsync -av`, som
+      bevarer rettighetene, så SMTP-credentials havner verdenslesbare på VM-en. Lav reell
+      eksponering (bare root logger inn), men unødvendig. Fiks: `chmod 600 auth/*` og
+      `--chmod=F600` på rsync
+
+**Verifisert lukket**: build-konteksten er 1,2 GB → **13 MB**, og `auth/`, `dp_keys/`, `db/` og
+`*.tar` er borte fra build-laget. Appen publiserer kun `127.0.0.1:8080` på VM-en, og Caddys
+admin-port 2019 er ikke publisert — det er nettopp derfor det er trygt å stole på
+`X-Forwarded-*` med tømt `KnownProxies`.
+
+### Pålitelighet
+
+- [ ] **`saksappweb` har `restart=no`, mens `caddy` har `unless-stopped`.** Dør app-containeren
+      (OOM, krasj, feilet oppstart) blir den liggende, og Caddy svarer 502 til noen oppdager det.
+      systemd-unit-en er `Type=oneshot` med `RemainAfterExit=yes` og starter den ikke på nytt.
+      Anbefalt: `restart: unless-stopped` også på appen — én linje, samme policy som proxyen
+- [ ] **`Backup:MinFreeBytes`-vakten kan stoppe backup i ubestemt tid med bare en logglinje per
+      intervall.** Den bytter en høylytt feil (full disk) mot en stille (ingen backup). Ingenting
+      viser «backup har ikke kjørt på N dager». `DriveBackupLog` i Phase 6B er riktig sted å
+      eksponere det; inntil da er det kun logg
+
+**Verifisert**: sertifikatet er gyldig til 2026-12-05, og `./caddy_data` med ACME-tilstand ligger
+på VM-en, så fornyelse har det den trenger.
+
+### Stabilitet
+
+- Oppryddingsgrensene faller fra 48 → 24 filer og 2 GB → 768 MB ved utrulling. Uten praktisk
+  konsekvens nå: prod har 7 filer / 299 MB fordi `download-backups.sh` trimmer remote til 5, så
+  utrullingen kaster ingen historikk
+
+### Code smells
+
+- [ ] `docker-compose.override.yml` er committet og lastes automatisk lokalt. Ufarlig fordi
+      deploy-skriptet bare overfører `docker-compose.yml`, men den som rsync-er hele repoet til en
+      server vil stille bytte Caddy til `saksapp.test` og brekke TLS. Verdt en advarsel i filen
+- [ ] `Caddyfile` og `Caddyfile.local` dupliserer site-blokken; greit for lesbarhet, men de kan
+      komme i utakt
+
+### Vurdert uten funn
+
+- **Responsivitet**: ingen regresjon. Caddy legger til ett lokalt hopp, `encode zstd gzip` er på,
+  HTTP/3 tilgjengelig på 443/udp
+- **Ytelse**: `DriveInfo` er ett statvfs-kall per backup- og oppryddingsrunde
+- **Konfigurasjon**: verifisert at `Backup__*`-verdiene i compose faktisk parses
+  (`805306368`, ikke strengen med YAML-kommentaren)
+
+---
+
 ## Hendelse 2026-09-08: full disk tok ned appen
 
 **Symptom**: «An error occurred while processing your request» på alle sider som skriver.
