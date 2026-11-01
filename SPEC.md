@@ -530,6 +530,14 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 - Minimum 75% code coverage for business logic
 - Focus on services, controllers, and data transformation logic
 
+### Passordrotasjon (drift)
+
+`deployment/rotate_passwords.py` genererer nye tilfeldige passord for alle (eller utvalgte) brukere
+direkte i SQLite-databasen, med appen stoppet. Passordene lagres som ASP.NET Identity v3-hash
+(PBKDF2-HMAC-SHA512, 100000 iterasjoner) og `SecurityStamp` fornyes slik at eksisterende
+innlogginger ugyldiggjøres. Klartekstpassord skrives kun til en 0600-fil utenfor repoet, aldri til
+stdout. Databasen sikkerhetskopieres først, og alle brukere roteres i én transaksjon.
+
 ## Testability Architecture
 
 To achieve the 75% coverage target, the codebase follows these architectural patterns:
