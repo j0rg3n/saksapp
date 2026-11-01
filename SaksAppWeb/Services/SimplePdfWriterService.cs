@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
@@ -67,8 +68,11 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
     private readonly List<PendingTocLink> _pendingTocLinks = new();
     private readonly Dictionary<int, int> _attachmentPageNumbers = new();
 
-    public SimplePdfWriter()
+    private readonly ILogger _logger;
+
+    public SimplePdfWriter(ILogger<SimplePdfWriter>? logger = null)
     {
+        _logger = logger ?? NullLogger<SimplePdfWriter>.Instance;
         _page = _doc.AddPage();
         _gfx = XGraphics.FromPdfPage(_page);
         _y = Margin;
@@ -382,13 +386,26 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
     {
         AddAttachmentCoverPage(fileName, number);
 
-        using var inputStream = new MemoryStream(pdfContent);
-        var inputDoc = PdfReader.Open(inputStream, PdfDocumentOpenMode.Import);
+        // Remembered so a failure part-way through the import can be rolled back: an attachment is
+        // either included whole or not at all.
+        var pageCountBeforeImport = _doc.PageCount;
 
-        for (int i = 0; i < inputDoc.PageCount; i++)
+        try
         {
-            var page = inputDoc.Pages[i];
-            _doc.AddPage(page);
+            using var inputStream = new MemoryStream(pdfContent);
+            var inputDoc = PdfReader.Open(inputStream, PdfDocumentOpenMode.Import);
+
+            for (int i = 0; i < inputDoc.PageCount; i++)
+            {
+                _doc.AddPage(inputDoc.Pages[i]);
+            }
+        }
+        catch (Exception ex) when (IsAttachmentParseFailure(ex))
+        {
+            while (_doc.PageCount > pageCountBeforeImport)
+                _doc.Pages.RemoveAt(_doc.PageCount - 1);
+
+            WriteAttachmentUnavailable(ex, fileName, number);
         }
     }
 
@@ -404,6 +421,7 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
         _y += _hFont.GetHeight() + LineGap;
 
         _gfx.DrawString(fileName, _attachmentTitleFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
+        _y += _attachmentTitleFont.GetHeight() + LineGap;
 
         return _doc.PageCount;
     }
@@ -419,20 +437,46 @@ public sealed class SimplePdfWriter : ISimplePdfWriter
         _gfx.DrawString($"Vedlegg {number}: {fileName}", _hFont, XBrushes.Black, new XRect(Margin, _y, _page.Width - 2 * Margin, _page.Height), XStringFormats.TopLeft);
         _y += _hFont.GetHeight() + LineGap;
 
-        using var imageStream = new MemoryStream(imageContent);
-        var image = XImage.FromStream(() => new MemoryStream(imageContent));
+        try
+        {
+            // The decoder may defer reading the bytes, so everything up to DrawImage stays inside.
+            var image = XImage.FromStream(() => new MemoryStream(imageContent));
 
-        var availableWidth = _page.Width - 2 * Margin;
-        var availableHeight = _page.Height - _y - Margin;
+            var availableWidth = _page.Width - 2 * Margin;
+            var availableHeight = _page.Height - _y - Margin;
 
-        var ratio = Math.Min(availableWidth / image.PixelWidth, availableHeight / image.PixelHeight);
-        var drawWidth = image.PixelWidth * ratio;
-        var drawHeight = image.PixelHeight * ratio;
+            var ratio = Math.Min(availableWidth / image.PixelWidth, availableHeight / image.PixelHeight);
+            var drawWidth = image.PixelWidth * ratio;
+            var drawHeight = image.PixelHeight * ratio;
 
-        var x = Margin;
-        var y = _y;
+            _gfx.DrawImage(image, Margin, _y, drawWidth, drawHeight);
+        }
+        catch (Exception ex) when (IsAttachmentParseFailure(ex))
+        {
+            WriteAttachmentUnavailable(ex, fileName, number);
+        }
+    }
 
-        _gfx.DrawImage(image, x, y, drawWidth, drawHeight);
+    /// <summary>
+    /// Attachments are user-uploaded bytes fed to third-party parsers, which throw a wide and
+    /// undocumented range of exception types on malformed input (PdfReaderException,
+    /// InvalidOperationException, IndexOutOfRangeException, image-decoder exceptions, …), so the
+    /// catch cannot be narrowed by type without letting some corrupt files crash the export again.
+    /// It is narrowed by scope instead — only the parse/import calls are inside the try — and
+    /// process-level failures are never swallowed.
+    /// </summary>
+    private static bool IsAttachmentParseFailure(Exception ex) =>
+        ex is not (OutOfMemoryException or StackOverflowException);
+
+    private void WriteAttachmentUnavailable(Exception ex, string fileName, int number)
+    {
+        _logger.LogWarning(ex, "Attachment {Number} ({FileName}) could not be embedded in the PDF", number, fileName);
+
+        _y += LineGap * 2;
+        WriteWrapped(
+            "Vedlegget kunne ikke settes inn i dokumentet fordi filen ikke kunne leses. " +
+            "Originalfilen ligger i saken i SaksApp.",
+            _pItalicFont, extraBottom: 0);
     }
 
     public byte[] ToBytes()

@@ -4,6 +4,20 @@
 
 ---
 
+## Ad-hoc: Uleselig vedlegg skal ikke stoppe innkalling/referat-PDF
+
+Se SPEC.md «Add Attachment» → «An unreadable attachment must not break …».
+
+- [x] `SimplePdfWriter`: fang feil ved innlesing av PDF-vedlegg; fjern sider som allerede er
+      kopiert, behold forsiden og skriv fast norsk merknad (ingen `ex.Message` i dokumentet),
+      ombrutt med `WriteWrapped`, plassert under filnavnet (riktig fonthøyde)
+- [x] Samme håndtering for bildevedlegg, via felles hjelpemetode; fjern ubrukt `imageStream`
+- [x] Logg feilen som warning (`ILogger<SimplePdfWriter>` via `SimplePdfWriterFactory`)
+- [x] Test: søppelbytes som PDF, passordbeskyttet PDF og søppelbytes som bilde gir lesbar PDF,
+      riktige sidetall for etterfølgende vedlegg, og en logget warning
+
+---
+
 ## Ad-hoc: Innkalling — badge for Avvik og Tiltak i historikken
 
 - [x] Ta med `Category` i `AgendaCommentData` og fyll den i `AgendaPdfDataService`

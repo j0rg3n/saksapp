@@ -98,6 +98,15 @@ Visual layouts and wireframes are documented in [LAYOUTS.md](./LAYOUTS.md).
   appending PDF pages or drawing images, so any other type would be listed in the attachment index
   without appearing in the document. Relaxing the accepted types requires handling them there
   first.
+- **An unreadable attachment must not break the agenda or minutes PDF.** A PDF or image that
+  passes the type check can still fail to parse (corrupt file, password-protected PDF, format
+  the PDF library does not support). In that case the attachment keeps its cover page — so the
+  attachment index and its page numbers stay correct — and the cover page carries a fixed
+  Norwegian note that the file could not be inserted and that the original is in the case. None
+  of the attachment's pages are included (no half-copied attachments). The exception text is
+  **not** printed in the document; it is logged as a warning with the file name and attachment
+  number. Only failures while parsing the attachment are handled this way; other errors still
+  fail the export.
 
 ### Meeting Management
 

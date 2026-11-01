@@ -34,7 +34,7 @@ public interface ISimplePdfWriterFactory
     ISimplePdfWriter Create();
 }
 
-public sealed class SimplePdfWriterFactory : ISimplePdfWriterFactory
+public sealed class SimplePdfWriterFactory(ILogger<SimplePdfWriter> logger) : ISimplePdfWriterFactory
 {
-    public ISimplePdfWriter Create() => new SimplePdfWriter();
+    public ISimplePdfWriter Create() => new SimplePdfWriter(logger);
 }

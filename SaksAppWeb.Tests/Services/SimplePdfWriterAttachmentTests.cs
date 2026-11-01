@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
 using SaksAppWeb.Services;
@@ -117,6 +118,71 @@ public class SimplePdfWriterAttachmentTests
         using var ms = new MemoryStream(bytes);
         var reopened = PdfReader.Open(ms, PdfDocumentOpenMode.ReadOnly);
         Assert.True(reopened.PageCount >= 3);
+    }
+
+    private static byte[] MakePasswordProtectedPdf()
+    {
+        var doc = new PdfDocument();
+        doc.AddPage();
+        doc.SecuritySettings.UserPassword = "user";
+        doc.SecuritySettings.OwnerPassword = "owner";
+        using var ms = new MemoryStream();
+        doc.Save(ms, closeStream: false);
+        return ms.ToArray();
+    }
+
+    private static readonly byte[] Garbage = "this is not a pdf or an image"u8.ToArray();
+
+    public static TheoryData<string> UnreadableAttachmentKinds => new() { "garbage-pdf", "encrypted-pdf", "garbage-image" };
+
+    /// <summary>
+    /// A corrupt or password-protected attachment must not take down the whole export. It keeps
+    /// its cover page (so later page numbers stay right), contributes no pages of its own, and the
+    /// failure is logged rather than printed.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(UnreadableAttachmentKinds))]
+    public void UnreadableAttachment_KeepsCoverPage_LogsWarning_AndDoesNotShiftLaterAttachments(string kind)
+    {
+        var logger = new CapturingLogger<SimplePdfWriter>();
+        var writer = new SimplePdfWriter(logger);
+        writer.Title("Referat");
+        writer.WriteAttachmentTocEntryDeferred(1, "1.1", "bad");
+        writer.WriteAttachmentTocEntryDeferred(2, "1.2", "good.pdf");
+
+        var pagesBeforeAttachments = writer.GetCurrentPageNumber();
+
+        switch (kind)
+        {
+            case "garbage-pdf": writer.AddPdfAttachment(Garbage, "bad.pdf", 1); break;
+            case "encrypted-pdf": writer.AddPdfAttachment(MakePasswordProtectedPdf(), "bad.pdf", 1); break;
+            case "garbage-image": writer.AddImageAttachment(Garbage, "bad.jpg", 1); break;
+        }
+        writer.AddPdfAttachment(MakePdf(2), "good.pdf", 2);
+        writer.ApplyAttachmentTocPageNumbers();
+
+        var pages = writer.GetAttachmentPageNumbers();
+        Assert.Equal(pagesBeforeAttachments + 1, pages[1]);
+        Assert.Equal(pagesBeforeAttachments + 2, pages[2]); // bad attachment = cover page only
+
+        var warning = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, warning.Level);
+        Assert.NotNull(warning.Exception);
+        Assert.Contains("bad.", warning.Message);
+
+        using var ms = new MemoryStream(writer.ToBytes());
+        var reopened = PdfReader.Open(ms, PdfDocumentOpenMode.ReadOnly);
+        Assert.Equal(pagesBeforeAttachments + 1 + 1 + 2, reopened.PageCount);
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception), exception));
     }
 
     /// <summary>A badge must not be drawn for ordinary events, and must not throw when absent.</summary>
