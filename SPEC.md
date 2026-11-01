@@ -604,7 +604,7 @@ All services are registered in Program.cs and injected via constructor:
 ### Phase 0.1: Testability Refactoring (NEXT)
 Extract query logic and abstract external dependencies to enable effective mocking.
 
-See TODO.md for detailed tasks.
+See TODO_ARCHIVE.md (completed) and GitHub issues (open work).
 
 ---
 

@@ -1,8 +1,385 @@
 # TODO_ARCHIVE.md — Fullførte seksjoner
 
-Arkiv over fullførte faser og oppgaver. Se TODO.md for gjenværende arbeid.
+Arkiv over fullførte faser og oppgaver. Gjenværende arbeid ligger i GitHub issues og milestones
+(https://github.com/j0rg3n/saksapp/milestones). `[→ #N]` betyr at punktet ble flyttet til issue #N
+da TODO.md ble avviklet 2026-11-01.
 
 ---
+
+## Ad-hoc: Typografi i innkalling/referat-PDF (typography-report-2026-11-01.md)
+
+Se SPEC.md «PDF typography». Brukerskrevet tekst og tredjepartsvedlegg er utenfor scope.
+
+- [x] H1: `HeadingInline`-etiketter 10 pt Bold (`_h3Font`), ikke 12 pt
+- [x] H2: vedleggsforside viser etikett (`Vedlegg 2.1`), ikke løpenummer — innkalling og referat
+- [x] H3: vedleggsindeks med `s. <n>` høyrestilt i stedet for `10:`-prefiks; forkort lange navn
+- [x] H4: fjern emoji/piktogrammer før tegning
+- [x] M1/M7: historikklinjer `<dato> [badge] <tekst>` uten kolon; første linje målt mot bredden
+      (fjern 38/28-tegnsklippingen i controlleren)
+- [x] M2/M3: `AgendaTextSnapshot` vises bare under «Til møtet:», ikke i tillegg som eget avsnitt
+- [x] M4: hengende innrykk for avsnitt som starter med listemerke
+- [x] M6: keep-with-next for overskrifter, etiketter og linjer som slutter på `:`
+- [x] M8: datoer `dd.MM.yyyy` (tidsfrist, historikk) via felles hjelper; historikkdato i
+      `App:TimeZone`; fjern duplisert tidsfrist-logikk (innkalling + påminnelse)
+- [x] §5: lik vedleggsforside for PDF og bilde; filnavn ombrytes
+- [x] Tester for hvert punkt der det lar seg måle
+
+---
+
+## Ad-hoc: Uleselig vedlegg skal ikke stoppe innkalling/referat-PDF
+
+Se SPEC.md «Add Attachment» → «An unreadable attachment must not break …».
+
+- [x] `SimplePdfWriter`: fang feil ved innlesing av PDF-vedlegg; fjern sider som allerede er
+      kopiert, behold forsiden og skriv fast norsk merknad (ingen `ex.Message` i dokumentet),
+      ombrutt med `WriteWrapped`, plassert under filnavnet (riktig fonthøyde)
+- [x] Samme håndtering for bildevedlegg, via felles hjelpemetode; fjern ubrukt `imageStream`
+- [x] Logg feilen som warning (`ILogger<SimplePdfWriter>` via `SimplePdfWriterFactory`)
+- [x] Test: søppelbytes som PDF, passordbeskyttet PDF og søppelbytes som bilde gir lesbar PDF,
+      riktige sidetall for etterfølgende vedlegg, og en logget warning
+
+---
+
+## Ad-hoc: Innkalling — badge for Avvik og Tiltak i historikken
+
+- [x] Ta med `Category` i `AgendaCommentData` og fyll den i `AgendaPdfDataService`
+- [x] I «Historikk siden forrige møte»: tegn badge foran hendelser med `avvik` (#DC3545) og
+      `tiltak` (#FFC107) via eksisterende `ISimplePdfWriter.OutcomeBadge`. Vanlige hendelser
+      (`general`, legacy `comment`) får **ingen** badge
+- [x] Test: avvik og tiltak gir badge, general og comment gir ingen
+
+---
+
+## Ad-hoc: Bugfix — Sidetall for vedlegg i innkallingen er alle like
+
+**Symptom**: Alle vedlegg i innkallingens vedleggsliste viser samme sidetall — sidetallet for den
+første siden som inneholder vedlegg.
+
+**Rotårsak**: `MeetingsController.cs:541` kaller
+`pdf.WriteAttachmentTocEntryLabel(pdf.GetCurrentPageNumber() + 1, ...)` inne i løkken som skriver
+innholdsfortegnelsen, *før* vedleggene er lagt til. `GetCurrentPageNumber()` endrer seg ikke mens
+TOC-linjene skrives på samme side, så hver oppføring får samme verdi. Samme feil i referat-PDF-en
+på `MeetingsController.cs:769`.
+
+- [x] Legg til vedleggene først for å finne faktisk startside per vedlegg, og skriv TOC-en etterpå
+      — eller beregn sideantall per vedlegg på forhånd. `ISimplePdfWriter` har allerede
+      `GetAttachmentPageNumbers()` og `AddPdfAttachmentStart()` som ser ut til å være ment for
+      nettopp dette; sjekk om de kan brukes
+- [x] Rett begge steder (innkalling og referat)
+- [x] Test: innkalling med minst tre flersidige PDF-vedlegg skal gi stigende, korrekte sidetall
+
+---
+
+## Pre-deploy-review 2026-09-08 — funn (TLS + disksikring)
+
+Review av `c19e6d6..6677755`. TLS-endringen er allerede ute; den fikk aldri sin egen review-runde,
+så den er dekket her. Ingen funn blokkerer utrulling.
+
+### Sikkerhet
+
+- [→ #1] `auth/secret.env` har modus 0644 og `caddy.env` 0664. Deploy-skriptet bruker `rsync -av`, som
+      bevarer rettighetene, så SMTP-credentials havner verdenslesbare på VM-en. Lav reell
+      eksponering (bare root logger inn), men unødvendig. Fiks: `chmod 600 auth/*` og
+      `--chmod=F600` på rsync
+
+**Verifisert lukket**: build-konteksten er 1,2 GB → **13 MB**, og `auth/`, `dp_keys/`, `db/` og
+`*.tar` er borte fra build-laget. Appen publiserer kun `127.0.0.1:8080` på VM-en, og Caddys
+admin-port 2019 er ikke publisert — det er nettopp derfor det er trygt å stole på
+`X-Forwarded-*` med tømt `KnownProxies`.
+
+### Pålitelighet
+
+- [→ #2] **`saksappweb` har `restart=no`, mens `caddy` har `unless-stopped`.** Dør app-containeren
+      (OOM, krasj, feilet oppstart) blir den liggende, og Caddy svarer 502 til noen oppdager det.
+      systemd-unit-en er `Type=oneshot` med `RemainAfterExit=yes` og starter den ikke på nytt.
+      Anbefalt: `restart: unless-stopped` også på appen — én linje, samme policy som proxyen
+- [→ #18] **`Backup:MinFreeBytes`-vakten kan stoppe backup i ubestemt tid med bare en logglinje per
+      intervall.** Den bytter en høylytt feil (full disk) mot en stille (ingen backup). Ingenting
+      viser «backup har ikke kjørt på N dager». `DriveBackupLog` i Phase 6B er riktig sted å
+      eksponere det; inntil da er det kun logg
+
+**Verifisert**: sertifikatet er gyldig til 2026-12-05, og `./caddy_data` med ACME-tilstand ligger
+på VM-en, så fornyelse har det den trenger.
+
+### Stabilitet
+
+- Oppryddingsgrensene faller fra 48 → 24 filer og 2 GB → 768 MB ved utrulling. Uten praktisk
+  konsekvens nå: prod har 7 filer / 299 MB fordi `download-backups.sh` trimmer remote til 5, så
+  utrullingen kaster ingen historikk
+
+### Code smells
+
+- [→ #3] `docker-compose.override.yml` er committet og lastes automatisk lokalt. Ufarlig fordi
+      deploy-skriptet bare overfører `docker-compose.yml`, men den som rsync-er hele repoet til en
+      server vil stille bytte Caddy til `saksapp.test` og brekke TLS. Verdt en advarsel i filen
+- [→ #4] `Caddyfile` og `Caddyfile.local` dupliserer site-blokken; greit for lesbarhet, men de kan
+      komme i utakt
+
+### Vurdert uten funn
+
+- **Responsivitet**: ingen regresjon. Caddy legger til ett lokalt hopp, `encode zstd gzip` er på,
+  HTTP/3 tilgjengelig på 443/udp
+- **Ytelse**: `DriveInfo` er ett statvfs-kall per backup- og oppryddingsrunde
+- **Konfigurasjon**: verifisert at `Backup__*`-verdiene i compose faktisk parses
+  (`805306368`, ikke strengen med YAML-kommentaren)
+
+---
+
+## Hendelse 2026-09-08: full disk tok ned appen
+
+**Symptom**: «An error occurred while processing your request» på alle sider som skriver.
+Loggen viste `SQLite Error 8: 'attempt to write a readonly database'` — som ser ut som et
+rettighetsproblem, men var full disk (96 % brukt, 401 MB ledig av 9,8 GB). Rettighetene var
+korrekte (`1654:1654`, samme som container-brukeren).
+
+**Løst akutt** ved å frigjøre 2,4 GB: `docker image prune -f` (2,16 GB dangling images),
+slette `/root/saksappweb.tar` (121 MB) og `apt-get clean` (~400 MB). Disk 96 % → 70 %.
+
+**Rotårsaker**
+
+1. **Deploy-skriptet ryddet ikke.** Hver utrulling la igjen tarballen *og* gjorde forrige image
+   dangling — ~1 GB per deploy. Dette, ikke backupene, var største forbruker.
+2. **Backup-budsjettet var feil dimensjonert.** `MaxTotalBytes` default 2 GB på en 9,8 GB disk;
+   48 filer x ~40 MB = 1,9 GB, altsa 20 % av disken. Oppryddingen gjorde noyaktig det den var
+   konfigurert til - konfigurasjonen var gal.
+3. **Databasen vokser** ~8 MB/uke fra vedlegg: 19 MB (mai) -> 37 MB (1. sep) -> 45 MB (8. sep).
+   Et fast budsjett blir feil over tid.
+
+- [x] `deployment/deploy-upcloud.sh`: slett tarballen etter `docker load`, og kjor
+      `docker image prune -f` etter vellykket start
+- [x] `Backup:MinFreeBytes` (default 1 GB): hopp over snapshot og logg advarsel hvis skrivingen
+      ville etterlate mindre ledig plass. Backup-systemet skal aldri kunne fylle disken det
+      beskytter
+- [x] Senk `Backup:MaxTotalBytes`-default og sett en eksplisitt verdi for produksjon som passer
+      9,8 GB
+- [x] Logg ledig diskplass ved hver oppryddingsrunde, slik at neste hendelse ikke starter med et
+      misvisende «readonly database»
+- [→ #16, #17] Phase 6B (Drive-opplasting) er den varige losningen: kort lokal oppbevaring, historikk offsite
+
+---
+
+## 🔴 HØY PRIORITET: TLS — appen kjører på ufortrolig HTTP
+
+**Symptom**: Produksjon serveres over `http://<ip>` (port 80, `docker-compose.yml`). Passord ved
+innlogging og selve auth-cookien går ukryptert over nettet. `Program.cs:72` kaller `UseHsts()`, men
+det er en no-op: nettlesere ignorerer HSTS-headeren når den kommer over HTTP, og det finnes ingen
+`UseHttpsRedirection`. Enhver på nettverket mellom et styremedlem og VM-en kan lese
+innloggingsdetaljer og kapre sesjonen.
+
+**Blokkerer også Phase 6B**: Google krever HTTPS for OAuth-redirect-URI-er og godtar ikke bare
+IP-adresser som redirect-vert.
+
+- [x] `SAKSAPP_DOMAIN` lagt i `auth/caddy.env` (egen fil — proxyen skal ikke ha SMTP-credentials)
+- [x] A-record for produksjonsdomenet mot VM-ens IP (verifisert 2026-09-08)
+- [x] `Caddyfile` med automatisk Let's Encrypt; Caddy publiserer 80 og 443
+- [x] `docker-compose.yml`: legg til `caddy`-tjenesten; appen slutter å publisere offentlig port og
+      binder bare `127.0.0.1:8080` for lokal debugging
+- [x] `Program.cs`: `UseForwardedHeaders` (`X-Forwarded-For`, `X-Forwarded-Proto`) først i
+      pipelinen, og `Cookie.SecurePolicy = Always` utenfor Development
+- [x] `deployment/deploy-upcloud.sh`: overfør `Caddyfile` og `auth/secret.env`-avhengige variabler
+- [x] Åpne port 443 i VM-ens brannmur (verifisert 2026-09-08)
+- [x] Verifiser lokalt med `SAKSAPP_DOMAIN=localhost` (Caddy bruker intern CA, ingen ACME), og i
+      produksjon at HTTP redirigerer til HTTPS og at sertifikatet er gyldig
+
+---
+
+## Pre-deploy-review 2026-09-02 (runde 2) — funn fra PDF-endringene
+
+Review av innkalling-badges + sidetallsfiksen. Ingen funn blokkerer utrulling.
+
+### Pålitelighet
+
+- [→ #8] `FontResolverBootstrap.Initialize` svelger «already used»-unntaket uten logging (statisk
+      klasse, ingen logger). Feiler resolveren reelt, dukker det opp senere som en uklar font-feil
+
+### Code smells
+
+- [→ #7] **`WriteAttachmentTocEntry` og `WriteAttachmentTocEntryLabel` er nå ubrukte** — den siste ble
+      foreldreløs av sidetallsfiksen. Bør fjernes, men gjør det som en egen, forsiktig endring:
+      et forsøk under denne runden kuttet for bredt og tok med `OutcomeBadge` og
+      `DeferredTocPageNumber`; ble rullet tilbake
+- [→ #7] **`ApplyPendingLinks` / `_pendingLinks` / `WriteTextWithAttachmentLinks` /
+      `AddPdfAttachmentStart` er ubrukt.** `ApplyPendingLinks` har dessuten de *samme* to feilene
+      som nettopp ble rettet i TOC-stien: `TargetPageNumber - 1` (peker én side for tidlig) og
+      `new XPoint(link.Y, ...)` som bruker Y som X-koordinat. Kobles den noen gang på, er den feil
+      fra dag én. Fjern, eller rett samtidig
+- [→ #9] `DrawInlineBadge` parser fargen med `Convert.ToInt32(colorHex.Substring(...))` uten
+      validering. Kalles kun med hardkodede literaler i dag; kaster ved ugyldig input
+
+### Vurdert uten funn
+
+- **Sikkerhet**: ingen ny angrepsflate. Brukertekst og filnavn tegnes via `DrawString`; ingen
+  injeksjonsvei i PDF-tekst
+- **Responsivitet**: uendret kostnad; `ApplyAttachmentTocPageNumbers` er O(oppføringer)
+- **Ytelse**: forbedring — `labeledAttachments.IndexOf(...)` i referat-PDF-en var O(n²) og ga feil
+  sekvensnummer for duplikater; erstattet med en teller
+- **Stabilitet**: TOC-renna er dimensjonert for «0000: », dvs. sidetall opp til 9999
+
+---
+
+## 🔴 Pre-deploy-review 2026-09-02 — funn
+
+Review av 67884be..c4ba898 før utrulling. Se CLAUDE.md «Pre-deployment review».
+
+### Sikkerhet
+
+- [x] **HØY: Hemmeligheter og Data Protection-nøkler havner i Docker build-laget.**
+      `.dockerignore` ekskluderer `**/.env`, som *ikke* matcher `auth/secret.env`, og hverken
+      `db/` eller `dp_keys/`. Build-steget inneholder SMTP-credentials, VM-host, tre ukrypterte
+      DP-nøkler, live-databasen og 830 MB backups (build-image: 4,43 GB, kontekst 1,2 GB).
+      Runtime-imaget er rent — multi-stage, og `docker save saksappweb:latest` tar kun siste steg
+      — så det utrullede artefaktet er ikke berørt. Men laget er lesbart lokalt, og DP-nøklene
+      beskytter antiforgery-tokens i dag og `"DriveTokens"` etter Phase 6B.
+      `.gitignore` dekker alt dette allerede; `.dockerignore` har aldri blitt oppdatert i takt.
+      Fiks: legg til `auth/`, `**/db/`, `**/dp_keys/`, `*.tar` i `.dockerignore`
+
+### Pålitelighet
+
+- [x] **Opprydding kjører aldri når snapshot-skrivingen feiler.** `ApplyRetention()` kalles etter
+      try/finally, så en exception fra `WriteSnapshotAsync` hopper over pruning. Full disk er
+      nettopp tilfellet der skrivingen feiler *og* der pruning trengs mest — tjenesten kan ikke
+      redde sin egen disk. Fiks: kjør opprydding også før snapshot
+- [x] **Delvis `.gz` blir liggende ved avbrudd.** Faller cancellation-token under `CopyToAsync`,
+      etterlates en avkortet `.gz` under sitt endelige navn, umulig å skille fra en gyldig backup;
+      oppryddingen beholder den og sletter eldre, gyldige. Fiks: gzip til `.gz.tmp` og
+      `File.Move` på plass
+
+### Stabilitet
+
+- [x] **Backup-filnavn bruker `DateTimeOffset.Now`, resten av koden `UtcNow`.** Harmløst i dag
+      (container-TZ er UTC), men oppryddingen sorterer nå på tidsstempelet i filnavnet. Settes TZ,
+      gir vintertidsomstilling ikke-monotone navn og feil filer slettes. Fiks: bruk `UtcNow`
+
+### Korrekthet (innført i denne milepælen)
+
+- [x] **`MeetingTime` tolkes som UTC, men fylles ut som lokal klokkeslett.** `MeetingBoundary`
+      bygger `DateTimeOffset` med `TimeSpan.Zero`, mens `<input type="time">` gir norsk lokaltid og
+      `CreatedAt` er `UtcNow`. Møte 18:00 lokalt er 16:00 UTC, så vinduet strekker seg ~2 t
+      (1 t om vinteren) forbi reell møtestart og tar med hendelser registrert under møtet.
+      Feiler i trygg retning — ingenting droppes — men semantikken er feil
+
+### Ytelse
+
+- [→ #10] **Agenda-PDF materialiserer 12 MB vedlegg per generering** (7 MB med gammelt filter;
+      17 vedlegg, største 3 MB) som `byte[]` i minnet, uten minnegrenser på containeren.
+      Utvidelsen av kategorifilteret nær doblet dette, og det vokser med hvert vedlegg
+- [→ #11] `previousMinutesCandidates` laster alle eldre `MeetingEventLink` (130 rader i dag) før
+      filtrering. Vokser med møter × agendapunkter. Eksisterende, ikke haster
+
+### Vurdert uten funn
+
+- **Responsivitet**: ingen regresjon. PDF-generering er synkron på request-stien (eksisterende);
+  møteskjemaet gikk fra 3 til 4 `col-md-3`-kolonner og stables riktig på mobil
+- **Code smells**: rent. Ingen etterlatte navn, kategoriliteraler er samlet, duplisert testklasse
+  fjernet. Merk at `.dockerignore`/`.gitignore`-driften i sikkerhetsfunnet er samme type drift som
+  forårsaket innkallings-feilen
+
+---
+
+## 🔴 HØY PRIORITET: Backup fyller disken — tjenesteavbrudd
+
+**Symptom**: Cloud-VM-en går tom for diskplass og tjenesten faller ut.
+
+**Rotårsak**: `DatabaseBackupService` tar timesvise snapshots (`DatabaseBackupService.cs:120`)
+uten komprimering. `TryApplyRetention(200)` er hardkodet (`:67`) og glob-mønsteret `app-*.sqlite`
+(`:74`) treffer aldri `.bz2`-filer, så de blir liggende for alltid. 200 × 37 MB = 7,4 GB selv når
+oppryddingen virker. Nedlastingsarkivet `../SaksApp_backups` er nå **34 GB / 2324 filer**
+(2248 ukomprimerte `.sqlite` = 33 GB, 60 `.bz2` = 999 MB).
+
+- [x] Gjør oppryddingen konfigurerbar: `Backup:MaxFiles` (48), `Backup:MaxTotalBytes` (2 GB),
+      `Backup:Compress` (true)
+- [x] Gzip hvert snapshot: skriv `app-<ts>.sqlite.tmp`, stream gjennom `GZipStream` til
+      `app-<ts>.sqlite.gz`, slett temp-fila i `finally`
+      (målt: kun ~12 % spart — databasen er dominert av vedlegg som allerede er komprimert,
+      så det er antalls- og størrelsesgrensene som gjør jobben, ikke komprimeringen)
+- [x] Skriv om `TryApplyRetention` (`:70-88`): matche `.sqlite`, `.sqlite.gz` og `.sqlite.bz2`;
+      sortere på tidsstempelet i filnavnet, **ikke** `CreationTimeUtc` (upålitelig på Linux);
+      slette eldste ut over `MaxFiles`, deretter til totalen er under `MaxTotalBytes`; alltid
+      beholde nyeste
+- [x] Logg én oppsummeringslinje per runde: filer beholdt, filer slettet, bytes på disk
+- [x] `deployment/download-backups.sh`: bygg ekskluderingsliste fra lokale filnavn (strippet for
+      `.gz`/`.bz2`) og send til `rsync --exclude-from` — uten dette laster
+      `--ignore-existing` ned alt på nytt så snart lokale filer er komprimert
+- [x] `download-backups.sh`: gjør `LOCAL_PATH` absolutt ut fra skriptets egen plassering, dropp
+      duplikate snapshots (hash mot forrige beholdte), gzip nye filer, og prun lokalt arkiv med
+      `KEEP_LOCAL` (400) og `MAX_LOCAL_BYTES` (10 GB). Skriv ut før/etter-oppsummering.
+      Legg til `set -uo pipefail`
+- [→ #19] Engangsopprydding av de 34 GB — først etter at Drive-opplasting er verifisert
+
+---
+
+## 🔴 HØY PRIORITET: Bugfix — Innkalling mangler hendelser siden forrige møte
+
+**Symptom**: Innkallingen tar ikke med hendelser registrert siden forrige møte. Bekreftet mot
+en produksjons-backup for møte #9 (2026-09-29): to hendelser (én `avvik`, én
+`tiltak`) på to ulike saker mangler begge. Begge sakene sto sist på agendaen i møte 13 (2026-08-11), så vinduet er
+`(2026-08-11, 2026-09-29]` og begge hendelsene ligger midt i det.
+
+**Rotårsak**: `SaksAppWeb/Services/IAgendaPdfDataService.cs:136` filtrerer på
+`x.CaseEvent.Category == "comment"` — kun legacy-kategorien. Commit `888c095` (Phase 4.5,
+2026-05-02) endret skrivesiden til `general`/`avvik`/`tiltak` (`CasesController.cs:235`) uten å
+oppdatere denne leseren. **Alle hendelser opprettet etter 2026-05-02 faller ut av innkallingen.**
+Vinduslogikken er ikke skyld i dette.
+
+- [x] Legg kategorisettet i én delt konstant (ved siden av
+      `CasesController.ValidCaseEventCategories`): skrivbart sett (`general`, `avvik`, `tiltak`)
+      og lesbart sett (de tre pluss legacy `comment`)
+- [x] `IAgendaPdfDataService.cs:136`: filtrer på det lesbare settet
+- [x] Døp om `allCommentEvents` og `commentAttachments*` til kategorinøytrale navn
+- [x] Pek `ICaseQueryService.cs:156` på samme konstant
+- [x] Rett regresjonstesten `AgendaPdfDataServiceTests.cs:132-161` — fixturen bruker
+      `Category = "comment"` og passerer derfor mens produksjonskoden er ødelagt. Parametriser
+      over `general`, `avvik`, `tiltak`, `comment`; `meeting` skal ikke med
+
+---
+
+## Ad-hoc: Møtetidspunkt — `MeetingTime`
+
+12:00 UTC-ankeret i vindusberegningen (`IAgendaPdfDataService.cs:176-179, 215-218`) er vilkårlig
+fordi `Meeting.MeetingDate` er en `DateOnly`. Møter planlegges alltid med både dato og klokkeslett
+— modellen mangler feltet.
+
+- [x] Legg til `MeetingTime` (`TimeOnly?`) på `Meeting` + migrering. `MeetingDate` forblir
+      `DateOnly` (86 bruksteder)
+- [x] Klokkeslettfelt i `Views/Meetings/Create.cshtml` og `Edit.cshtml`; vis dato + tid i
+      Index/Details/Minutes og i PDF-hodene
+- [x] Vinduets slutt = `MeetingDate` + `MeetingTime` når satt, ellers slutten av døgnet — aldri
+      midt på dagen. Samme behandling for vindusstart mot forrige møte
+- [x] Tester: hendelse før møtetidspunktet er med; etter er ute; uten tid satt er en hendelse
+      sent på møtedagen fortsatt med
+
+---
+
+## Ad-hoc: Hjem-side med Markdown-innhold
+
+- [x] Legg til `Markdig` NuGet-pakke
+- [x] Opprett `SaksAppWeb/Content/home.md` med forklaring av appen
+- [x] `HomeController.Index()` leser filen og konverterer til HTML med Markdig
+- [x] `Views/Home/Index.cshtml` rendrer HTML-innholdet
+
+---
+
+## Ad-hoc: Referat-modus — «Utvikling siden innkallingen»
+
+- [→ #5] Legg til felt `AgendaPdfGeneratedAt` (nullable DateTime) på `Meeting` + migrering
+- [→ #5] Sett `AgendaPdfGeneratedAt = DateTime.UtcNow` når agenda-PDF genereres
+- [→ #5] I referat-visningen: for hvert agenda-punkt, hent CaseEvents på saken med
+      `CreatedAt > meeting.AgendaPdfGeneratedAt AND CreatedAt <= meeting.MeetingDate`
+- [→ #5] Vis disse under en seksjon «Utvikling siden innkallingen» per agenda-punkt
+      (lesevisning, ikke redigerbar); render vedleggslenker som åpner i ny fane
+
+---
+
+## Ad-hoc: PDF — dedupliser vedlegg på tvers av saker
+
+- [→ #6] I agenda-PDF og referat-PDF: samle alle vedlegg på tvers av agenda-punkter,
+      dedupliser på `Attachment.Id`, og list hvert vedlegg kun én gang
+      (f.eks. samlet vedleggsliste bakerst, eller én forekomst pr. agenda-punkt med
+      en note «(se også sak X)»)
+- [→ #6] Oppdater `PdfGeneratorService` (agenda og referat) tilsvarende
+
+---
+
 
 ## Kjente feil (rapportert fra beta) ✅ FIKSET
 
