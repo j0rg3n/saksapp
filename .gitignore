@@ -12,3 +12,6 @@ backups/
 db_old_delete_me/
 caddy_data/
 caddy_config/
+
+# Operational logs (may contain production data)
+logs-*.txt
