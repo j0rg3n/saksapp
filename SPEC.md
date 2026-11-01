@@ -283,6 +283,36 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 
 **Layouts**: See [LAYOUTS.md](./LAYOUTS.md) for detailed visual mockups and specifications.
 
+**PDF typography** (agenda and minutes; source: typography review 2026-11-01)
+- One size per heading level, never larger than its parent: document title 16 pt Bold, section
+  ("Agenda", "Vedlegg") 12 pt Bold, agenda item title 11 pt Bold, every sub-label under an item
+  (`Forrige møte`, `Status:`, `Vedtak:`, `Oppfølging:`, `Tidsfrist:`, `Til møtet:`,
+  `Historikk siden forrige møte:`) 10 pt Bold. Body 10 pt Regular.
+- **Keep with next**: a heading or sub-label is never the last line on a page; it moves to the
+  next page together with at least two lines of what follows. A body line ending in `:` (a
+  user-written label such as `Plan:`) gets the same treatment.
+- **Dates** in generated text use `dd.MM.yyyy` — meeting dates, tidsfrist dates and history
+  entry dates alike. History entry dates are shown in the app time zone (`App:TimeZone`), not UTC.
+  User-typed text is not rewritten.
+- **History entries**: `<date> [badge] <text>` — date and text in italic, badge only for
+  avvik/tiltak, no colon after the date in either case. The first line fills the available width
+  (measured, not a fixed character count); following lines wrap with a hanging indent.
+- **Hanging indent** for user-written list lines: a paragraph starting with `1.`, `1)`, `-`,
+  `*` or `•` wraps its continuation lines under the text, not under the marker.
+- **Unsupported characters**: the embedded font (Liberation Sans) has no emoji. Emoji and other
+  pictographs (characters outside the Basic Multilingual Plane, U+2600–U+27BF, variation
+  selectors, zero-width joiner) are removed before drawing rather than rendered as blanks.
+- **Attachment numbering**: an attachment is identified by its label (`Vedlegg 2.1`) everywhere
+  — in text references, the attachment index and the attachment's caption page. The sequential
+  number is internal only.
+- **Attachment index**: `Vedlegg <label>: <file name>` on the left, the start page as `s. <n>`
+  right-aligned at the right margin. A file name too long for the line is shortened with `…`.
+- **Attachment caption**: identical for PDF and image attachments — `Vedlegg <label>` in 12 pt
+  Bold, file name below in 14 pt Bold, wrapped to the page width (breaking inside a word only when
+  the word alone is wider than the line).
+- Not in scope for the generator: spelling and wording in user-entered text, and anything inside
+  embedded third-party documents.
+
 **Vedleggsdeduplisering**
 - If the same attachment (by ID) is referenced by multiple agenda items, it must appear only once in the agenda PDF and once in the minutes PDF.
 - Preferred placement: list it under the first agenda item that references it; subsequent items show a cross-reference note.
@@ -290,7 +320,8 @@ Compact. Use font sizes, styles, and spacing to visually distinguish different s
 **Agenda PDF**
 - For each agenda item: Title, CaseNumber, Assignee
 - Case description (in italics)
-- Agenda text snapshot (in regular text, if different from description)
+- Agenda text snapshot, under the sub-label `Til møtet:`, only if different from the description.
+  Shown **once** — it was previously also printed as an unlabeled paragraph under the description.
 - Tidsfrist
 - Previous meeting follow-up (if applicable)
 - Comments since last meeting («Historikk siden forrige møte»)

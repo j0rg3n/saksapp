@@ -14,6 +14,10 @@ docker compose up
 
 - Build is required to verify code compiles (no local dotnet available)
 - After any code changes, always run `docker compose build` to verify compilation
+- **Tests and sample data must never contain real case content** — no real names, addresses,
+  companies, incidents, case text or attachment file names, even when reproducing a reported bug.
+  Use neutral placeholders (`Person A`, `Eksempelsak`, `vedlegg-a.pdf`). The same applies to code
+  comments, SPEC.md and TODO.md.
 - After verifying the build succeeds, refresh the running container:
   ```bash
   docker compose up -d --force-recreate

@@ -11,7 +11,12 @@ public interface ISimplePdfWriter
     void ParagraphIndented(string text);
     void ParagraphItalicIndented(string text);
     void ParagraphFirstLine(string firstLine, string continuation, bool isItalic = false);
-    void ParagraphFirstLineWithBadge(string prefix, string? badgeLabel, string? badgeColorHex, string firstLine, string continuation, bool isItalic = false);
+    /// <summary>
+    /// A history entry: "&lt;date&gt; [badge] &lt;text&gt;" in italic. The badge is drawn only when both
+    /// label and colour are given. The text fills the rest of the first line, and further lines
+    /// wrap with a hanging indent.
+    /// </summary>
+    void HistoryEntry(string date, string? badgeLabel, string? badgeColorHex, string text);
     void HeadingInline(string heading, string text);
     void WriteTextWithAttachmentLinks(string text);
     void ApplyPendingLinks();
@@ -23,8 +28,10 @@ public interface ISimplePdfWriter
     void WriteAttachmentTocEntryDeferred(int attachmentNumber, string label, string fileName);
     void ApplyAttachmentTocPageNumbers();
     int AddPdfAttachmentStart();
-    void AddPdfAttachment(byte[] pdfContent, string fileName, int number);
-    void AddImageAttachment(byte[] imageContent, string fileName, int number);
+    /// <param name="number">Internal sequence number, the key used by the attachment index.</param>
+    /// <param name="label">The attachment's visible identifier (e.g. "2.1"), shown on its caption.</param>
+    void AddPdfAttachment(byte[] pdfContent, string fileName, int number, string label);
+    void AddImageAttachment(byte[] imageContent, string fileName, int number, string label);
     void OutcomeBadge(string label, string colorHex);
     byte[] ToBytes();
 }

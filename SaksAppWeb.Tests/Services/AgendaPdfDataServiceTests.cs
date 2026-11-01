@@ -219,6 +219,24 @@ public class AgendaPdfDataServiceTests : IDisposable
         Assert.Equal(expectedIncluded ? 1 : 0, result.Items[0].CommentsBetweenMeetings.Count);
     }
 
+    /// <summary>
+    /// History dates are printed in the app time zone. 22:30 UTC on 30 September is 00:30 on
+    /// 1 October in Oslo; printing the UTC value put the event on the wrong day.
+    /// </summary>
+    [Fact]
+    public async Task GetAgendaDataAsync_ExposesHistoryTimestampInLocalZone()
+    {
+        var oslo = TimeZoneInfo.FindSystemTimeZoneById("Europe/Oslo");
+        var meeting = new Meeting { MeetingDate = new DateOnly(2026, 11, 9), Year = 2026, YearSequenceNumber = 9 };
+        await SeedHistoryEventAsync(meeting, new DateTimeOffset(2026, 9, 30, 22, 30, 0, TimeSpan.Zero));
+
+        var result = await CreateService(oslo).GetAgendaDataAsync(meeting.Id);
+
+        Assert.NotNull(result);
+        var entry = Assert.Single(result.Items[0].CommentsBetweenMeetings);
+        Assert.Equal(new DateTime(2026, 10, 1, 0, 30, 0), entry.CreatedAtLocal);
+    }
+
     [Fact]
     public async Task GetAgendaDataAsync_ExcludesMeetingCategoryFromHistory()
     {

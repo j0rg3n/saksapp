@@ -17,8 +17,8 @@ public sealed class CapturingPdfWriter : ISimplePdfWriter
     public void ParagraphItalicIndented(string text) => Calls.Add($"ParagraphItalicIndented:{text}");
     public void ParagraphFirstLine(string firstLine, string continuation, bool isItalic = false)
         => Calls.Add($"ParagraphFirstLine:{firstLine}");
-    public void ParagraphFirstLineWithBadge(string prefix, string? badgeLabel, string? badgeColorHex, string firstLine, string continuation, bool isItalic = false)
-        => Calls.Add($"ParagraphFirstLineWithBadge:{prefix}:{badgeLabel ?? "-"}:{badgeColorHex ?? "-"}:{firstLine}");
+    public void HistoryEntry(string date, string? badgeLabel, string? badgeColorHex, string text)
+        => Calls.Add($"HistoryEntry:{date}:{badgeLabel ?? "-"}:{badgeColorHex ?? "-"}:{text}");
     public void HeadingInline(string heading, string text) => Calls.Add($"HeadingInline:{heading}|{text}");
     public void WriteTextWithAttachmentLinks(string text) => Calls.Add($"WriteTextWithAttachmentLinks:{text}");
     public void ApplyPendingLinks() => Calls.Add("ApplyPendingLinks");
@@ -33,10 +33,10 @@ public sealed class CapturingPdfWriter : ISimplePdfWriter
         => Calls.Add($"WriteAttachmentTocEntryDeferred:{attachmentNumber}:{label}:{fileName}");
     public void ApplyAttachmentTocPageNumbers() => Calls.Add("ApplyAttachmentTocPageNumbers");
     public int AddPdfAttachmentStart() { Calls.Add("AddPdfAttachmentStart"); return 1; }
-    public void AddPdfAttachment(byte[] pdfContent, string fileName, int number)
-        => Calls.Add($"AddPdfAttachment:{number}:{fileName}");
-    public void AddImageAttachment(byte[] imageContent, string fileName, int number)
-        => Calls.Add($"AddImageAttachment:{number}:{fileName}");
+    public void AddPdfAttachment(byte[] pdfContent, string fileName, int number, string label)
+        => Calls.Add($"AddPdfAttachment:{number}:{label}:{fileName}");
+    public void AddImageAttachment(byte[] imageContent, string fileName, int number, string label)
+        => Calls.Add($"AddImageAttachment:{number}:{label}:{fileName}");
     public void OutcomeBadge(string label, string colorHex)
         => Calls.Add($"OutcomeBadge:{label}:{colorHex}");
     public byte[] ToBytes() => ResultBytes;

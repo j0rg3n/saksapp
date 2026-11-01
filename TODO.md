@@ -4,6 +4,26 @@
 
 ---
 
+## Ad-hoc: Typografi i innkalling/referat-PDF (typography-report-2026-11-01.md)
+
+Se SPEC.md «PDF typography». Brukerskrevet tekst og tredjepartsvedlegg er utenfor scope.
+
+- [x] H1: `HeadingInline`-etiketter 10 pt Bold (`_h3Font`), ikke 12 pt
+- [x] H2: vedleggsforside viser etikett (`Vedlegg 2.1`), ikke løpenummer — innkalling og referat
+- [x] H3: vedleggsindeks med `s. <n>` høyrestilt i stedet for `10:`-prefiks; forkort lange navn
+- [x] H4: fjern emoji/piktogrammer før tegning
+- [x] M1/M7: historikklinjer `<dato> [badge] <tekst>` uten kolon; første linje målt mot bredden
+      (fjern 38/28-tegnsklippingen i controlleren)
+- [x] M2/M3: `AgendaTextSnapshot` vises bare under «Til møtet:», ikke i tillegg som eget avsnitt
+- [x] M4: hengende innrykk for avsnitt som starter med listemerke
+- [x] M6: keep-with-next for overskrifter, etiketter og linjer som slutter på `:`
+- [x] M8: datoer `dd.MM.yyyy` (tidsfrist, historikk) via felles hjelper; historikkdato i
+      `App:TimeZone`; fjern duplisert tidsfrist-logikk (innkalling + påminnelse)
+- [x] §5: lik vedleggsforside for PDF og bilde; filnavn ombrytes
+- [x] Tester for hvert punkt der det lar seg måle
+
+---
+
 ## Ad-hoc: Uleselig vedlegg skal ikke stoppe innkalling/referat-PDF
 
 Se SPEC.md «Add Attachment» → «An unreadable attachment must not break …».

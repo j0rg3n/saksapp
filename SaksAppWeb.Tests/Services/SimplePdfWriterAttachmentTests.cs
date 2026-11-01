@@ -38,9 +38,9 @@ public class SimplePdfWriterAttachmentTests
 
         var pagesBeforeAttachments = writer.GetCurrentPageNumber();
 
-        writer.AddPdfAttachment(MakePdf(3), "a.pdf", 1);
-        writer.AddPdfAttachment(MakePdf(1), "b.pdf", 2);
-        writer.AddPdfAttachment(MakePdf(2), "c.pdf", 3);
+        writer.AddPdfAttachment(MakePdf(3), "a.pdf", 1, "1.1");
+        writer.AddPdfAttachment(MakePdf(1), "b.pdf", 2, "2.1");
+        writer.AddPdfAttachment(MakePdf(2), "c.pdf", 3, "3.1");
 
         writer.ApplyAttachmentTocPageNumbers();
 
@@ -67,9 +67,9 @@ public class SimplePdfWriterAttachmentTests
         writer.WriteAttachmentTocEntryDeferred(1, "1.1", "a.pdf");
         writer.WriteAttachmentTocEntryDeferred(2, "1.2", "b.pdf");
         writer.WriteAttachmentTocEntryDeferred(3, "2.1", "c.pdf");
-        writer.AddPdfAttachment(MakePdf(3), "a.pdf", 1);
-        writer.AddPdfAttachment(MakePdf(1), "b.pdf", 2);
-        writer.AddPdfAttachment(MakePdf(2), "c.pdf", 3);
+        writer.AddPdfAttachment(MakePdf(3), "a.pdf", 1, "1.1");
+        writer.AddPdfAttachment(MakePdf(1), "b.pdf", 2, "2.1");
+        writer.AddPdfAttachment(MakePdf(2), "c.pdf", 3, "3.1");
         writer.ApplyAttachmentTocPageNumbers();
 
         var expected = writer.GetAttachmentPageNumbers().Values.OrderBy(x => x).ToArray();
@@ -107,10 +107,10 @@ public class SimplePdfWriterAttachmentTests
     {
         var writer = new SimplePdfWriter();
         writer.Title("Innkalling");
-        writer.ParagraphFirstLineWithBadge("2026-09-01", "Avvik", "#DC3545", "Sirene", "resten av teksten", isItalic: true);
-        writer.ParagraphFirstLineWithBadge("2026-09-01", null, null, "Vanlig hendelse", "", isItalic: true);
+        writer.HistoryEntry("01.09.2026", "Avvik", "#DC3545", "Eksempel resten av teksten");
+        writer.HistoryEntry("01.09.2026", null, null, "Vanlig hendelse");
         writer.WriteAttachmentTocEntryDeferred(1, "1.1", "a.pdf");
-        writer.AddPdfAttachment(MakePdf(2), "a.pdf", 1);
+        writer.AddPdfAttachment(MakePdf(2), "a.pdf", 1, "1.1");
         writer.ApplyAttachmentTocPageNumbers();
 
         var bytes = writer.ToBytes();
@@ -154,11 +154,11 @@ public class SimplePdfWriterAttachmentTests
 
         switch (kind)
         {
-            case "garbage-pdf": writer.AddPdfAttachment(Garbage, "bad.pdf", 1); break;
-            case "encrypted-pdf": writer.AddPdfAttachment(MakePasswordProtectedPdf(), "bad.pdf", 1); break;
-            case "garbage-image": writer.AddImageAttachment(Garbage, "bad.jpg", 1); break;
+            case "garbage-pdf": writer.AddPdfAttachment(Garbage, "bad.pdf", 1, "1.1"); break;
+            case "encrypted-pdf": writer.AddPdfAttachment(MakePasswordProtectedPdf(), "bad.pdf", 1, "1.1"); break;
+            case "garbage-image": writer.AddImageAttachment(Garbage, "bad.jpg", 1, "1.1"); break;
         }
-        writer.AddPdfAttachment(MakePdf(2), "good.pdf", 2);
+        writer.AddPdfAttachment(MakePdf(2), "good.pdf", 2, "2.1");
         writer.ApplyAttachmentTocPageNumbers();
 
         var pages = writer.GetAttachmentPageNumbers();
@@ -185,17 +185,71 @@ public class SimplePdfWriterAttachmentTests
             => Entries.Add((logLevel, formatter(state, exception), exception));
     }
 
-    /// <summary>A badge must not be drawn for ordinary events, and must not throw when absent.</summary>
-    [Fact]
-    public void ParagraphFirstLineWithBadge_WithoutBadge_MatchesPlainParagraphLayout()
+    [Theory]
+    [InlineData("Tekst med lås 🔒.", "Tekst med lås.")]
+    [InlineData("Tekst 👍🏽 videre", "Tekst videre")]
+    [InlineData("Ferdig ✅", "Ferdig")]
+    [InlineData("❤️ Tekst", " Tekst")]
+    [InlineData("Ærlig å si: «øy» — 50 000,-", "Ærlig å si: «øy» — 50 000,-")]
+    public void Clean_RemovesCharactersTheFontCannotDraw(string input, string expected) =>
+        Assert.Equal(expected, SimplePdfWriter.Clean(input));
+
+    /// <summary>
+    /// Fills page 1 with single-line paragraphs until exactly one more fits, returning that count.
+    /// </summary>
+    private static int ParagraphsLeavingRoomForOneMore()
     {
-        var withoutBadge = new SimplePdfWriter();
-        withoutBadge.ParagraphFirstLineWithBadge("2026-09-01", null, null, "line", "continuation");
+        var probe = new SimplePdfWriter();
+        var count = 0;
+        while (probe.GetCurrentPageNumber() == 1)
+        {
+            probe.Paragraph("linje");
+            count++;
+        }
+        // The last paragraph opened page 2, so count - 1 fit on page 1; leave room for one more.
+        return count - 2;
+    }
 
-        var plain = new SimplePdfWriter();
-        plain.ParagraphFirstLine("2026-09-01: line", "continuation");
+    /// <summary>
+    /// A heading with room for itself but not for any of what follows must move to the next page
+    /// (typography review M6), whereas a plain paragraph in the same spot stays.
+    /// </summary>
+    [Fact]
+    public void Heading_IsKeptWithNext_WhileParagraphInSameSpotIsNot()
+    {
+        var fill = ParagraphsLeavingRoomForOneMore();
 
-        Assert.Equal(plain.GetCurrentPageNumber(), withoutBadge.GetCurrentPageNumber());
+        var withParagraph = new SimplePdfWriter();
+        for (var i = 0; i < fill; i++) withParagraph.Paragraph("linje");
+        withParagraph.Paragraph("siste linje");
+        Assert.Equal(1, withParagraph.GetCurrentPageNumber());
+
+        var withHeading = new SimplePdfWriter();
+        for (var i = 0; i < fill; i++) withHeading.Paragraph("linje");
+        withHeading.Heading3("Til møtet:");
+        Assert.Equal(2, withHeading.GetCurrentPageNumber());
+
+        var withLabelLine = new SimplePdfWriter();
+        for (var i = 0; i < fill; i++) withLabelLine.Paragraph("linje");
+        withLabelLine.Paragraph("Etikett:");
+        Assert.Equal(2, withLabelLine.GetCurrentPageNumber());
+    }
+
+    /// <summary>Edge cases for the wrapper: none may throw, and the result must be a valid PDF.</summary>
+    [Fact]
+    public void Wrapping_HandlesLongWordsListsEmojiAndEmptyText()
+    {
+        var writer = new SimplePdfWriter();
+        writer.HistoryEntry("01.10.2026", "Tiltak", "#FFC107", new string('x', 400));
+        writer.HistoryEntry("01.10.2026", null, null, "");
+        writer.HistoryEntry("01.10.2026", "Avvik", "#DC3545", "Første\n\n1. punkt som er langt nok til å bryte over flere linjer i dokumentet, helt sikkert\n- strek");
+        writer.Paragraph("🔒🔒🔒");
+        writer.WriteAttachmentTocEntryDeferred(1, "1.1", new string('n', 300) + ".pdf");
+        writer.AddPdfAttachment(MakePdf(1), new string('n', 300) + ".pdf", 1, "1.1");
+        writer.ApplyAttachmentTocPageNumbers();
+
+        using var ms = new MemoryStream(writer.ToBytes());
+        Assert.True(PdfReader.Open(ms, PdfDocumentOpenMode.ReadOnly).PageCount >= 2);
     }
 }
 
@@ -224,27 +278,31 @@ public class PdfSampleRenderer
         if (string.IsNullOrWhiteSpace(outDir) || !Directory.Exists(outDir)) return;
 
         var pdf = new SimplePdfWriter();
-        pdf.Title("Innkalling styremøte #9 2026 — 29.09.2026 kl. 18:00");
-        pdf.Heading2("1. Sporing av setningsskader (Jørgen; #19)");
+        // Synthetic placeholder content only — never real case text, names or file names.
+        pdf.Title("Innkalling styremøte #1 2000 — 01.01.2000 kl. 18:00");
+        pdf.Heading2("2. Eksempelsak (Person A; #1)");
+        pdf.ParagraphItalic("Beskrivelse av eksempelsaken i kursiv.");
+        pdf.HeadingInline("Status: ", "Statustekst for eksempelsaken.");
+        pdf.HeadingInline("Tidsfrist: ", "01.02.2000");
+        pdf.Heading3("Til møtet:");
+        pdf.ParagraphIndented("Etikett:\n1. Første punkt i en nummerert liste, langt nok til at det brytes over mer enn én linje på siden.\n2. Andre punkt.\n- Punkt med strek.");
         pdf.Heading3("Historikk siden forrige møte:");
-        pdf.ParagraphFirstLineWithBadge("2026-09-01", "Tiltak", "#FFC107",
-            "Befaring gjennomført med Ulf",
-            "Teigen fra Murbyen Oslo i dag morges. Avgir notat om 1-2 uker.", isItalic: true);
-        pdf.ParagraphFirstLineWithBadge("2026-09-01", "Avvik", "#DC3545",
-            "Etter service melder Isak",
-            "Flo Bødal om at kabler og feste/sirene er gulnet og lukter dårlig.", isItalic: true);
-        pdf.ParagraphFirstLineWithBadge("2026-08-20", null, null,
-            "Mottatt prisanslag fra WSP på 50000,-",
-            "eks. mva. Avventer sammenligning med Consisu.", isItalic: true);
+        pdf.HistoryEntry("01.01.2000", "Tiltak", "#FFC107",
+            "Hendelsestekst med merke, lang nok til å fylle hele første linje og fortsette med hengende innrykk.");
+        pdf.HistoryEntry("02.01.2000", "Avvik", "#DC3545", "Kort avvikstekst.");
+        pdf.HistoryEntry("03.01.2000", "Tiltak", "#FFC107", "Tekst med emoji 🔒.");
+        pdf.HistoryEntry("04.01.2000", null, null,
+            "Vanlig hendelse uten merke, også denne lang nok til å brytes over to linjer i dokumentet.");
 
+        var longName = new string('a', 60) + "_" + new string('b', 60) + " (1).pdf";
         pdf.Blank(6);
         pdf.Heading2("Vedlegg");
-        pdf.WriteAttachmentTocEntryDeferred(1, "1.1", "befaringsnotat.pdf");
-        pdf.WriteAttachmentTocEntryDeferred(2, "1.2", "prisanslag-wsp.pdf");
-        pdf.WriteAttachmentTocEntryDeferred(3, "2.1", "vurderingsnotat-rib.pdf");
-        pdf.AddPdfAttachment(MakePdf(3), "befaringsnotat.pdf", 1);
-        pdf.AddPdfAttachment(MakePdf(1), "prisanslag-wsp.pdf", 2);
-        pdf.AddPdfAttachment(MakePdf(2), "vurderingsnotat-rib.pdf", 3);
+        pdf.WriteAttachmentTocEntryDeferred(1, "2.1", "vedlegg-a.pdf");
+        pdf.WriteAttachmentTocEntryDeferred(2, "2.2", "vedlegg-b.pdf");
+        pdf.WriteAttachmentTocEntryDeferred(3, "3.1", longName);
+        pdf.AddPdfAttachment(MakePdf(3), "vedlegg-a.pdf", 1, "2.1");
+        pdf.AddPdfAttachment(MakePdf(1), "vedlegg-b.pdf", 2, "2.2");
+        pdf.AddPdfAttachment("garbage"u8.ToArray(), longName, 3, "3.1");
         pdf.ApplyAttachmentTocPageNumbers();
 
         File.WriteAllBytes(Path.Combine(outDir, "sample-innkalling.pdf"), pdf.ToBytes());

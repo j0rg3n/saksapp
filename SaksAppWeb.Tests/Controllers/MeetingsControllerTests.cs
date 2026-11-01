@@ -789,6 +789,49 @@ public class MeetingsControllerTests : IDisposable
         Assert.Contains(capturingFactory.Last!.Calls, c => c.StartsWith("Title:"));
     }
 
+    /// <summary>
+    /// Typography review 2026-11-01: the agenda text was printed twice (M3), tidsfrist dates came
+    /// out as 02/10/2026 (M8), history entries were pre-cut at a fixed length (M7), and attachment
+    /// captions showed a sequence number instead of the label used everywhere else (H2).
+    /// </summary>
+    [Fact]
+    public async Task DownloadAgendaPdf_FollowsTypographyRules()
+    {
+        var meeting = new Meeting { Id = 1, MeetingDate = new DateOnly(2026, 11, 9), Year = 2026, YearSequenceNumber = 9 };
+        var boardCase = new BoardCase { Id = 5, CaseNumber = 1, Title = "Eksempelsak", Description = "Beskrivelse" };
+        var link = new MeetingEventLink
+        {
+            AgendaTextSnapshot = "Til møtet-tekst",
+            TidsfristOverrideDate = new DateOnly(2026, 10, 2)
+        };
+        var attachment = new AgendaAttachmentRef("vedlegg-a.pdf", "application/pdf", new byte[] { 1 });
+        var longText = new string('x', 10) + " " + string.Join(" ", Enumerable.Repeat("ord", 40));
+        var item = new AgendaItemData(link, boardCase, "Person A", null, new[]
+        {
+            new AgendaCommentData(new DateTime(2026, 10, 1, 0, 30, 0), longText, CaseEventCategories.Avvik, new[] { attachment })
+        });
+        var data = new AgendaPdfData(meeting, 1, new[] { item },
+            new Dictionary<string, string> { ["vedlegg-a.pdf"] = "2.1" }, new[] { attachment });
+
+        _agendaPdfDataMock.Setup(x => x.GetAgendaDataAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(data);
+
+        var capturingFactory = new CapturingPdfWriterFactory();
+        var controller = new MeetingsController(
+            _db, _auditMock.Object, _userManager, _pdfSequenceMock.Object,
+            _meetingQueryMock.Object, capturingFactory,
+            _agendaPdfDataMock.Object, _minutesPdfDataMock.Object, _minutesSaveMock.Object);
+        controller.ControllerContext = _controller.ControllerContext;
+
+        await controller.DownloadAgendaPdf(1, CancellationToken.None);
+        var calls = capturingFactory.Last!.Calls;
+
+        Assert.Single(calls, c => c.Contains("Til møtet-tekst"));
+        Assert.Contains("ParagraphIndented:Til møtet-tekst", calls);
+        Assert.Contains("HeadingInline:Tidsfrist: |02.10.2026", calls);
+        Assert.Contains($"HistoryEntry:01.10.2026:Avvik:#DC3545:{longText}", calls);
+        Assert.Contains("AddPdfAttachment:1:2.1:vedlegg-a.pdf", calls);
+    }
+
     [Fact]
     public async Task DownloadMinutesPdf_ReturnsNotFound_WhenDataServiceReturnsNull()
     {

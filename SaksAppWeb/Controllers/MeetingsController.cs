@@ -455,15 +455,12 @@ public class MeetingsController : Controller
             if (!string.IsNullOrWhiteSpace(item.Case.Description))
                 pdf.ParagraphItalic(item.Case.Description);
 
-            if (!string.IsNullOrWhiteSpace(item.MeetingCase.AgendaTextSnapshot) &&
-                !item.MeetingCase.AgendaTextSnapshot.Equals(item.Case.Description, StringComparison.OrdinalIgnoreCase))
-                pdf.Paragraph(item.MeetingCase.AgendaTextSnapshot);
+            // The agenda text snapshot is printed once, under "Til møtet:" below. It used to also be
+            // printed here as an unlabeled paragraph, so it appeared twice.
 
-            var tidsfrist = (item.MeetingCase.TidsfristOverrideDate is not null || !string.IsNullOrWhiteSpace(item.MeetingCase.TidsfristOverrideText))
-                ? $"{item.MeetingCase.TidsfristOverrideDate?.ToString() ?? ""} {item.MeetingCase.TidsfristOverrideText ?? ""}".Trim()
-                : (item.Case.CustomTidsfristDate is not null || !string.IsNullOrWhiteSpace(item.Case.CustomTidsfristText))
-                    ? $"{item.Case.CustomTidsfristDate?.ToString() ?? ""} {item.Case.CustomTidsfristText ?? ""}".Trim()
-                    : "Innen neste møte";
+            var tidsfrist = TidsfristDisplay.Format(
+                item.MeetingCase.TidsfristOverrideDate, item.MeetingCase.TidsfristOverrideText,
+                item.Case.CustomTidsfristDate, item.Case.CustomTidsfristText);
 
             if (item.PreviousMinutes is { } prev)
             {
@@ -475,7 +472,7 @@ public class MeetingsController : Controller
                 if (prev.Attachments.Count > 0)
                 {
                     var attRefs = string.Join(", ", prev.Attachments.Select(a => $"Vedlegg {data.AttachmentLabelByFileName[a.FileName]}"));
-                    pdf.Paragraph($"Vedlegg: {attRefs}");
+                    pdf.Paragraph(attRefs);
                 }
             }
             else
@@ -504,33 +501,9 @@ public class MeetingsController : Controller
                         _ => (null, null)
                     };
 
-                    // The datestamp is drawn separately so the badge can sit inline after it.
-                    var datePrefix = $"{com.CreatedAt:yyyy-MM-dd}";
-                    var body = com.Text ?? "";
-
-                    // A badge eats horizontal space on the first line, so split earlier when present.
-                    var firstLineMaxLen = badgeLabel is null ? 38 : 28;
-                    string firstLine, continuation;
-                    if (body.Length <= firstLineMaxLen)
-                    {
-                        firstLine = body;
-                        continuation = "";
-                    }
-                    else
-                    {
-                        var splitIdx = body.LastIndexOf(' ', Math.Min(firstLineMaxLen, body.Length - 1));
-                        if (splitIdx > 10)
-                        {
-                            firstLine = body.Substring(0, splitIdx);
-                            continuation = body.Substring(splitIdx + 1);
-                        }
-                        else
-                        {
-                            firstLine = body;
-                            continuation = "";
-                        }
-                    }
-                    pdf.ParagraphFirstLineWithBadge(datePrefix, badgeLabel, badgeColor, firstLine, continuation, isItalic: true);
+                    // The writer measures how much of the text fits on the first line after the date
+                    // and badge; a fixed character cut here gave ragged, half-width first lines.
+                    pdf.HistoryEntry($"{com.CreatedAtLocal:dd.MM.yyyy}", badgeLabel, badgeColor, com.Text ?? "");
                     if (com.Attachments.Count > 0)
                     {
                         var attRefs = string.Join(", ", com.Attachments.Select(a => $"Vedlegg {data.AttachmentLabelByFileName[a.FileName]}"));
@@ -557,10 +530,11 @@ public class MeetingsController : Controller
             attachmentNumber = 1;
             foreach (var att in data.AttachmentsInOrder)
             {
+                var label = data.AttachmentLabelByFileName[att.FileName];
                 if (att.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-                    pdf.AddPdfAttachment(att.Content, att.FileName, attachmentNumber);
+                    pdf.AddPdfAttachment(att.Content, att.FileName, attachmentNumber, label);
                 else if (att.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                    pdf.AddImageAttachment(att.Content, att.FileName, attachmentNumber);
+                    pdf.AddImageAttachment(att.Content, att.FileName, attachmentNumber, label);
                 attachmentNumber++;
             }
 
@@ -632,11 +606,9 @@ public class MeetingsController : Controller
 
             foreach (var row in g.OrderBy(x => x.mel.AgendaOrder))
             {
-                var tidsfrist = (row.mel.TidsfristOverrideDate is not null || !string.IsNullOrWhiteSpace(row.mel.TidsfristOverrideText))
-                    ? $"{row.mel.TidsfristOverrideDate?.ToString() ?? ""} {row.mel.TidsfristOverrideText ?? ""}".Trim()
-                    : (row.boardCase.CustomTidsfristDate is not null || !string.IsNullOrWhiteSpace(row.boardCase.CustomTidsfristText))
-                        ? $"{row.boardCase.CustomTidsfristDate?.ToString() ?? ""} {row.boardCase.CustomTidsfristText ?? ""}".Trim()
-                        : "Innen neste møte";
+                var tidsfrist = TidsfristDisplay.Format(
+                    row.mel.TidsfristOverrideDate, row.mel.TidsfristOverrideText,
+                    row.boardCase.CustomTidsfristDate, row.boardCase.CustomTidsfristText);
 
                 pdf.Paragraph($"- #{row.boardCase.CaseNumber} {row.boardCase.Title} — Tidsfrist: {tidsfrist}");
             }
@@ -791,9 +763,9 @@ public class MeetingsController : Controller
             foreach (var (label, att) in labeledAttachments)
             {
                 if (att.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-                    pdf.AddPdfAttachment(att.Content, att.FileName, seqNum);
+                    pdf.AddPdfAttachment(att.Content, att.FileName, seqNum, label);
                 else if (att.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                    pdf.AddImageAttachment(att.Content, att.FileName, seqNum);
+                    pdf.AddImageAttachment(att.Content, att.FileName, seqNum, label);
                 seqNum++;
             }
 

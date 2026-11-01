@@ -7,8 +7,9 @@ namespace SaksAppWeb.Services;
 
 public record AgendaAttachmentRef(string FileName, string ContentType, byte[] Content);
 
+/// <param name="CreatedAtLocal">Creation time in the app time zone (<c>App:TimeZone</c>), for display.</param>
 public record AgendaCommentData(
-    DateTime CreatedAt,
+    DateTime CreatedAtLocal,
     string Text,
     string Category,
     IReadOnlyList<AgendaAttachmentRef> Attachments);
@@ -249,7 +250,9 @@ public sealed class AgendaPdfDataService : IAgendaPdfDataService
                 .Select(cec =>
                 {
                     var atts = eventAttachmentsByCaseEventId.TryGetValue(cec.CaseEventId, out var al) ? al : new List<AgendaAttachmentRef>();
-                    return new AgendaCommentData(cec.CaseEvent.CreatedAt.DateTime, cec.CaseEvent.Content, cec.CaseEvent.Category, atts);
+                    // CreatedAt is UTC; printing its .DateTime put late-evening events on the next day.
+                    var local = TimeZoneInfo.ConvertTime(cec.CaseEvent.CreatedAt, _timeZone.Local).DateTime;
+                    return new AgendaCommentData(local, cec.CaseEvent.Content, cec.CaseEvent.Category, atts);
                 })
                 .ToList();
 
