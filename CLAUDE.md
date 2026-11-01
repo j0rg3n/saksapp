@@ -76,8 +76,3 @@ fixing it, per the Planning rule above.
 Deploy only once the findings are either fixed or explicitly accepted.
 
 `/security-review` and `/code-review` cover parts of this; neither is a substitute for the whole list.
-
-## Daily routines
-
-- **todoist-triage**: `/todoist-triage styret/saksapp` — run daily to pull new tasks from Todoist into this repo.
-  Tasks become GitHub issues (per the Planning rules), not TODO.md entries.
