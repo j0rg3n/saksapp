@@ -15,3 +15,6 @@ caddy_config/
 
 # Operational logs (may contain production data)
 logs-*.txt
+
+# Local path overrides (paths only; template is .env.example)
+.env

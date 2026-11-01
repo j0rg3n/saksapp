@@ -39,3 +39,11 @@ describe the real case in the issue or commit message — describe the shape of 
 Skim the diff, including comments and test names, for anything that came from real case content. If
 real content is already committed or posted, tell the user rather than quietly rewording it, since
 git history and issues keep it.
+
+## Working data stays outside the workspace
+
+Databases (`app.db`, backups, `.sqlite*`), Data Protection keys, `secret.env`/`caddy.env`, TLS state, image
+tarballs, logs and exported passwords belong in `~/saksapp-data/` and `~/.config/saksapp/`, never in the
+repository directory — even if `.gitignore` would cover them. When a command needs scratch data, use a
+temp directory outside the repo. If something like this turns up inside the workspace, move it out and
+tell the user.

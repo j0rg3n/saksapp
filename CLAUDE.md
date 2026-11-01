@@ -17,6 +17,9 @@ Task workflows live in `.claude/skills/`:
   SPEC.md, commit messages and GitHub issues. No real names, addresses, companies, incidents, case
   text or attachment file names, even when reproducing a reported bug. Use neutral placeholders
   (`Person A`, `Eksempelsak`, `vedlegg-a.pdf`). The repository is public. See `no-real-data`.
+- **Working data stays outside the workspace** — database, backups, keys, credentials, TLS state and
+  image exports live in `~/saksapp-data/` and `~/.config/saksapp/` (see SPEC.md and `.env.example`).
+  Never create or copy such files into the repo directory, and never pass `--output` paths inside it.
 - **Before any ad-hoc fix or change**: update SPEC.md and the GitHub issue first, then implement.
 - Make local commits for major changes, referencing the issue. Do not push unless explicitly requested.
 - Deploy only after the pre-deployment review findings are fixed or explicitly accepted.

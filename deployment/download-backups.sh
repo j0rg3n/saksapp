@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../auth/secret.env"
+source "$SCRIPT_DIR/_env.sh"
 
 VM_HOST="root@${UPCLOUD__HOST}"
 VM_PATH="/root/SaksAppWeb/db/Backups"

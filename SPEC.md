@@ -475,7 +475,7 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 
 - The application is served over **HTTPS only**, in front of a **Caddy** reverse proxy that obtains
   and renews Let's Encrypt certificates automatically.
-- The hostname comes from `SAKSAPP_DOMAIN` (set in `auth/secret.env`); an A record for it must
+- The hostname comes from `SAKSAPP_DOMAIN` (set in `secret.env`, outside the repo); an A record for it must
   point at the VM. A bare IP address cannot be used: Let's Encrypt will not certify one and Google
   rejects it as an OAuth redirect host.
 - Caddy publishes ports 80 and 443. Port 80 exists only to satisfy the ACME HTTP challenge and to
@@ -491,6 +491,19 @@ All major entities support soft delete (IsDeleted, DeletedAt, DeletedByUserId).
 ### Data Protection
 - ASP.NET Data Protection for antiforgery tokens
 - Keys persisted to filesystem
+
+### Working data outside the workspace
+- The checkout holds code only. The live database, backups, Data Protection keys, credentials
+  (`secret.env`, `caddy.env`), TLS state (Caddy data and config) and image exports live **outside**
+  the repository, so a mistaken `git add`, a stale `.gitignore` or a copied worktree cannot leak them.
+- Locally: `~/saksapp-data/{db,dp_keys,caddy_data,caddy_config,images}` and `~/.config/saksapp/`
+  (credentials, mode 0600). `docker-compose.yml` reads the locations from `SAKSAPP_DB_DIR`,
+  `SAKSAPP_KEYS_DIR`, `SAKSAPP_CADDY_DATA_DIR`, `SAKSAPP_CADDY_CONFIG_DIR` and `SAKSAPP_AUTH_DIR`;
+  the defaults are the old in-repo paths, so the VM layout is unchanged. Locally they are set in
+  an untracked `.env` (paths only, no secrets). `.env.example` documents them.
+- `deployment/*.sh` read credentials from `${SAKSAPP_AUTH_DIR:-~/.config/saksapp}` via
+  `deployment/_env.sh`, and `deploy-upcloud.sh` builds its image tarball in a temporary directory
+  instead of the repo root.
 
 ### Build context
 - The Docker build context must exclude `auth/`, `db/`, `dp_keys/` and `*.tar`. These are already

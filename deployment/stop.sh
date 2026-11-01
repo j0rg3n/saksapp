@@ -1,3 +1,3 @@
 #!/bin/bash
-source "$(dirname "$0")/../auth/secret.env"
+source "$(dirname "$0")/_env.sh"
 ssh root@${UPCLOUD__HOST} systemctl stop saksapp

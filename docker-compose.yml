@@ -10,11 +10,11 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./caddy_data:/data
-      - ./caddy_config:/config
+      - ${SAKSAPP_CADDY_DATA_DIR:-./caddy_data}:/data
+      - ${SAKSAPP_CADDY_CONFIG_DIR:-./caddy_config}:/config
     env_file:
       # Deliberately not auth/secret.env: the proxy has no business holding SMTP credentials.
-      - auth/caddy.env
+      - ${SAKSAPP_AUTH_DIR:-./auth}/caddy.env
     depends_on:
       - saksappweb
 
@@ -31,10 +31,10 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     volumes:
-      - ./SaksAppWeb/db:/app/db:rw
-      - ./SaksAppWeb/dp_keys:/app/dp_keys:rw
+      - ${SAKSAPP_DB_DIR:-./SaksAppWeb/db}:/app/db:rw
+      - ${SAKSAPP_KEYS_DIR:-./SaksAppWeb/dp_keys}:/app/dp_keys:rw
     env_file:
-      - auth/secret.env
+      - ${SAKSAPP_AUTH_DIR:-./auth}/secret.env
     environment:
       - SMTP__HOST=send.one.com
       - SMTP__PORT=465

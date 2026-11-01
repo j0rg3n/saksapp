@@ -6,5 +6,5 @@ services:
       SAKSAPP_DOMAIN: saksapp.test
     volumes:
       - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
-      - ./caddy_data:/data
-      - ./caddy_config:/config
+      - ${SAKSAPP_CADDY_DATA_DIR:-./caddy_data}:/data
+      - ${SAKSAPP_CADDY_CONFIG_DIR:-./caddy_config}:/config

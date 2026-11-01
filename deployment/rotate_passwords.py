@@ -11,7 +11,7 @@ then start the app again. Plaintext passwords are written only to --output, neve
 --output must be outside the repository; hand the passwords to users over a private channel and
 delete the file afterwards.
 
-  deployment/rotate_passwords.py --db SaksAppWeb/db/app.db --output ~/rotated-passwords.tsv
+  deployment/rotate_passwords.py --db ~/saksapp-data/db/app.db --output ~/rotated-passwords.tsv
   deployment/rotate_passwords.py --db ... --output ... --email a@example.com   # only some users
   deployment/rotate_passwords.py --db ... --output ... --dry-run               # change nothing
   deployment/rotate_passwords.py --self-test
